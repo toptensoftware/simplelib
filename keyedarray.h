@@ -33,7 +33,7 @@ namespace SimpleLib
 		// Get number of items
 		int GetCount() const
 		{
-			return m_Keys.GetSize();
+			return m_Keys.GetCount();
 		}
 
 		// Check if empty

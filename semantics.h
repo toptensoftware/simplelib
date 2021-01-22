@@ -120,6 +120,26 @@ namespace SimpleLib
 		}
 	};
 
+	template <typename T>
+	struct ICharSet
+	{
+		virtual bool IsChar(T ch) const = 0;
+	};
+
+	template <typename T>
+	struct CCharSetSingle : public ICharSet<T>
+	{
+	public:
+		CCharSetSingle(T ch)
+		{
+			_ch = ch;
+		}
+		virtual bool IsChar(T ch) const override
+		{
+			return ch == _ch;
+		}
+		T _ch;
+	};
 
 	// Character semantics
 	template <typename T>

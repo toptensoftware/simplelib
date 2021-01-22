@@ -320,21 +320,31 @@ namespace SimpleLib
 		}
 
 		template <class SCase = SCaseSensitive<T>>
-		int IndexOf(const T* psz, int startOffset = 0)
+		int IndexOf(const T* psz, int startOffset = 0) const
 		{
-			if (psz == nullptr)
+			return IndexOf(m_psz, psz, startOffset);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static int IndexOf(const T* psz, const T* find, int startOffset = 0)
+		{
+			if (find == nullptr)
 				return -1;
 
 			// Get search string length
-			int srcLen = SChar<T>::Length(psz);
+			int srcLen = SChar<T>::Length(find);
 			if (srcLen == 0)
 				return startOffset;
 
+			int destLen = SChar<T>::Length(psz);
+			if (destLen == 0)
+				return -1;
+
 			// Find it
-			int stopPos = GetLength() - srcLen;
+			int stopPos = destLen - srcLen;
 			for (int i = startOffset; i <= stopPos; i++)
 			{
-				if (SCase::Compare(m_psz + i, psz, srcLen) == 0)
+				if (SCase::Compare(psz + i, find, srcLen) == 0)
 					return i;
 			}
 
@@ -342,6 +352,7 @@ namespace SimpleLib
 		}
 
 
+		template <class SCase = SCaseSensitive<T>>
 		void Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			int findLen = SChar<T>::Length(find);
@@ -352,7 +363,7 @@ namespace SimpleLib
 			while (true)
 			{
 				// Find it
-				int foundPos = strNew.IndexOf(find, startOffset);
+				int foundPos = strNew.IndexOf<SCase>(find, startOffset);
 				if (foundPos < 0)
 					break;
 
@@ -372,37 +383,33 @@ namespace SimpleLib
 		}
 
 
-		void ReplaceI(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		static bool IsNullOrEmpty(const T* a)
 		{
-			int findLen = SChar<T>::Length(find);
-			int replaceLen = SChar<T>::Length(replace);
-
-			CString<T> strNew = *this;
-
-			while (true)
-			{
-				// Find it
-				int foundPos = strNew.IndexOfI(find, startOffset);
-				if (foundPos < 0)
-					break;
-
-				// Replace it
-				strNew.ReplaceRange(foundPos, findLen, replace, replaceLen);
-
-				// Continue searching after
-				startOffset = foundPos + replaceLen;
-
-				// Limit replacements
-				maxReplacements--;
-				if (maxReplacements == 0)
-					break;
-			}
-
-			Assign(strNew);
+			return a == nullptr || *a == '\0';
 		}
 
 		template <class SCase = SCaseSensitive<T>>
-		bool StartsWith(const T* find)
+		bool IsEqualTo(const T* b) const
+		{
+			return IsEqual(m_psz, b);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static bool IsEqual(const T* a, const T* b)
+		{
+			return Compare<SCase>(a, b) == 0;
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static bool Compare(const T* a, const T* b)
+		{
+			if (a == nullptr) a = SChar<T>::EmptyString();
+			if (b == nullptr) b = SChar<T>::EmptyString();
+			return SCase::Compare(a, b);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		bool StartsWith(const T* find) const
 		{
 			if (m_psz == nullptr)
 				return false;
@@ -410,13 +417,72 @@ namespace SimpleLib
 		}
 
 		template <class SCase = SCaseSensitive<T>>
-		bool EndsWith(const T* find)
+		static bool StartsWith(const T* psz, const T* find)
+		{
+			if (psz == nullptr)
+				return false;
+			return SCase::Compare(psz, find, SChar<T>::Length(find)) == 0;
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		bool EndsWith(const T* find) const
 		{
 			int findLen = SChar<T>::Length(find);
 			int startPos = GetLength() - findLen;
 			if (startPos < 0)
 				return false;
 			return SCase::Compare(m_psz + startPos, find, findLen) == 0;
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static bool EndsWith(const T* psz, const T* find)
+		{
+			if (psz == nullptr)
+				return false;
+			int findLen = SChar<T>::Length(find);
+			int startPos = SChar<T>::Length(psz) - findLen;
+			if (startPos < 0)
+				return false;
+			return SCase::Compare(psz + startPos, find, findLen) == 0;
+		}
+
+		int Split(ICharSet<T>* separator, bool includeEmpty, CVector<CString<T>>& parts) const
+		{
+			return Split(m_psz, separator, includeEmpty, parts);
+		}
+
+		static int Split(const T* psz, const ICharSet<T>& separator, bool includeEmpty, CVector<CString<T>>& parts)
+		{
+			// Clear buffer
+			parts.RemoveAll();
+
+			// Get start of string
+			const T* p = psz;
+			if (!p)
+				return 0;
+
+			// Split
+			const T* pPart = p;
+			while (*p)
+			{
+				if (separator.IsChar(*p))
+				{
+					if (includeEmpty || p > pPart)
+						parts.Add(CString<T>(pPart, p - pPart));
+
+					pPart = p + 1;
+					p = pPart;
+				}
+				else
+				{
+					p++;
+				}
+			}
+
+			if (includeEmpty || p > pPart)
+				parts.Add(CString<T>(pPart, p - pPart));
+
+			return parts.GetCount();
 		}
 
 
