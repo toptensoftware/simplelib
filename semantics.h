@@ -178,6 +178,11 @@ namespace SimpleLib
 	class SCaseSensitive<char>
 	{
 	public:
+		static int Compare(char a, char b)
+		{
+			return b - a;
+		}
+
 		static int Compare(const char* a, const char* b, int len)
 		{
 			return strncmp(a, b, len);
@@ -194,6 +199,11 @@ namespace SimpleLib
 	class SCaseInsensitive<char>
 	{
 	public:
+		static int Compare(char a, char b)
+		{
+			return toupper(b) - toupper(a);
+		}
+
 		static int Compare(const char* a, const char* b, int len)
 		{
 #ifdef _MSC_VER

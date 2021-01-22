@@ -322,7 +322,7 @@ namespace SimpleLib
 		template <class SCase = SCaseSensitive<T>>
 		int IndexOf(const T* psz, int startOffset = 0) const
 		{
-			return IndexOf(m_psz, psz, startOffset);
+			return IndexOf<SCase>(m_psz, psz, startOffset);
 		}
 
 		template <class SCase = SCaseSensitive<T>>
@@ -351,6 +351,133 @@ namespace SimpleLib
 			return -1;
 		}
 
+		template <class SCase = SCaseSensitive<T>>
+		int IndexOf(T ch, int startOffset = 0) const
+		{
+			return IndexOf<SCase>(m_psz, ch, startOffset);
+		}
+
+		int IndexOf(const ICharSet<T>& ch, int startOffset = 0) const
+		{
+			return IndexOf(m_psz, ch, startOffset);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static int IndexOf(const T* psz, T find, int startOffset = 0)
+		{
+			if (psz == nullptr)
+				return -1;
+
+			const T* p = psz;
+			while (*p)
+			{
+				if (SCase::Compare(*p, find) == 0)
+					return p - psz;
+				p++;
+			}
+
+			return -1;
+		}
+
+
+		static int IndexOf(const T* psz, const ICharSet<T>& chars, int startOffset = 0)
+		{
+			if (psz == nullptr)
+				return -1;
+
+			const T* p = psz;
+			while (*p)
+			{
+				if (chars.IsChar(*p))
+					return p - psz;
+				p++;
+			}
+
+			return -1;
+		}
+
+
+		template <class SCase = SCaseSensitive<T>>
+		int LastIndexOf(const T* psz, int startOffset = 0) const
+		{
+			return LastIndexOf<SCase>(m_psz, psz, startOffset);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static int LastIndexOf(const T* psz, const T* find, int startOffset = 0)
+		{
+			if (find == nullptr)
+				return -1;
+
+			// Get search string length
+			int srcLen = SChar<T>::Length(find);
+			if (srcLen == 0)
+				return startOffset;
+
+			int destLen = SChar<T>::Length(psz);
+			if (destLen == 0)
+				return -1;
+
+			// Find it
+			int stopPos = destLen - srcLen;
+			for (int i = stopPos; i >= startOffset; i++)
+			{
+				if (SCase::Compare(psz + i, find, srcLen) == 0)
+					return i;
+			}
+
+			return -1;
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		int LastIndexOf(T ch, int startOffset = 0) const
+		{
+			return LastIndexOf<SCase>(m_psz, ch, startOffset);
+		}
+
+		int LastIndexOf(const ICharSet<T>& ch, int startOffset = 0) const
+		{
+			return LastIndexOf(m_psz, ch, startOffset);
+		}
+
+		template <class SCase = SCaseSensitive<T>>
+		static int LastIndexOf(const T* psz, T find, int startOffset = 0)
+		{
+			if (psz == nullptr)
+				return -1;
+
+			const T* p = psz;
+			int pos = -1;
+			while (*p)
+			{
+				if (SCase::Compare(*p, find) == 0)
+				{
+					pos = p - psz;
+				}
+				p++;
+			}
+
+			return pos;
+		}
+
+		static int LastIndexOf(const T* psz, const ICharSet<T>& find, int startOffset = 0)
+		{
+			if (psz == nullptr)
+				return -1;
+
+			const T* p = psz;
+			int pos = -1;
+			while (*p)
+			{
+				if (find.IsChar(*p))
+				{
+					pos = p - psz;
+				}
+				p++;
+			}
+
+			return pos;
+		}
 
 		template <class SCase = SCaseSensitive<T>>
 		void Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
@@ -391,11 +518,11 @@ namespace SimpleLib
 		template <class SCase = SCaseSensitive<T>>
 		bool IsEqualTo(const T* b) const
 		{
-			return IsEqual(m_psz, b);
+			return AreEqual<SCase>(m_psz, b);
 		}
 
 		template <class SCase = SCaseSensitive<T>>
-		static bool IsEqual(const T* a, const T* b)
+		static bool AreEqual(const T* a, const T* b)
 		{
 			return Compare<SCase>(a, b) == 0;
 		}
@@ -446,7 +573,7 @@ namespace SimpleLib
 			return SCase::Compare(psz + startPos, find, findLen) == 0;
 		}
 
-		int Split(ICharSet<T>* separator, bool includeEmpty, CVector<CString<T>>& parts) const
+		int Split(ICharSet<T>& separator, bool includeEmpty, CVector<CString<T>>& parts) const
 		{
 			return Split(m_psz, separator, includeEmpty, parts);
 		}
