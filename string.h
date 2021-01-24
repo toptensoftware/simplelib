@@ -8,6 +8,7 @@
 
 #include "semantics.h"
 #include "formatting.h"
+#include "vector.h"
 
 namespace SimpleLib
 {
@@ -624,7 +625,7 @@ namespace SimpleLib
 
 		static CString<T> FormatV(const T* pFormat, va_list args)
 		{
-			CFormatOutputMemory<T> helper;
+			CFormatBuilder<T> helper;
 			CFormatting::FormatV(&helper, pFormat, args);
 			return (const T*)helper;
 		}

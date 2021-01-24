@@ -3,6 +3,8 @@
 
 #include <math.h>
 
+#include "stringbuilder.h"
+
 namespace SimpleLib
 {
 	template <typename T>
@@ -527,14 +529,22 @@ namespace SimpleLib
 
 		// Helper class for Format functions
 	template <typename T>
-	class CFormatOutputMemory : public IFormatOutput<T>
+	class CFormatBuilder : 
+		public CStringBuilder<T>,
+		public IFormatOutput<T>
 	{
 	public:
-		CFormatOutputMemory()
+		CFormatBuilder()
 		{
-			m_capacity = 64;
-			m_psz = (T*)malloc(m_capacity * sizeof(T));
-			m_p = m_psz;
+		}
+
+
+		void Format(const T* format, ...)
+		{
+			va_list args;
+			va_start(args, format);
+			FormatV(format, args);
+			va_end(args);
 		}
 
 		void FormatV(const T* format, va_list args)
@@ -542,35 +552,14 @@ namespace SimpleLib
 			CFormatting::FormatV<T>(this, format, args);
 		}
 
-		T* Detach(int* piLength)
-		{
-			*m_p = '\0';
-			*piLength = (int)(m_p - m_psz);
-			T* temp = m_psz;
-			m_psz = nullptr;
-			m_p = nullptr;
-			return temp;
-		}
-
-		operator const T* () const
-		{
-			*m_p = '\0';
-			return m_psz;
-		}
-
-		virtual ~CFormatOutputMemory()
-		{
-			free(m_psz);
-		}
-
 		virtual void Append(T ch) override
 		{
-			*Reserve(1) = ch;
+			CStringBuilder<T>::Append(ch);
 		}
 
-		void Append(T ch, int count)
+		virtual void Append(T ch, int count) override
 		{
-			T* psz = Reserve(count);
+			T* psz = CStringBuilder<T>::Reserve(count);
 			while (count)
 			{
 				*psz++ = ch;
@@ -578,11 +567,11 @@ namespace SimpleLib
 			}
 		}
 
-		void Append(const T* psz, int len)
+		virtual void Append(const T* psz, int len) override
 		{
 			if (len < 0)
 				len = 0;
-			memcpy(Reserve(len), psz, len * sizeof(T));
+			memcpy(CStringBuilder<T>::Reserve(len), psz, len * sizeof(T));
 		}
 
 		virtual void Append(const T* psz, int len, int width, bool left) override
@@ -607,34 +596,6 @@ namespace SimpleLib
 				Append(psz, len);
 			}
 		}
-
-		T* Reserve(int required)
-		{
-			// Get the current length
-			int length = (int)(m_p - m_psz);
-
-			// Do we have room
-			if (length + required >= m_capacity)
-			{
-				// Work out new capacity
-				while (m_capacity < length + required + 1)
-					m_capacity *= 2;
-
-				// Reallocate
-				T* pNew = (T*)realloc(m_psz, sizeof(T) * m_capacity);
-				m_p = pNew + (m_p - m_psz);
-				m_psz = pNew;
-			}
-
-			T* ret = m_p;
-			m_p += required;
-			return ret;
-		}
-
-
-		T* m_psz;
-		T* m_p;
-		int m_capacity;
 	};
 
 
