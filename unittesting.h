@@ -281,7 +281,7 @@ private:
 
 
 
-const char* test_sprintf(const char* format, ...)
+inline const char* test_sprintf(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
@@ -291,59 +291,59 @@ const char* test_sprintf(const char* format, ...)
 }
 
 
-const char* test_format(bool value)
+inline const char* test_format(bool value)
 {
 	return value ? "true" : "false";
 }
 
-const char* test_format(int value)
+inline const char* test_format(int value)
 {
 	return test_sprintf("%i", value);
 }
 
-const char* test_format(unsigned int value)
+inline const char* test_format(unsigned int value)
 {
 	return test_sprintf("%u", value);
 }
 
-const char* test_format(long value)
+inline const char* test_format(long value)
 {
 	return test_sprintf("%li", value);
 }
 
-const char* test_format(unsigned long value)
+inline const char* test_format(unsigned long value)
 {
 	return test_sprintf("%lu", value);
 }
 
-const char* test_format(long long value)
+inline const char* test_format(long long value)
 {
 	return test_sprintf("%lli", value);
 }
 
-const char* test_format(unsigned long long value)
+inline const char* test_format(unsigned long long value)
 {
 	return test_sprintf("%llu", value);
 }
 
-const char* test_format(void* value)
+inline const char* test_format(void* value)
 {
 	return test_sprintf("0x%p", value);
 }
 
-const char* test_format(char value)
+inline const char* test_format(char value)
 {
 	char sz[2] = "x";
 	sz[0] = value;
 	return SimpleLib::CUnitTesting::FormatString(sz, '\'');
 }
 
-const char* test_format(double value)
+inline const char* test_format(double value)
 {
 	return test_sprintf("%f", value);
 }
 
-const char* test_format(const char* value)
+inline const char* test_format(const char* value)
 {
 	return SimpleLib::CUnitTesting::FormatString(value);
 }
