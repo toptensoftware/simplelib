@@ -2,6 +2,7 @@
 #define __simplelib_formatting_h__
 
 #include <math.h>
+#include <stdarg.h>
 
 #include "stringbuilder.h"
 
@@ -527,7 +528,7 @@ namespace SimpleLib
 		}
 	};
 
-		// Helper class for Format functions
+	// Helper class for Format functions
 	template <typename T>
 	class CFormatBuilder : 
 		public CStringBuilder<T>,
@@ -597,10 +598,6 @@ namespace SimpleLib
 			}
 		}
 	};
-
-
-
-
 
 }	// namespace
 
