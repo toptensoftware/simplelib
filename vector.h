@@ -54,7 +54,7 @@ namespace SimpleLib
 			{
 				// Reallocate memory
 				assert(m_iMemSize != 0);
-				m_pData = (T*)realloc(m_pData, iNewSize * sizeof(T));
+				m_pData = (T*)realloc((void*)m_pData, iNewSize * sizeof(T));
 			}
 			else
 			{

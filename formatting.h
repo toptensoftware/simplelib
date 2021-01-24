@@ -248,7 +248,7 @@ namespace SimpleLib
 						// Process by type...
 						if (bSizeT)
 						{
-							ptrdiff_t arg = va_arg(args, ptrdiff_t);
+							intptr_t arg = va_arg(args, intptr_t);
 							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
 								iPrecision--;
 							output->Append(szTemp, FormatSigned<T, ptrdiff_t>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);

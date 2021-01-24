@@ -53,8 +53,8 @@ Failed 1 of 4 tests!
 
 #undef assert
 
-#define assert_condition(a, compare, msg) { auto _a = a; if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a ## " " ## msg, #a, test_format(_a)); return; } }
-#define assert_compare(a, b, compare, msg) { auto _a = a; auto _b = b;  if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a ## " " ## msg ## " " ## #b, #a, test_format(_a), #b, test_format(_b) ); return; } }
+#define assert_condition(a, compare, msg) { auto _a = a; if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " " msg, #a, test_format(_a)); return; } }
+#define assert_compare(a, b, compare, msg) { auto _a = a; auto _b = b;  if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " " msg " " #b, #a, test_format(_a), #b, test_format(_b) ); return; } }
 
 #define assert_true(a) assert_condition(a, !!_a, "should be true")
 #define assert_false(a) assert_condition(a, !_a, "should be false")
@@ -350,4 +350,4 @@ inline const char* test_format(const char* value)
 
 
 
-#endif _test_core_h_
+#endif // _test_core_h_
