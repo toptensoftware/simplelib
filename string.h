@@ -389,7 +389,7 @@ namespace SimpleLib
 			while (*p)
 			{
 				if (chars.IsChar(*p))
-					return p - psz;
+					return (int)(p - psz);
 				p++;
 			}
 
@@ -471,7 +471,7 @@ namespace SimpleLib
 			{
 				if (find.IsChar(*p))
 				{
-					pos = p - psz;
+					pos = (int)(p - psz);
 				}
 				p++;
 			}
@@ -595,7 +595,7 @@ namespace SimpleLib
 				if (separator.IsChar(*p))
 				{
 					if (includeEmpty || p > pPart)
-						parts.Add(CString<T>(pPart, p - pPart));
+						parts.Add(CString<T>(pPart, (int)(p - pPart)));
 
 					pPart = p + 1;
 					p = pPart;
@@ -607,7 +607,7 @@ namespace SimpleLib
 			}
 
 			if (includeEmpty || p > pPart)
-				parts.Add(CString<T>(pPart, p - pPart));
+				parts.Add(CString<T>(pPart, (int)(p - pPart)));
 
 			return parts.GetCount();
 		}
@@ -729,6 +729,37 @@ namespace SimpleLib
 			GetHeader()->m_iLength = iLen;
 
 			return m_psz;
+		}
+
+		bool ToBuffer(T* buf, int buflenChars)
+		{
+			// Check will fit
+			int srclen = GetLength();
+			if (srclen + 1 > buflenChars)
+				return false;
+
+			// Copy it
+			if (srclen)
+				memcpy(buf, m_psz, srclen * sizeof(T));
+			buf[srclen] = '\0';
+			return true;
+		}
+
+		T* AllocCopy(int withLengthInChars=0)
+		{
+			if (m_psz == nullptr)
+			{
+				return nullptr;
+			}
+			else
+			{
+				int length = GetLength() + 1;
+				if (withLengthInChars != 0 && withLengthInChars < length)
+					return nullptr;
+				T* dest = (T*)malloc(length * sizeof(T));
+				memcpy(dest, m_psz, length * sizeof(T));
+				return dest;
+			}
 		}
 
 	protected:

@@ -1,6 +1,9 @@
 #ifndef __simplelib_semantics_h__
 #define __simplelib_semantics_h__
 
+
+#include <ctype.h>
+
 #ifdef _MSC_VER
 #define DEPRECATED(x) __declspec(deprecated(x))
 

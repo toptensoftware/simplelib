@@ -183,7 +183,7 @@ namespace SimpleLib
 		// Remove a particular item
 		int Remove(const TArg& val)
 		{
-			int iPos = Find(val);
+			int iPos = IndexOf(val);
 			if (iPos >= 0)
 				RemoveAt(iPos);
 			return iPos;
@@ -256,7 +256,7 @@ namespace SimpleLib
 		// Detach the specified item from the collection
 		void Detach(const TArg& val)
 		{
-			int iIndex = Find(val);
+			int iIndex = IndexOf(val);
 			assert(iIndex >= 0);
 			DetachAt(iIndex);
 		}

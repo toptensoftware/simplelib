@@ -104,6 +104,7 @@ namespace SimpleLib
 					bool bZeroPrefix = false;
 					bool bLong = false;
 					bool bLongLong = false;
+					bool bSizeT = false;
 
 				next_flag:						// sometimes a goto is a friend
 					if (*p == '#')
@@ -194,6 +195,12 @@ namespace SimpleLib
 						p++;
 					}
 
+					if (*p == 'z')
+					{
+						bSizeT = true;
+						p++;
+					}
+
 					// Type specifier
 					switch (*p)
 					{
@@ -236,7 +243,14 @@ namespace SimpleLib
 						}
 
 						// Process by type...
-						if (bLongLong)
+						if (bSizeT)
+						{
+							ptrdiff_t arg = va_arg(args, ptrdiff_t);
+							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
+								iPrecision--;
+							output->Append(szTemp, FormatSigned<T, ptrdiff_t>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
+						}
+						else if (bLongLong)
 						{
 							long long arg = va_arg(args, long long);
 							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
@@ -282,7 +296,12 @@ namespace SimpleLib
 						bool upper = *p == 'X';
 
 						// Process by type...
-						if (bLongLong)
+						if (bSizeT)
+						{
+							size_t arg = va_arg(args, size_t);
+							output->Append(szTemp, FormatUnsigned<T, size_t>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
+						}
+						else if (bLongLong)
 						{
 							long long arg = va_arg(args, unsigned long long);
 							output->Append(szTemp, FormatUnsigned<T, unsigned long long>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
