@@ -203,7 +203,7 @@ private:
 		{
 			for (int i = 0; i < 2 * m_iDepth; i++)
 			{
-				fputc(' ', stdout);
+				printf(" ");
 			}
 		}
 
