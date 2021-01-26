@@ -10,6 +10,7 @@
 #include "semantics.h"
 #include "formatting.h"
 #include "vector.h"
+#include "stringbuilder.h"
 
 namespace SimpleLib
 {
@@ -484,37 +485,20 @@ namespace SimpleLib
 		template <class SCase = SCaseSensitive<T>>
 		int Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
-			int findLen = SChar<T>::Length(find);
-			int replaceLen = SChar<T>::Length(replace);
-
-			if (findLen == 0)
+			// Start offset past end of string?
+			if (startOffset >= GetLength())
 				return 0;
 
-			CString<T> strNew = *this;
+			// Setup builder and copy the bit before start index
+			CStringBuilder<T> builder;
+			if (startOffset > 0)
+				builder.Append(sz(), startOffset);
 
-			int count = 0;
-			while (true)
-			{
-				// Find it
-				int foundPos = strNew.IndexOf<SCase>(find, startOffset);
-				if (foundPos < 0)
-					break;
+			// Replace string
+			int count = builder.ReplaceAppend<SCase>(sz() + startOffset, find, replace, maxReplacements);
 
-				// Replace it
-				count++;
-				strNew.ReplaceRange(foundPos, findLen, replace, replaceLen);
-
-				// Continue searching after
-				startOffset = foundPos + replaceLen;
-
-				// Limit replacements
-				maxReplacements--;
-				if (maxReplacements == 0)
-					break;
-			}
-
-			Assign(strNew);
-
+			// Store in self
+			Assign(builder.Finish());
 			return count;
 		}
 

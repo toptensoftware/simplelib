@@ -150,6 +150,41 @@ public:
 		return Finish();
 	}
 
+	template <class SCase = SCaseSensitive<T>>
+	int ReplaceAppend(const T* input, const T* find, const T* replace, int maxReplacements = -1)
+	{
+		int findLen = SChar<T>::Length(find);
+		if (findLen == 0)
+		{
+			Append(input);
+			return 0;
+		}
+
+		const char* p = input;
+		int count = 0;
+		while (*p)
+		{
+			if (SCase::Compare(p, find, findLen) == 0)
+			{
+				Append(replace);
+				p += findLen;
+				count++;
+				if (count == maxReplacements)
+				{
+					Append(p);
+					return count;
+				}
+			}
+			else
+			{
+				Append(*p);
+				p++;
+			}
+		}
+
+		return count;
+	}
+
 
 private:
 	T* m_pMem;
