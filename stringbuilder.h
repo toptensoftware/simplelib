@@ -120,9 +120,24 @@ public:
 
 	T* Detach()
 	{
-		T* retv = m_pMem;
-		m_pMem = nullptr;
-		return retv;
+		// Make sure null terminated
+		int length;
+		Finish(&length);		
+
+		// Can't just detach short buffer, so alloc
+		if (m_pMem == m_shortBuffer)
+		{
+			T* retv = malloc(length + 1);
+			memcpy(retv, m_pMem, length + 1);
+			m_iUsed = 0;
+			return retv;
+		}
+		else
+		{
+			T* retv = m_pMem;
+			Reset();
+			return retv;
+		}
 	}
 
 	operator const T* () const
@@ -134,7 +149,6 @@ public:
 	{
 		return Finish();
 	}
-
 
 
 private:
