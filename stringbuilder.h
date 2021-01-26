@@ -118,6 +118,13 @@ public:
 		return m_pMem;
 	}
 
+	T* Detach()
+	{
+		T* retv = m_pMem;
+		m_pMem = nullptr;
+		return retv;
+	}
+
 	operator const T* () const
 	{
 		return Finish();

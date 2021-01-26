@@ -482,13 +482,17 @@ namespace SimpleLib
 		}
 
 		template <class SCase = SCaseSensitive<T>>
-		void Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		int Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			int findLen = SChar<T>::Length(find);
 			int replaceLen = SChar<T>::Length(replace);
 
+			if (findLen == 0)
+				return 0;
+
 			CString<T> strNew = *this;
 
+			int count = 0;
 			while (true)
 			{
 				// Find it
@@ -497,6 +501,7 @@ namespace SimpleLib
 					break;
 
 				// Replace it
+				count++;
 				strNew.ReplaceRange(foundPos, findLen, replace, replaceLen);
 
 				// Continue searching after
@@ -509,6 +514,8 @@ namespace SimpleLib
 			}
 
 			Assign(strNew);
+
+			return count;
 		}
 
 
