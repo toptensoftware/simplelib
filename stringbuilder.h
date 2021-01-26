@@ -127,7 +127,7 @@ public:
 		// Can't just detach short buffer, so alloc
 		if (m_pMem == m_shortBuffer)
 		{
-			T* retv = malloc(length + 1);
+			T* retv = (T*)malloc(length + 1);
 			memcpy(retv, m_pMem, length + 1);
 			m_iUsed = 0;
 			return retv;

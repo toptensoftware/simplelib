@@ -495,7 +495,7 @@ namespace SimpleLib
 				builder.Append(sz(), startOffset);
 
 			// Replace string
-			int count = builder.ReplaceAppend<SCase>(sz() + startOffset, find, replace, maxReplacements);
+			int count = builder.template ReplaceAppend<SCase>(sz() + startOffset, find, replace, maxReplacements);
 
 			// Store in self
 			Assign(builder.Finish());
