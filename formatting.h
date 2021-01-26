@@ -68,6 +68,7 @@ namespace SimpleLib
 		// [0] = pad with leading zeros (if right aligned)
 		// [l] = long
 		// [ll] = long long
+		// [z] = pointer size integer 
 		// <width> = width as integer or '*' to read from arg list
 		// <precision> = precision as integer or '*' to read from arg list
 		// <type> = 'c', 's', 'i', 'd', 'u', 'x', 'X', 'o', 'p', 'f'
