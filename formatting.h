@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #include "stringbuilder.h"
 
@@ -249,7 +250,7 @@ namespace SimpleLib
 						// Process by type...
 						if (bSizeT)
 						{
-							intptr_t arg = va_arg(args, intptr_t);
+							ptrdiff_t arg = va_arg(args, ptrdiff_t);
 							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
 								iPrecision--;
 							output->Append(szTemp, FormatSigned<T, ptrdiff_t>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
