@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "stringpool.h"
 #include "formatting.h"
@@ -61,7 +62,7 @@ Failed 1 of 4 tests!
 #define assert_null(a) assert_condition(a, _a == nullptr, "should be null")
 #define assert_not_null(a) assert_condition(a, _a != nullptr, "should not be null")
 #define assert_error(a) assert_condition(a, _a != 0, "should have failed with error")
-#define assert_not_error(a) assert_condition(a, _a == 0, "should not have failed with error")
+#define assert_not_error(a) { auto _a = a; if (_a) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " should not have failed with error", #a, test_format(_a), "errno", test_format(errno)); return; } }
 
 #define assert_equal(a, b) assert_compare(a, b, _a == _b, "should equal")
 #define assert_not_equal(a, b) assert_compare(a, b, _a != _b, "should not equal")
