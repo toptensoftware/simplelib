@@ -192,7 +192,7 @@ public:
 
 	void FormatV(const T* pFormat, va_list args)
 	{
-		vcbprintf<T>(write_callback, this, pFormat, args);
+		simplelib_vcbprintf<T>(write_callback, this, pFormat, args);
 	}
 
 

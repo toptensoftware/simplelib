@@ -571,7 +571,7 @@ namespace SimpleLib
 
 
 	template <typename T>
-	void vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
+	void simplelib_vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
 	{
 		CFormatCallback<T> cb(write, arg);
 		CFormatting::FormatV<T>(&cb, format, args);
