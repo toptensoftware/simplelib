@@ -549,76 +549,34 @@ namespace SimpleLib
 		}
 	};
 
-	// Helper class for Format functions
+
 	template <typename T>
-	class CFormatBuilder : 
-		public CStringBuilder<T>,
-		public IFormatOutput<T>
+	class CFormatCallback : public IFormatOutput<T>
 	{
 	public:
-		CFormatBuilder()
+		CFormatCallback(void (*cb)(void*, T), void* arg)
 		{
-		}
-
-
-		void Format(const T* format, ...)
-		{
-			va_list args;
-			va_start(args, format);
-			FormatV(format, args);
-			va_end(args);
-		}
-
-		void FormatV(const T* format, va_list args)
-		{
-			CFormatting::FormatV<T>(this, format, args);
+			m_cb = cb;
+			m_arg = arg;
 		}
 
 		virtual void Append(T ch) override
 		{
-			CStringBuilder<T>::Append(ch);
+			m_cb(m_arg, ch);
 		}
 
-		virtual void Append(T ch, int count) override
-		{
-			T* psz = CStringBuilder<T>::Reserve(count);
-			while (count)
-			{
-				*psz++ = ch;
-				count--;
-			}
-		}
-
-		virtual void Append(const T* psz, int len) override
-		{
-			if (len < 0)
-				len = 0;
-			memcpy(CStringBuilder<T>::Reserve(len), psz, len * sizeof(T));
-		}
-
-		virtual void Append(const T* psz, int len, int width, bool left) override
-		{
-			if (len < 0)
-				len = 0;
-			if (width > len)
-			{
-				if (left)
-				{
-					Append(psz, len);
-					Append(' ', width - len);
-				}
-				else
-				{
-					Append(' ', width - len);
-					Append(psz, len);
-				}
-			}
-			else
-			{
-				Append(psz, len);
-			}
-		}
+		void (*m_cb)(void*, T);
+		void* m_arg;
 	};
+
+
+	template <typename T>
+	void vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
+	{
+		CFormatCallback<T> cb(write, arg);
+		CFormatting::FormatV<T>(&cb, format, args);
+	}
+
 
 }	// namespace
 

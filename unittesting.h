@@ -115,7 +115,7 @@ public:
 
 	static const char* vsprintf(const char* format, va_list args)
 	{
-		CFormatBuilder<char> buf;
+		CStringBuilder<char> buf;
 		buf.FormatV(format, args);
 		return StringPool().Alloc(buf);
 	}

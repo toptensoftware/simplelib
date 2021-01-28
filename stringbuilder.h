@@ -185,6 +185,16 @@ public:
 		return count;
 	}
 
+	static void write_callback(void* arg, T ch)
+	{
+		((CStringBuilder*)arg)->Append(ch);
+	}
+
+	void FormatV(const T* pFormat, va_list args)
+	{
+		vcbprintf<T>(write_callback, this, pFormat, args);
+	}
+
 
 private:
 	T* m_pMem;

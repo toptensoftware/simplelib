@@ -8,7 +8,6 @@
 #include <stddef.h>
 
 #include "semantics.h"
-#include "formatting.h"
 #include "vector.h"
 #include "stringbuilder.h"
 
@@ -617,9 +616,9 @@ namespace SimpleLib
 
 		static CString<T> FormatV(const T* pFormat, va_list args)
 		{
-			CFormatBuilder<T> helper;
-			CFormatting::FormatV(&helper, pFormat, args);
-			return (const T*)helper;
+			CStringBuilder<T> buf;
+			buf.FormatV(pFormat, args);
+			return buf.sz();
 		}
 
 
