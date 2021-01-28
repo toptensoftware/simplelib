@@ -66,6 +66,12 @@ Failed 1 of 4 tests!
 
 #define assert_equal(a, b) assert_compare(a, b, _a == _b, "should equal")
 #define assert_not_equal(a, b) assert_compare(a, b, _a != _b, "should not equal")
+#define assert_gt(a, b) assert_compare(a, b, _a > _b, "should be greater than")
+#define assert_ge(a, b) assert_compare(a, b, _a >= _b, "should be greater or equal to")
+#define assert_lt(a, b) assert_compare(a, b, _a < _b, "should be less than")
+#define assert_le(a, b) assert_compare(a, b, _a <= _b, "should be less than or equal to")
+
+
 #define assert_string_equal(a, b) assert_compare(a, b, SimpleLib::CUnitTesting::StringCompare(_a,_b)==0, "should equal")
 #define assert_string_not_equal(a, b) assert_compare(a, b, SimpleLib::CUnitTesting::StringCompare(_a,_b)!=0, "should not equal")
 
