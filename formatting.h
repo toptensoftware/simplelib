@@ -388,14 +388,12 @@ namespace SimpleLib
 		{
 			// Handle negative
 			bool negative = value < 0;
-			if (negative)
-				value = -value;
 
 			// Format tnumber
 			T* p = buf;
 			do
 			{
-				*p++ = (value % 10) + '0';
+				*p++ = '0' + (char)abs(value % 10);
 				value /= 10;
 			} while (value != 0);
 
