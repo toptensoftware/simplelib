@@ -6,7 +6,7 @@
 #include <errno.h>
 
 #include "stringpool.h"
-#include "formatting.h"
+#include "stringbuilder.h"
 
 /*
 eg:
@@ -310,27 +310,27 @@ inline const char* test_format(int value)
 
 inline const char* test_format(unsigned int value)
 {
-	return test_sprintf("%u", value);
+	return test_sprintf("%uu", value);
 }
 
 inline const char* test_format(long value)
 {
-	return test_sprintf("%li", value);
+	return test_sprintf("%lil", value);
 }
 
 inline const char* test_format(unsigned long value)
 {
-	return test_sprintf("%lu", value);
+	return test_sprintf("%luul", value);
 }
 
 inline const char* test_format(long long value)
 {
-	return test_sprintf("%lli", value);
+	return test_sprintf("%llill", value);
 }
 
 inline const char* test_format(unsigned long long value)
 {
-	return test_sprintf("%llu", value);
+	return test_sprintf("%lluull", value);
 }
 
 inline const char* test_format(void* value)
