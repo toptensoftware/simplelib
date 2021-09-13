@@ -177,6 +177,20 @@ namespace SimpleLib
 		{ 
 			return ""; 
 		}
+
+		static bool IsEmpty(const char* a)
+		{
+			return a == nullptr || strlen(a) == 0;
+		}
+
+		static bool IsEqual(const char* a, const char* b)
+		{
+			if (a == nullptr && b == nullptr)
+				return true;
+			if (a != nullptr || b != nullptr)
+				return false;
+			return strcmp(a, b) == 0;
+		}
 	};
 
 	template <typename T>

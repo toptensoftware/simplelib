@@ -24,6 +24,41 @@ namespace SimpleLib
 		{ 
 			return L""; 
 		}
+
+		static bool IsEmpty(const wchar_t* a)
+		{
+			return a == nullptr || wcslen(a) == 0;
+		}
+
+	};
+
+	template <>
+	class SCaseSensitive<wchar_t>
+	{
+	public:
+		static bool IsEqual(const wchar_t* a, const wchar_t* b)
+		{
+			if (a == nullptr && b == nullptr)
+				return true;
+			if (a != nullptr || b != nullptr)
+				return false;
+			return wcscmp(a, b) == 0;
+		}
+
+		static int Compare(wchar_t a, wchar_t b)
+		{
+			return b - a;
+		}
+
+		static int Compare(const wchar_t* a, const wchar_t* b)
+		{
+			return wcscmp(a, b);
+		}
+
+		static int Compare(const wchar_t* a, const wchar_t* b, int length)
+		{
+			return wcsncmp(a, b, length);
+		}
 	};
 
 
