@@ -187,7 +187,7 @@ namespace SimpleLib
 		{
 			if (a == nullptr && b == nullptr)
 				return true;
-			if (a != nullptr || b != nullptr)
+			if (a == nullptr || b == nullptr)
 				return false;
 			return strcmp(a, b) == 0;
 		}

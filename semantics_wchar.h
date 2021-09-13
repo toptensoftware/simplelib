@@ -2,6 +2,7 @@
 #define __simplelib_semantics_wchar_h__
 
 #include "semantics.h"
+#include "string.h"
 
 namespace SimpleLib
 {
@@ -40,7 +41,7 @@ namespace SimpleLib
 		{
 			if (a == nullptr && b == nullptr)
 				return true;
-			if (a != nullptr || b != nullptr)
+			if (a == nullptr || b == nullptr)
 				return false;
 			return wcscmp(a, b) == 0;
 		}
@@ -60,6 +61,12 @@ namespace SimpleLib
 			return wcsncmp(a, b, length);
 		}
 	};
+
+	template <>
+	inline int Compare<CString<wchar_t>>(const CString<wchar_t>& a, const CString<wchar_t>& b)
+	{
+		return SCaseSensitive<wchar_t>::Compare(a, b);
+	}
 
 
 } // namespace
