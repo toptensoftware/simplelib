@@ -374,7 +374,7 @@ namespace SimpleLib
 			while (*p)
 			{
 				if (SCase::Compare(*p, find) == 0)
-					return p - psz;
+					return (int)(p - psz);
 				p++;
 			}
 
