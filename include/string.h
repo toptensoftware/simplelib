@@ -14,16 +14,7 @@
 namespace SimpleLib
 {
 	/*
-
-	Simple string class stores a string.
-
-	Implements "copy on write" for effecient copy of CString to CString
-		(eg: function return values etc...)
-
-	Also, implemented with internal data prefixed to string memory so string class can be
-		passed as a string pointer for sprintf type functions. (ie: the whole class is same
-		size as a pointer)  (See nested CHeader struct + Get/SetHeader functions)
-
+	Simple immutable string class stores a string.
 	*/
 
 	template <typename T=char>
@@ -33,24 +24,20 @@ namespace SimpleLib
 		// Constructor
 		CString()
 		{
-			SetHeader(nullptr);
+			m_pData = nullptr;
 		}
 
 		// Constructor
 		CString(const CString<T>& Other)
 		{
-			m_psz = Other.m_psz;
-			if (m_psz)
-			{
-				GetHeader()->m_iRef++;
-			}
+			m_pData = nullptr;
+			Assign(Other);
 		}
 
 		// Constructor
 		CString(const T* psz, int iLen = -1)
 		{
-			SetHeader(nullptr);
-			Assign(psz, iLen);
+			m_pData = AllocStringData(psz, iLen);
 		}
 
 		// Destructor
@@ -79,19 +66,15 @@ namespace SimpleLib
 		// operator[]
 		const T operator[] (int iPos)
 		{
-			assert(m_psz);
-			assert(iPos >= 0 && iPos < GetHeader()->m_iMemSize);
-			if (GetHeader()->m_iRef > 1)
-			{
-				GetBuffer(-1);
-			}
-			return m_psz[iPos];
+			assert(m_pData);
+			assert(iPos >= 0 && iPos < m_pData->m_iLength);
+			return m_pData->m_sz[iPos];
 		}
 
 		// const T* operator
 		operator const T* () const
 		{
-			return m_psz;
+			return sz();
 		}
 
 		bool operator ==(const CString<T>& b) const
@@ -102,58 +85,21 @@ namespace SimpleLib
 		// Get null terminated string
 		const T* sz() const
 		{
-			return m_psz;
-		}
-
-		// Free extra space
-		void FreeExtra() 
-		{
-			// Get header, quit if none
-			CHeader* pHeader = GetHeader();
-			if (!pHeader)
-				return;
-
-			// Work out length if invalid
-			if (pHeader->m_iLength < 0)
-				pHeader->m_iLength = len(m_psz);
-
-			// Get new buffer if shared...
-			if (pHeader->m_iRef > 1)
-				GetBuffer(pHeader->m_iLength + 1);
-
-			// If using excessive memory, shrink...
-			if (pHeader->m_iLength + 16 < pHeader->m_iMemSize)
-			{
-				// Work out new length
-				int iNewBufSize = pHeader->m_iLength + 1;
-
-				// Reallocate
-				pHeader = (CHeader*)realloc(pHeader, sizeof(CHeader) + sizeof(T) * iNewBufSize);
-				if (!pHeader)
-					return;
-
-				// Store new size...
-				pHeader->m_iMemSize = iNewBufSize;
-
-				// Store new mem pointer
-				SetHeader(pHeader);
-			}
+			return m_pData ? m_pData->m_sz : nullptr;
 		}
 
 		void Clear()
 		{
-			if (!m_psz)
-				return;
-
-			if (GetHeader()->m_iRef > 1)
+			if (m_pData)
 			{
-				GetHeader()->m_iRef--;
+				assert(m_pData->m_sz[m_pData->m_iLength] == '\0');
+				m_pData->m_iRef--;
+				if (m_pData->m_iRef == 0)
+				{
+					free(m_pData);
+				}
+				m_pData = nullptr;
 			}
-			else
-			{
-				free(GetHeader());
-			}
-			m_psz = nullptr;
 		}
 
 		bool IsEmpty() const
@@ -164,222 +110,100 @@ namespace SimpleLib
 		bool Assign(const CString<T>& Other)
 		{
 			Clear();
-			m_psz = Other.m_psz;
-			if (m_psz)
-				GetHeader()->m_iRef++;
+			m_pData = Other.m_pData;
+			if (m_pData)
+				m_pData->m_iRef++;
 			return true;
 		}
 
-		bool Assign(const T* psz, int iLen = -1)
+		void Assign(const T* psz, int iLen = -1)
 		{
 			// Clear old value
 			Clear();
 
-			// Quit if null string
-			if (!psz)
-				return true;
-
-			// Auto length?
-			if (iLen < 0)
-				iLen = SChar<T>::Length(psz);
-
-			if (!GetBuffer(iLen))
-				return false;
-
-			// Copy new value in
-			memcpy(m_psz, psz, iLen * sizeof(T));
-			m_psz[iLen] = L'\0';
-
-			// Store new text size
-			GetHeader()->m_iLength = iLen;
-
-			return true;
+			// Store new
+			m_pData = AllocStringData(psz, iLen);
 		}
 
 		int GetLength() const
 		{
-			CHeader* pHeader = GetHeader();
-			if (!pHeader)
-				return 0;
-			if (pHeader->m_iLength < 0)
-				pHeader->m_iLength = SChar<T>::Length(m_psz);
-			return pHeader->m_iLength;
-		}
-
-		bool ReplaceRange(int iPos, int iOldLen, const T* psz, int iNewLen = -1)
-		{
-			// Quit if nothing to do
-			if (!iOldLen && !iNewLen)
-				return true;
-
-			// Auto length?
-			if (iNewLen < 0)
-			{
-				iNewLen = psz ? SChar<T>::Length(psz) : 0;
-			}
-
-			// Append?
-			if (iPos < 0)
-				iPos = GetLength();
-
-			// Check position in range
-			assert(iPos <= GetLength());
-
-			// Replace entire RHS?
-			if (iOldLen < 0)
-				iOldLen = GetLength() - iPos;
-
-			// Check in range
-			assert(iPos + iOldLen <= GetLength());
-
-			// Work out new required size
-			int iNewTextSize = GetLength() + iNewLen - iOldLen;
-			assert(iNewTextSize >= 0);
-
-			int iLength = GetLength();
-
-			// Reallocate buffer
-			if (!GrowBuffer(iNewTextSize))
-				return false;
-
-			// Move trailing characters
-			int iTrailingChars = iLength - (iPos + iOldLen);
-			if (iTrailingChars && iOldLen != iNewLen)
-			{
-				memmove(m_psz + iPos + iNewLen, m_psz + iPos + iOldLen, iTrailingChars * sizeof(T));
-			}
-
-			// Copy new characters
-			if (iNewLen)
-			{
-				memcpy(m_psz + iPos, psz, iNewLen * sizeof(T));
-			}
-
-			// Update size/position
-			m_psz[iNewTextSize] = L'\0';
-			GetHeader()->m_iLength = iNewTextSize;
-			return true;
-		}
-
-		bool Append(const T* psz, int iLen = -1)
-		{
-			return ReplaceRange(GetLength(), 0, psz, iLen);
-		}
-
-
-		bool Append(const T ch)
-		{
-			return Append(&ch, 1);
-		}
-
-
-		bool InsertAt(int iPos, const T* psz, int iLen = -1)
-		{
-			return ReplaceRange(iPos, 0, psz, iLen);
-		}
-
-
-		bool DeleteRange(int iPos, int iLen = -1)
-		{
-			return ReplaceRange(iPos, iLen, nullptr, 0);
-		}
-
-
-		CString<T>& operator+=(const T* psz)
-		{
-			Append(psz);
-			return *this;
-		}
-
-		CString<T>& operator+=(T ch)
-		{
-			Append(ch);
-			return *this;
-		}
-
-		CString<T> Copy()
-		{
-			return CString<T>(sz(), GetLength());
+			return m_pData ? m_pData->m_iLength : 0;
 		}
 
 		CString<T> ToUpper()
 		{
-			CString<T> str = Copy();
-			T* p = str.GetBuffer();
-			for (int i=0; i<GetLength(); i++)
+			if (m_pData == nullptr)
+				return CString<T>();
+
+			// Allocate new string buffer
+			StringData* pNew = AllocStringData(nullptr, GetLength());
+
+			// Get source/dest
+			const T* pSrc = sz();
+			T* pDest = pNew->m_sz;
+
+			// Copy and to upper
+			int length = GetLength();
+			for (int i=0; i<length; i++)
 			{
-				*p = SChar<T>::ToUpper(*p);
-				p++;
+				*pDest++ = SChar<T>::ToUpper(*pSrc++);
 			}
-			*p = '\0';
-			return str;
+
+			// Return new string
+			return CString<T>(pNew);
 		}
 
 		CString<T> ToLower()
 		{
-			CString<T> str = Copy();
-			T* p = str.GetBuffer(GetLength() + 1);
-			for (int i=0; i<GetLength(); i++)
+			if (m_pData == nullptr)
+				return CString<T>();
+
+			// Allocate new string buffer
+			StringData* pNew = AllocStringData(nullptr, GetLength());
+
+			// Get source/dest
+			const T* pSrc = sz();
+			T* pDest = pNew->m_sz;
+
+			// Copy and to upper
+			int length = GetLength();
+			for (int i=0; i<length; i++)
 			{
-				*p = SChar<T>::ToLower(*p);
-				p++;
+				*pDest++ = SChar<T>::ToLower(*pSrc++);
 			}
-			*p = '\0';
-			return str;
+
+			// Return new string
+			return CString<T>(pNew);
 		}
 
-		static CString<T> SubString(const T* psz, int iLen, int iStart, int iLength)
+		CString<T> SubString(int iStart, int iLength)
 		{
-			if (!psz)
-				return nullptr;
-
-			if (iLen < 0)
-				iLen = SChar<T>::Length(psz);
-
-			if (iStart > iLen)
-				return nullptr;
+			int thisLength = GetLength();
 
 			if (iStart < 0)
-				iStart = iLen + iStart;
+				iStart = thisLength + iStart;
 
 			if (iLength < 0)
-				iLength = iLen - iStart;
+				iLength = thisLength - iStart;
 
-			if (iStart + iLength > iLen)
-				iLength = iLen - iStart;
+			assert(iStart >= 0);
+			assert(iStart + iLength <= thisLength);
 
-			return CString<T>(psz + iStart, iLength);
-		}
-
-
-		CString<T> SubString(int iStart, int iCount = -1)
-		{
-			return SubString(sz(), GetLength(), iStart, iCount);
+			return CString<T>(m_pData->m_sz + iStart, iLength);
 		}
 
 		template <typename S = SCase>
-		int IndexOf(const T* psz, int startOffset = 0) const
+		int IndexOf(const T* find, int startOffset = 0) const
 		{
-			return IndexOf<S>(m_psz, psz, startOffset);
-		}
-
-		template <typename S = SCase>
-		static int IndexOf(const T* psz, const T* find, int startOffset = 0)
-		{
-			if (find == nullptr)
+			// Check bounds
+			if (find == nullptr || *find == 0 || m_pData == null || m_pData->m_iLen == 0)
 				return -1;
 
 			// Get search string length
 			int srcLen = SChar<T>::Length(find);
-			if (srcLen == 0)
-				return startOffset;
-
-			int destLen = SChar<T>::Length(psz);
-			if (destLen == 0)
-				return -1;
 
 			// Find it
-			int stopPos = destLen - srcLen;
+			int stopPos = m_pData->m_iLen - srcLen;
 			for (int i = startOffset; i <= stopPos; i++)
 			{
 				if (S::Compare(psz + i, find, srcLen) == 0)
@@ -390,32 +214,24 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		static int IndexOf(const T* psz, T find, int startOffset = 0)
+		int IndexOf(const T ch[], int N, int startOffset = 0) const
 		{
-			if (psz == nullptr)
+			if (m_pData == nullptr)
 				return -1;
 
-			const T* p = psz;
-			while (*p)
+			for (int i=startOffset; i<m_pData->m_iLength; i++)
 			{
-				if (S::Compare(*p, find) == 0)
-					return (int)(p - psz);
-				p++;
+				if (IsOneOf<S>(ch, N, m_pData->m_sz[i]))
+					return i;
 			}
 
 			return -1;
 		}
 
-		template <class S = SCase>
-		int IndexOf(const T ch[], int N, int startOffset = 0) const
-		{
-			return IndexOf<S>(m_psz, ch, N, startOffset);
-		}
-
 		template <class S = SCase, int N>
 		int IndexOf(const T(&ch)[N], int startOffset = 0) const
 		{
-			return IndexOf<S>(m_psz, ch, N, startOffset);
+			return IndexOf<S>(ch, N, startOffset);
 		}
 
 		template <typename S>
@@ -429,50 +245,23 @@ namespace SimpleLib
 			return false;
 		}
 
-		template <typename S>
-		static int IndexOf(const T* psz, const T r[], int N, int startOffset = 0)
-		{
-			if (psz == nullptr)
-				return -1;
-
-			const T* p = psz;
-			while (*p)
-			{
-				if (IsOneOf<S>(r, N, *p))
-					return (int)(p - psz);
-				p++;
-			}
-
-			return -1;
-		}
-
-
 		template <class S = SCase>
-		int LastIndexOf(const T* psz, int startOffset = 0) const
+		int LastIndexOf(const T* find, int startOffset = -1) const
 		{
-			return LastIndexOf<S>(m_psz, psz, startOffset);
-		}
-
-		template <class S = SCase>
-		static int LastIndexOf(const T* psz, const T* find, int startOffset = 0)
-		{
-			if (find == nullptr)
+			// Check bounds
+			if (find == nullptr || *find == 0 || m_pData == null || m_pData->m_iLen == 0)
 				return -1;
 
 			// Get search string length
 			int srcLen = SChar<T>::Length(find);
-			if (srcLen == 0)
-				return startOffset;
 
-			int destLen = SChar<T>::Length(psz);
-			if (destLen == 0)
-				return -1;
+			if (startOffset < 0)
+				startOffset = m_pData->m_iLength - 1;
 
 			// Find it
-			int stopPos = destLen - srcLen;
-			for (int i = stopPos; i >= startOffset; i++)
+			for (int i = startOffset; i >= 0; i--)
 			{
-				if (S::Compare(psz + i, find, srcLen) == 0)
+				if (S::Compare(m_pData->m_sz + i, find, srcLen) == 0)
 					return i;
 			}
 
@@ -480,43 +269,36 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		int LastIndexOf(const T ch[], int N, int startOffset = 0) const
+		int LastIndexOf(const T ch[], int N, int startOffset = -1) const
 		{
-			return LastIndexOf<S>(m_psz, ch, N, startOffset);
+			if (m_pData == nullptr)
+				return -1;
+
+			if (startOffset < 0)
+				startOffset = m_pData->m_iLength - 1;
+
+			for (int i=startOffset; i>=0; i--)
+			{
+				if (IsOneOf<S>(ch, N, m_pData->m_sz[i]))
+				{
+					return i;
+				}
+			}
+
+			return -1;
 		}
 
 		template <class S = SCase, int N>
-		int LastIndexOf(const T(&ch)[N], int startOffset = 0) const
+		int LastIndexOf(const T(&ch)[N], int startOffset = -1) const
 		{
-			return LastIndexOf<S>(m_psz, ch, N, startOffset);
-		}
-
-		template <typename S>
-		static int LastIndexOf(const T* psz, const T r[], int N, int startOffset = 0)
-		{
-			if (psz == nullptr)
-				return -1;
-
-			const T* p = psz;
-			int pos = -1;
-			while (*p)
-			{
-				if (IsOneOf<S>(r, N, *p))
-				{
-					pos = (int)(p - psz);
-				}
-				p++;
-			}
-
-			return pos;
+			return LastIndexOf<S>(ch, N, startOffset);
 		}
 
 		template <class S = SCase>
-		int Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		CString<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			// Start offset past end of string?
-			if (startOffset >= GetLength())
-				return 0;
+			assert(startOffset <= GetLength());
 
 			// Setup builder and copy the bit before start index
 			CStringBuilder<T> builder;
@@ -524,11 +306,10 @@ namespace SimpleLib
 				builder.Append(sz(), startOffset);
 
 			// Replace string
-			int count = builder.template ReplaceAppend<S>(sz() + startOffset, find, replace, maxReplacements);
+			builder.template ReplaceAppend<S>(sz() + startOffset, find, replace, maxReplacements);
 
 			// Store in self
-			Assign(builder.Finish());
-			return count;
+			return builder.ToString();
 		}
 
 
@@ -546,19 +327,21 @@ namespace SimpleLib
 		template <class S = SCase>
 		bool StartsWith(const T* find) const
 		{
-			if (m_psz == nullptr)
+			if (m_pData == nullptr)
 				return false;
-			return S::Compare(m_psz, find, SChar<T>::Length(find)) == 0;
+			return S::Compare(m_pData->m_sz, find, SChar<T>::Length(find)) == 0;
 		}
 
 		template <class S = SCase>
 		bool EndsWith(const T* find) const
 		{
+			if (m_pData == nullptr)
+				return false;
 			int findLen = SChar<T>::Length(find);
-			int startPos = GetLength() - findLen;
+			int startPos = m_pData->m_iLength  - findLen;
 			if (startPos < 0)
 				return false;
-			return S::Compare(m_psz + startPos, find, findLen) == 0;
+			return S::Compare(m_pData->m_sz + startPos, find, findLen) == 0;
 		}
 
 		template <class S = SCase, int N>
@@ -573,8 +356,11 @@ namespace SimpleLib
 			// Clear buffer
 			parts.Clear();
 
+			if (m_pData == nullptr)
+				return 0;
+
 			// Get start of string
-			const T* p = m_psz;
+			const T* p = m_pData->m_sz;
 			if (!p)
 				return 0;
 
@@ -620,108 +406,7 @@ namespace SimpleLib
 		}
 
 
-		// Ensures at least iBufSize, grows to iBufSize
-		T* GetBuffer(int iBufSize = -1)
-		{
-			CHeader* pHeader = GetHeader();
-
-			if (iBufSize < 0)
-			{
-				iBufSize = pHeader->m_iLength;
-				if (iBufSize < 0)
-					iBufSize = GetLength() + 1;
-			}
-
-			// Copy on write...
-			if (pHeader && pHeader->m_iRef > 1)
-			{
-
-				// Allocate new header
-				pHeader = (CHeader*)malloc(sizeof(CHeader) + sizeof(T) * iBufSize);
-				if (!pHeader)
-					return nullptr;
-
-				// Copy from original string
-				memcpy(pHeader, GetHeader(), sizeof(CHeader) + sizeof(T) * Min(GetHeader()->m_iMemSize, iBufSize));
-
-				// Release original string
-				GetHeader()->m_iRef--;
-
-				// Setup new header
-				pHeader->m_iMemSize = iBufSize;
-				pHeader->m_iRef = 1;
-				pHeader->m_iLength = -1;
-				SetHeader(pHeader);
-
-				// Done
-				return m_psz;
-			}
-
-			// Check if need to resize
-			if (pHeader && iBufSize <= pHeader->m_iMemSize)
-			{
-				pHeader->m_iLength = -1;
-				return m_psz;
-			}
-
-			// Alloc/Grow buffer...
-			if (pHeader)
-			{
-				CHeader* pNewHeader = (CHeader*)realloc(pHeader, sizeof(CHeader) + sizeof(T) * iBufSize);
-				if (!pNewHeader)
-					return nullptr;
-				pHeader = pNewHeader;
-			}
-			else
-			{
-				pHeader = (CHeader*)malloc(sizeof(CHeader) + sizeof(T) * iBufSize);
-				if (!pHeader)
-					return nullptr;
-			}
-
-			// Store new buffer
-			SetHeader(pHeader);
-			pHeader->m_iMemSize = iBufSize;
-			pHeader->m_sz[iBufSize] = 0;
-			pHeader->m_iRef = 1;
-
-			// Invalidate length
-			pHeader->m_iLength = -1;
-
-			// Done!
-			return m_psz;
-		}
-
-		// Smart grow for appending, doubles buffer size when too small
-		T* GrowBuffer(int iNewSize)
-		{
-			// If no buffer allocate at requested size
-			if (!m_psz)
-				return GetBuffer(iNewSize);
-
-			// Copy on write?
-			if (GetHeader()->m_iRef > 1)
-				return GetBuffer(iNewSize);
-
-			// Quit if already big enough
-			if (iNewSize <= GetHeader()->m_iMemSize)
-				return m_psz;
-
-			// Instead of just growing by a little bit, double the buffer size
-			// (to save lots of tiny reallocs when appending)
-			int iDoubleSize = GetHeader()->m_iMemSize * 2;
-			if (iDoubleSize > iNewSize)
-				iNewSize = iDoubleSize;
-
-			// Resize the buffer, but maintain the current length
-			int iLen = GetHeader()->m_iLength;
-			GetBuffer(iNewSize);
-			GetHeader()->m_iLength = iLen;
-
-			return m_psz;
-		}
-
-		bool ToBuffer(T* buf, int buflenChars)
+		bool CopyToBuffer(T* buf, int buflenChars)
 		{
 			// Check will fit
 			int srclen = GetLength();
@@ -753,22 +438,35 @@ namespace SimpleLib
 		}
 
 	protected:
-		struct CHeader
+		struct StringData
 		{
 			int m_iRef;
-			int	m_iMemSize;
 			int m_iLength;
 			T	m_sz[1];
 		};
 
-		// Return the outer class from the address of a member variable
-		#define outerclassptr(outerClassName, memberName, ptrToMember) \
-			reinterpret_cast<outerClassName*>(reinterpret_cast<char*>(ptrToMember) - offsetof(outerClassName, memberName))
+		static StringData* AllocStringData(const T* psz, int length)
+		{
+			if (psz == nullptr && length == 0)
+				return nullptr;
+			if (length < 0)
+				length = SChar<T>::Length(psz);
+			StringData* p = (StringData*)malloc(sizeof(StringData) + length * sizeof(T));
+			p->m_iRef = 1;
+			p->m_iLength = length;
+			if (psz)
+				memcpy(p->m_sz, psz, length * sizeof(T));
+			p->m_sz[length] = '\0';
+			return p;
+		}
 
-		CHeader* GetHeader() const { return m_psz ? outerclassptr(CHeader, m_sz, m_psz) : nullptr; }
-		void SetHeader(CHeader* pHeader) { m_psz = pHeader ? pHeader->m_sz : nullptr; }
+		StringData* m_pData;
 
-		T* m_psz;
+	private:
+		CString(StringData* pData)
+		{
+			m_pData = pData;
+		}
 	};
 
 	// String semantics

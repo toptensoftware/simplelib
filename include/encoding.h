@@ -2,6 +2,7 @@
 #define __simplelib_encoding_h__
 
 #include "semantics.h"
+#include "string.h"
 
 namespace SimpleLib
 {
@@ -227,7 +228,7 @@ CString<TTo> Encode(const TFrom* in)
 	{
 		enc.Process(*in++, out);
 	}
-	return CString<TTo>(out.Finish());
+	return out.ToString();
 }
 
 

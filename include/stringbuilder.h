@@ -107,14 +107,14 @@ public:
 	}
 
 	// Finish building and return the current string (doesn't reset the builder)
-	T* Finish() const
+	T* ToString() const
 	{
 		int unused;
-		return Finish(&unused);
+		return ToString(&unused);
 	}
 
 	// Finish building and return the current string and its length
-	T* Finish(int* piLength) const
+	T* ToString(int* piLength) const
 	{
 		if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
 		{
@@ -148,12 +148,12 @@ public:
 
 	operator const T* () const
 	{
-		return Finish();
+		return ToString();
 	}
 
 	const T* sz() const
 	{
-		return Finish();
+		return ToString();
 	}
 
 	template <class SCase = SCaseSensitive<T>>
@@ -198,7 +198,8 @@ public:
 
 	void FormatV(const T* pFormat, va_list args)
 	{
-		simplelib_vcbprintf<T>(write_callback, this, pFormat, args);
+		CFormatStringWriter fw(this);
+		CFormatting::FormatV(&fw, pFormat, args);
 	}
 
 

@@ -95,46 +95,13 @@ void TestStrings()
 	assert(str.LastIndexOf({'f', 'l'}) == 3);
 	assert(str.LastIndexOf<SCaseI>({'f', 'L'}) == 3);
 
-	// Append
-	str.Append(" World");
-	assert(str.IsEqualTo("Hello World"));
-	assert(str.GetLength()==11);
-
-	// +=
-	str+="!!";
-	assert(str.IsEqualTo("Hello World!!"));
-	assert(str.GetLength()==13);
-
 	// Copy constructor
 	CAnsiString str2(str);
 	assert(static_cast<const char*>(str)==static_cast<const char*>(str2));			// Pointers should be same
 
-	// Modify string 2, invoking copy on write
-	str2+="!";
-	assert(str.IsEqualTo("Hello World!!"));
-	assert(str2.IsEqualTo("Hello World!!!"));
-
 	// Character access
 	assert(str[0]=='H');
-	assert(str[5]==' ');
-
-	// Insert, delete, replace
-	str.InsertAt(5, " there");
-	assert(str.IsEqualTo("Hello there World!!"));
-	str.DeleteRange(5, 6);
-	assert(str.IsEqualTo("Hello World!!"));
-	str.ReplaceRange(6, 5, "There");
-	assert(str.IsEqualTo("Hello There!!"));
-
-	// Large string building
-	str2.Clear();
-	assert(str2.IsEmpty());
-	int i;
-	for (i=0; i<10000; i++)
-	{
-		str2+="**";
-	}
-	assert(str2.GetLength()==20000);
+	assert(str[4]=='o');
 
 	// Length specified constructor
 	str2=CAnsiString("Hello World", 5);
@@ -177,7 +144,6 @@ void TestStrings()
 	assert(parts[2].IsEmpty());
 	assert(parts[3].IsEqualTo("Bananas"));
 
-
 	parts.Clear();
 	strA.Split({';'}, false, parts);
 	assert(parts.GetCount() == 3);
@@ -185,6 +151,10 @@ void TestStrings()
 	assert(parts[1].IsEqualTo("Pears"));
 	assert(parts[2].IsEqualTo("Bananas"));
 
+	assert(CAnsiString("Apples Pears Bananas").Replace("Apples", "Oranges").IsEqualTo("Oranges Pears Bananas"));
+	assert(CAnsiString("Apples Pears Bananas").Replace("Pears", "Oranges").IsEqualTo("Apples Oranges Bananas"));
+	assert(CAnsiString("Apples Pears Bananas").Replace("Bananas", "Oranges").IsEqualTo("Apples Pears Oranges"));
+	assert(CAnsiString("Apples Pears Bananas").Replace<SCaseI>("PEARS", "Oranges").IsEqualTo("Apples Oranges Bananas"));
 
 	if (!g_bFailed)
 		printf("OK\n");

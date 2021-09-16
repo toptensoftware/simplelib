@@ -55,6 +55,44 @@ namespace SimpleLib
 		}
 	};
 
+	template <typename T>
+	class CFormatCallback : public IFormatOutput<T>
+	{
+	public:
+		CFormatCallback(void (*cb)(void*, T), void* arg)
+		{
+			m_cb = cb;
+			m_arg = arg;
+		}
+
+		virtual void Append(T ch) override
+		{
+			m_cb(m_arg, ch);
+		}
+
+		void (*m_cb)(void*, T);
+		void* m_arg;
+	};
+
+
+	template <typename T>
+	class CFormatStringWriter : public IFormatOutput<T>
+	{
+	public:
+		CFormatStringWriter(IStringWriter<T>* sw)
+		{
+			m_sw = sw;
+		}
+
+		virtual void Append(T ch) override
+		{
+			m_sw->Write(ch);
+		}
+
+		IStringWriter<T>* m_sw;
+	};
+
+
 	// Number formatting helpers used by CString::Format
 	class CFormatting
 	{
@@ -568,33 +606,16 @@ namespace SimpleLib
 	};
 
 
-	template <typename T>
-	class CFormatCallback : public IFormatOutput<T>
-	{
-	public:
-		CFormatCallback(void (*cb)(void*, T), void* arg)
-		{
-			m_cb = cb;
-			m_arg = arg;
-		}
-
-		virtual void Append(T ch) override
-		{
-			m_cb(m_arg, ch);
-		}
-
-		void (*m_cb)(void*, T);
-		void* m_arg;
-	};
 
 
+/*
 	template <typename T>
 	void simplelib_vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
 	{
 		CFormatCallback<T> cb(write, arg);
 		CFormatting::FormatV<T>(&cb, format, args);
 	}
-
+*/
 
 }	// namespace
 

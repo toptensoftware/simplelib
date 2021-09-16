@@ -446,21 +446,6 @@ namespace SimpleLib
 		}
 	};
 
-	// Formatter - either include simplelib/formatting.h in your project or,
-	// declare your own implementation making sure it's in the SimpleLib namespace
-	// eg:
-	// namespace SimpleLib
-	// {
-	// 	template <typename T>
-	// 	void vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
-	// 	{
-	// 		// Your formatter impl
-	// 	}
-	// }
-	template <typename T>
-	void simplelib_vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args);
-
-
 	template <typename T>
 	struct IStringWriter
 	{
