@@ -145,6 +145,19 @@ public:
 		return GetFileInfo(filename, info) == 0 && info.IsFile;
 	}
 
+
+	static int Copy(const T* source, const T* dest, bool overwrite)
+	{
+#ifdef _MSC_VER
+		if (CopyFile(Encode<wchar_t>(source), Encode<wchar_t>(dest), !overwrite))
+			return 0;
+		if (GetLastError() == ERROR_FILE_EXISTS)
+			return EEXIST;
+		else
+			return EPERM;
+#else
+#endif
+	}
 };
 
 }	// namespace

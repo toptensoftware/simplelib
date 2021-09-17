@@ -915,12 +915,19 @@ void TestFile()
 	// Read it again
 	CString<wchar_t> str2;
 	CFile<char>::ReadAllText("test.bin", str2);
+	assert(str.IsEqualTo(str2));
 
+	// Copy/delete/exists
 	assert(CFile<char>::Exists("test.bin"));
+	assert(CFile<char>::Copy("test.bin", "copy.bin", true) == 0);
+	assert(CFile<char>::Exists("copy.bin"));
+	assert(CFile<char>::Copy("test.bin", "copy.bin", true) == 0);
+	assert(CFile<char>::Exists("copy.bin"));
+	assert(CFile<char>::Copy("test.bin", "copy.bin", false) == EEXIST);
 	CFile<char>::Delete("test.bin");
 	assert(!CFile<char>::Exists("test.bin"));
-
-	assert(str.IsEqualTo(str2));
+	CFile<char>::Delete("copy.bin");
+	assert(!CFile<char>::Exists("copy.bin"));
 
 	if (!g_bFailed)
 		printf("OK\n");
