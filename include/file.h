@@ -211,6 +211,17 @@ public:
 	return 0;
 #endif
 	}
+
+	// Move (aka Rename) a file
+	static int Move(const T* source, const T* dest)
+	{
+#ifdef _MSC_VER
+	return _wrename(Encode<wchar_t>(source), Encode<wchar_t>(dest));
+#else
+	return rename(Encode<char>(source), Encode<char>(dest));
+#endif
+	}
+
 };
 
 }	// namespace
