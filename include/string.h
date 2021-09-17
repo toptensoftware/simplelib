@@ -176,7 +176,7 @@ namespace SimpleLib
 			return CString<T>(pNew);
 		}
 
-		CString<T> SubString(int iStart, int iLength)
+		CString<T> SubString(int iStart, int iLength = -1)
 		{
 			int thisLength = GetLength();
 
@@ -196,7 +196,7 @@ namespace SimpleLib
 		int IndexOf(const T* find, int startOffset = 0) const
 		{
 			// Check bounds
-			if (find == nullptr || *find == 0 || m_pData == null || m_pData->m_iLen == 0)
+			if (find == nullptr || *find == 0 || m_pData == nullptr || m_pData->m_iLength == 0)
 				return -1;
 
 			// Get search string length
@@ -214,33 +214,28 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		int IndexOf(const T ch[], int N, int startOffset = 0) const
+		int IndexOfAny(const T* chars, int startOffset = 0) const
 		{
 			if (m_pData == nullptr)
 				return -1;
 
 			for (int i=startOffset; i<m_pData->m_iLength; i++)
 			{
-				if (IsOneOf<S>(ch, N, m_pData->m_sz[i]))
+				if (IsOneOf<S>(chars, m_pData->m_sz[i]))
 					return i;
 			}
 
 			return -1;
 		}
 
-		template <class S = SCase, int N>
-		int IndexOf(const T(&ch)[N], int startOffset = 0) const
-		{
-			return IndexOf<S>(ch, N, startOffset);
-		}
-
 		template <typename S>
-		static bool IsOneOf(const T r[], int N, T ch)
+		static bool IsOneOf(const T* chars, T ch)
 		{
-			for (int i=0; i<N; i++)
+			while (*chars)
 			{
-				if (S::Compare(r[i], ch) == 0)
+				if (S::Compare(*chars, ch) == 0)
 					return true;
+				chars++;
 			}
 			return false;
 		}
@@ -249,7 +244,7 @@ namespace SimpleLib
 		int LastIndexOf(const T* find, int startOffset = -1) const
 		{
 			// Check bounds
-			if (find == nullptr || *find == 0 || m_pData == null || m_pData->m_iLen == 0)
+			if (find == nullptr || *find == 0 || m_pData == nullptr || m_pData->m_iLength == 0)
 				return -1;
 
 			// Get search string length
@@ -269,7 +264,7 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		int LastIndexOf(const T ch[], int N, int startOffset = -1) const
+		int LastIndexOfAny(const T* chars, int startOffset = -1) const
 		{
 			if (m_pData == nullptr)
 				return -1;
@@ -279,19 +274,13 @@ namespace SimpleLib
 
 			for (int i=startOffset; i>=0; i--)
 			{
-				if (IsOneOf<S>(ch, N, m_pData->m_sz[i]))
+				if (IsOneOf<S>(chars, m_pData->m_sz[i]))
 				{
 					return i;
 				}
 			}
 
 			return -1;
-		}
-
-		template <class S = SCase, int N>
-		int LastIndexOf(const T(&ch)[N], int startOffset = -1) const
-		{
-			return LastIndexOf<S>(ch, N, startOffset);
 		}
 
 		template <class S = SCase>
@@ -344,14 +333,20 @@ namespace SimpleLib
 			return S::Compare(m_pData->m_sz + startPos, find, findLen) == 0;
 		}
 
-		template <class S = SCase, int N>
-		int Split(const T(&ch)[N], bool includeEmpty, CVector<CString<T>>& parts) const
+		static CString<T> Join(CVector<CString<T>>& parts, T separator)
 		{
-			return Split<S>(ch, N, includeEmpty, parts);
+			CStringBuilder<T> sb;
+			for (int i=0; i<parts.GetCount(); i++)
+			{
+				if (i > 0)
+					sb.Append(separator);
+				sb.Append(parts[i]);
+			}
+			return sb.ToString();
 		}
 
-		template <typename S>
-		int Split(const T separators[], int N, bool includeEmpty, CVector<CString<T>>& parts) const
+		template <typename S = SCase>
+		int Split(const T* separators, bool includeEmpty, CVector<CString<T>>& parts) const
 		{
 			// Clear buffer
 			parts.Clear();
@@ -368,7 +363,7 @@ namespace SimpleLib
 			const T* pPart = p;
 			while (*p)
 			{
-				if (IsOneOf<S>(separators, N, *p))
+				if (IsOneOf<S>(separators, *p))
 				{
 					if (includeEmpty || p > pPart)
 						parts.Add(CString<T>(pPart, (int)(p - pPart)));
@@ -447,7 +442,7 @@ namespace SimpleLib
 
 		static StringData* AllocStringData(const T* psz, int length)
 		{
-			if (psz == nullptr && length == 0)
+			if (psz == nullptr && length <= 0)
 				return nullptr;
 			if (length < 0)
 				length = SChar<T>::Length(psz);

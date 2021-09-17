@@ -1,6 +1,8 @@
 /////////////////////////////////////////////////////////////////////////////
 // SimpleTest.cpp : SimpleLib Unit Tests
 
+
+#define SIMPLELIB_POSIX_PATHS
 #include "../SimpleLib.h"
 
 using namespace SimpleLib;
@@ -87,13 +89,13 @@ void TestStrings()
 	assert(str.IsEqualTo("Hello"));
 	assert(str.GetLength()==5);
 
-	assert(str.IndexOf({'l'}) == 2);
-	assert(str.IndexOf({'f', 'l'}) == 2);
-	assert(str.IndexOf<SCaseI>({'f', 'L'}) == 2);
+	assert(str.IndexOfAny("l") == 2);
+	assert(str.IndexOfAny("fl") == 2);
+	assert(str.IndexOfAny<SCaseI>("fL") == 2);
 
-	assert(str.LastIndexOf({'l'}) == 3);
-	assert(str.LastIndexOf({'f', 'l'}) == 3);
-	assert(str.LastIndexOf<SCaseI>({'f', 'L'}) == 3);
+	assert(str.LastIndexOfAny("l") == 3);
+	assert(str.LastIndexOfAny("fl") == 3);
+	assert(str.LastIndexOfAny<SCaseI>("fL") == 3);
 
 	// Copy constructor
 	CAnsiString str2(str);
@@ -137,7 +139,7 @@ void TestStrings()
 	strA = "Apples;Pears;;Bananas";
 
 	CVector<CAnsiString> parts;
-	strA.Split({';'}, true, parts);
+	strA.Split(";", true, parts);
 	assert(parts.GetCount() == 4);
 	assert(parts[0].IsEqualTo("Apples"));
 	assert(parts[1].IsEqualTo("Pears"));
@@ -145,7 +147,7 @@ void TestStrings()
 	assert(parts[3].IsEqualTo("Bananas"));
 
 	parts.Clear();
-	strA.Split({';'}, false, parts);
+	strA.Split(";", false, parts);
 	assert(parts.GetCount() == 3);
 	assert(parts[0].IsEqualTo("Apples"));
 	assert(parts[1].IsEqualTo("Pears"));
@@ -716,6 +718,189 @@ void TestEncoding()
 
 }
 
+void TestPath()
+{
+	printf("Testing Path...");
+	g_bFailed=false;
+
+#ifdef _WIN32
+	assert(CPath<char>::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
+	assert(CPath<char>::Join("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<char>::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<char>::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
+
+	assert(CPath<char>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(CPath<char>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+
+	assert(CPath<char>::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<char>::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<char>::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
+
+	assert(CPath<char>::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
+	assert(CPath<char>::GetDirectoryName("C:\\").IsEmpty());
+	assert(CPath<char>::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
+	assert(CPath<char>::GetDirectoryName("\\\\unc\\share").IsEmpty());
+
+	assert(CPath<char>::IsFullyQualified("C:") == false);
+	assert(CPath<char>::IsFullyQualified("C:\\") == true);
+	assert(CPath<char>::IsFullyQualified("C:\\file") == true);
+	assert(CPath<char>::IsFullyQualified("C:file") == false);
+	assert(CPath<char>::IsFullyQualified("\\\\unc\\share") == true);
+	assert(CPath<char>::IsFullyQualified("\\\\unc\\share\\") == true);
+	assert(CPath<char>::IsFullyQualified("\\\\unc\\share\\file") == true);
+
+	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
+	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
+	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
+	
+	assert(CPath<char>::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
+	assert(CPath<char>::GetExtension("\\a.dir\\file").IsEmpty());
+
+	assert(CPath<char>::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<char>::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<char>::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<char>::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
+
+	assert(CPath<char>::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
+	assert(CPath<char>::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
+	assert(CPath<char>::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath<char>::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(CPath<char>::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
+
+	assert(CPath<char>::Combine("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<char>::Combine("\\a", "\\b").IsEqualTo("\\b"));
+	assert(CPath<char>::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
+	assert(CPath<char>::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
+	assert(CPath<char>::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
+	assert(CPath<char>::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
+
+#else
+	assert(CPath<char>::Join("/a", "/b").IsEqualTo("/a/b"));
+	assert(CPath<char>::Join("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath<char>::Join("/a/", "b").IsEqualTo("/a/b"));
+	assert(CPath<char>::Join("/a/", "/b").IsEqualTo("/a/b"));
+
+	assert(CPath<char>::GetFileName("/a/file.txt").IsEqualTo("file.txt"));
+	
+	assert(CPath<char>::GetDirectoryName("/a/b/c/file.txt").IsEqualTo("/a/b/c"));
+	assert(CPath<char>::GetDirectoryName("/a/b/c/").IsEqualTo("/a/b/c"));
+	assert(CPath<char>::GetDirectoryName("/a/b/c").IsEqualTo("/a/b"));
+
+	assert(CPath<char>::GetFileNameWithoutExtension("/a/file.txt").IsEqualTo("file"));
+	assert(CPath<char>::GetFileNameWithoutExtension("/a/file.").IsEqualTo("file"));
+	assert(CPath<char>::GetFileNameWithoutExtension("/a/file").IsEqualTo("file"));
+	
+	assert(CPath<char>::GetExtension("/a/file.txt").IsEqualTo(".txt"));
+	assert(CPath<char>::GetExtension("/a.dir/file").IsEmpty());
+
+	assert(CPath<char>::ChangeExtension("/a/file.txt", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<char>::ChangeExtension("/a/file", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<char>::ChangeExtension("/a/file.txt", ".doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<char>::ChangeExtension("/a/file", ".doc").IsEqualTo("/a/file.doc"));
+
+	assert(CPath<char>::Canonicalize("/a/b/c").IsEqualTo("/a/b/c"));
+	assert(CPath<char>::Canonicalize("/a/./b/./c").IsEqualTo("/a/b/c"));
+	assert(CPath<char>::Canonicalize("/a/../b/c").IsEqualTo("/b/c"));
+	assert(CPath<char>::Canonicalize("/a/b/../../c").IsEqualTo("/c"));
+	assert(CPath<char>::Canonicalize("a/b/c").IsEqualTo("a/b/c"));
+	assert(CPath<char>::Canonicalize("/a/b/c/").IsEqualTo("/a/b/c/"));
+	assert(CPath<char>::Canonicalize("/a/b/c////").IsEqualTo("/a/b/c/"));
+
+	assert(CPath<char>::Combine("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath<char>::Combine("/a", "/b").IsEqualTo("/b"));
+	assert(CPath<char>::Combine("/a", "b/subdir/../otherdir/c").IsEqualTo("/a/b/otherdir/c"));
+	assert(CPath<char>::Combine("/a", "b/subdir/../otherdir/c/").IsEqualTo("/a/b/otherdir/c/"));
+#endif
+
+	if (!g_bFailed)
+		printf("OK\n");
+
+}
+
+void TestStream(CStream& s)
+{
+	assert(s.IsOpen());
+	assert(s.GetLength() == 0);
+
+	// Write integers
+	int count = 10;
+	for (int i=0; i<10; i++)
+	{
+		s.Write(i);
+	}
+
+	// Check
+	assert(s.GetLength() == sizeof(int) * 10);
+	assert(s.GetLength() == s.Tell());
+
+	// Read back in reverse order
+	for (int i=count-1; i>=0; i--)
+	{
+		s.Seek(i * sizeof(int));
+		assert(s.Tell() == i * sizeof(int));
+		int val;
+		s.Read(val);
+		assert(val == i);
+		assert(s.Tell() == (i+1) * sizeof(int));
+	}
+
+	// EOF test
+	s.Seek(s.GetLength());
+	assert(!s.IsEof());
+	int temp;
+	s.Read(temp);
+	assert(s.IsEof());
+
+	// Read all
+	int x[100];
+	s.Seek(0);
+	size_t cbRead;
+	s.Read(x, sizeof(x), &cbRead);
+	assert(cbRead = sizeof(int) * count);
+
+	// Truncate
+	s.Seek(sizeof(int) * count / 2);
+	s.Truncate();
+	assert(s.GetLength() == sizeof(int) * count / 2);
+
+	// Close
+	s.Close();
+	assert(!s.IsOpen());
+}
+
+void TestFileStream()
+{
+	printf("Testing File Stream...");
+	g_bFailed=false;
+
+	CFileStream s;
+	s.Create("test.bin");
+	TestStream(s);
+
+	if (!g_bFailed)
+		printf("OK\n");
+
+}
+
+void TestMemoryStream()
+{
+	printf("Testing Memory Stream...");
+	g_bFailed=false;
+
+	CMemoryStream s;
+	s.Create();
+	TestStream(s);
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+
 // Main entry point
 int main(int argc, char* argv[])
 {
@@ -727,6 +912,9 @@ int main(int argc, char* argv[])
 	TestKeyedArray();
 	TestFormatting();
 	TestEncoding();
+	TestPath();
+	TestFileStream();
+	TestMemoryStream();
 
 	if (g_bAnyFailed)
 	{
