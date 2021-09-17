@@ -5,6 +5,11 @@
 #include "stringbuilder.h"
 #include "encoding.h"
 
+#ifdef __GNUC__
+#include <sys/types.h>
+#include <sys/stat.h>
+#endif
+
 namespace SimpleLib
 {
 
@@ -98,13 +103,14 @@ public:
 #ifdef _MSC_VER
 		return _wunlink(Encode<wchar_t>(filename));
 #else
-		return _unlink(Encode<char>(filename));
+		return unlink(Encode<char>(filename));
 #endif
 	}
 
 	// Get info about a file
 	static int GetFileInfo(const T* filename, CFileInfo& info)
 	{
+#ifdef _MSC_VER
 		struct __stat64 s;
 		int err = _wstat64(Encode<wchar_t>(filename), &s);
 		if (!err)
@@ -116,6 +122,19 @@ public:
 			info.ModifyTime = s.st_mtime;
 			info.CreateTime = s.st_ctime;
 		}
+#else
+		struct stat64 s;
+		int err = stat64(Encode<char>(filename), &s);
+		if (!err)
+		{
+			info.IsDirectory = (s.st_mode & S_IFDIR) != 0;
+			info.IsFile = (s.st_mode & S_IFREG) != 0;
+			info.Size = s.st_size;
+			info.AccessTime = s.st_atime;
+			info.ModifyTime = s.st_mtime;
+			info.CreateTime = s.st_ctime;
+		}
+#endif
 		return err;
 	}
 
