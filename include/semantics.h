@@ -3,6 +3,7 @@
 
 #include <ctype.h>
 #include <stdarg.h>
+#include <wchar.h>
 
 #ifdef _MSC_VER
 #define DEPRECATED(x) __declspec(deprecated(x))
@@ -162,7 +163,7 @@ namespace SimpleLib
 
 		static bool IsEmpty(const wchar_t* a)
 		{
-			return a == nullptr || wcslen(a) == 0;
+			return a == nullptr || *a == 0;
 		}
 	};
 
@@ -187,8 +188,13 @@ namespace SimpleLib
 	class SChar<wchar_t>
 	{
 	public:
+#ifdef _MSC_VER
 		static char ToUpper(char ch) { return towupper(ch); }
 		static char ToLower(char ch) { return towlower(ch); }
+#else
+		static char ToUpper(char ch) { return toupper(ch); }
+		static char ToLower(char ch) { return tolower(ch); }
+#endif
 
 		static int Length(const wchar_t* a)
 		{
@@ -394,7 +400,11 @@ namespace SimpleLib
 				return 1;
 			if (b == nullptr)
 				return -1;
+#ifdef _MSC_VER
 			return stricmp(a, b);
+#else
+			return strcasecmp(a, b);
+#endif
 		}
 
 		static int Compare(const char* a, const char* b, int len)
@@ -405,7 +415,11 @@ namespace SimpleLib
 				return 1;
 			if (b == nullptr)
 				return -1;
+#ifdef _MSC_VER
 			return strnicmp(a, b, len);
+#else
+			return strncasecmp(a, b, len);
+#endif
 		}
 
 		static bool AreEqual(const char* a, const char* b)
@@ -415,7 +429,7 @@ namespace SimpleLib
 
 		static int Compare(wchar_t a, wchar_t b)
 		{
-			return towupper(b) - towupper(a);
+			return SChar<wchar_t>::ToUpper(b) - SChar<wchar_t>::ToUpper(a);
 		}
 
 		static int Compare(const wchar_t* a, const wchar_t* b)
@@ -426,7 +440,17 @@ namespace SimpleLib
 				return 1;
 			if (b == nullptr)
 				return -1;
+#ifdef _MSC_VER
 			return wcsicmp(a, b);
+#else
+			while (*a && *b)
+			{
+				int compare = Compare(*a++, *b++);
+				if (compare != 0)
+					return compare;
+			}
+			return Compare(*a, *b);
+#endif
 		}
 
 		static int Compare(const wchar_t* a, const wchar_t* b, int len)
@@ -437,7 +461,20 @@ namespace SimpleLib
 				return 1;
 			if (b == nullptr)
 				return -1;
+#ifdef _MSC_VER
 			return wcsnicmp(a, b, len);
+#else
+			const wchar_t* end = a + len;
+			while (a < end)
+			{
+				int compare = Compare(*a++, *b++);
+				if (compare != 0)
+					return compare;
+				a++;
+				b++;
+			}
+			return 0;
+#endif
 		}
 
 		static bool AreEqual(const wchar_t* a, const wchar_t* b)

@@ -306,7 +306,7 @@ namespace SimpleLib
 		}
 
 		// Find index of an item(linear)
-		template <typename TEquality=TSem::TCompare>
+		template <typename TEquality=typename TSem::TCompare>
 		int IndexOf(TArg val, int iStartAfter = -1) const
 		{
 			// Find an item
@@ -374,7 +374,7 @@ namespace SimpleLib
 		{
 			if (IsEmpty())
 				return false;
-			val = Top();
+			val = Tail();
 			return true;
 		}
 
@@ -390,7 +390,7 @@ namespace SimpleLib
 		{
 			if (IsEmpty())
 				return false;
-			val = Peek();
+			val = Head();
 			return true;
 		}
 

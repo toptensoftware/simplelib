@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "semantics.h"
+#include "formatting.h"
 
 namespace SimpleLib
 {
@@ -128,7 +129,7 @@ public:
 	{
 		// Make sure null terminated
 		int length;
-		Finish(&length);		
+		ToString(&length);		
 
 		// Can't just detach short buffer, so alloc
 		if (m_pMem == m_shortBuffer)
@@ -156,7 +157,7 @@ public:
 		return ToString();
 	}
 
-	template <class SCase = SCaseSensitive<T>>
+	template <class S = SCase>
 	int ReplaceAppend(const T* input, const T* find, const T* replace, int maxReplacements = -1)
 	{
 		int findLen = SChar<T>::Length(find);
@@ -170,7 +171,7 @@ public:
 		int count = 0;
 		while (*p)
 		{
-			if (SCase::Compare(p, find, findLen) == 0)
+			if (S::Compare(p, find, findLen) == 0)
 			{
 				Append(replace);
 				p += findLen;
@@ -198,7 +199,7 @@ public:
 
 	void FormatV(const T* pFormat, va_list args)
 	{
-		CFormatStringWriter fw(this);
+		CFormatStringWriter<T> fw(this);
 		CFormatting::FormatV(&fw, pFormat, args);
 	}
 
