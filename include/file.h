@@ -8,6 +8,17 @@
 namespace SimpleLib
 {
 
+class CFileInfo
+{
+public:
+	bool IsFile;
+	bool IsDirectory;
+	__off64_t Size;
+	int64_t AccessTime;
+	int64_t ModifyTime;
+	int64_t CreateTime;	
+};
+
 // Abstract Stream Class
 template <typename T>
 class CFile
@@ -79,6 +90,40 @@ public:
 		}
 
 		return w.GetError();
+	}
+
+	// Delete a file
+	static int Delete(const T* filename)
+	{
+#ifdef _MSC_VER
+		return _wunlink(Encode<wchar_t>(filename));
+#else
+		return _unlink(Encode<char>(filename));
+#endif
+	}
+
+	// Get info about a file
+	static int GetFileInfo(const T* filename, CFileInfo& info)
+	{
+		struct __stat64 s;
+		int err = _wstat64(Encode<wchar_t>(filename), &s);
+		if (!err)
+		{
+			info.IsDirectory = (s.st_mode & _S_IFDIR) != 0;
+			info.IsFile = (s.st_mode & _S_IFREG) != 0;
+			info.Size = s.st_size;
+			info.AccessTime = s.st_atime;
+			info.ModifyTime = s.st_mtime;
+			info.CreateTime = s.st_ctime;
+		}
+		return err;
+	}
+
+	// Check if a file exists
+	static bool Exists(const T* filename)
+	{
+		CFileInfo  info;
+		return GetFileInfo(filename, info) == 0 && info.IsFile;
 	}
 
 };

@@ -916,6 +916,10 @@ void TestFile()
 	CString<wchar_t> str2;
 	CFile<char>::ReadAllText("test.bin", str2);
 
+	assert(CFile<char>::Exists("test.bin"));
+	CFile<char>::Delete("test.bin");
+	assert(!CFile<char>::Exists("test.bin"));
+
 	assert(str.IsEqualTo(str2));
 
 	if (!g_bFailed)
