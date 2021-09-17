@@ -10,13 +10,16 @@
             "options": {
                 "cwd": "${workspaceFolder}/test"
             },
+            "problemMatcher": ["$msCompile", "$gcc"],
+            /*
             "problemMatcher": {
-                "base": "$gcc",
+                "base": "$msCompile",
                 "fileLocation": [
                     "autoDetect",
                     "${workspaceRoot}/test"
                 ]
             },
+            */
             "group": "build",
             "presentation": {
                 "clear": true

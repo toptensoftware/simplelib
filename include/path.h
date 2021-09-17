@@ -279,7 +279,8 @@ namespace SimpleLib
         inline static const T* GetDirectorySeparators()
         {
 #ifdef _WIN32
-            return  { '\\', '/', '\0' };
+            static T seps[] = { '\\', '/', '\0' };
+            return  seps;
 #else
             static T seps[] = { '/', '\0' };
             return seps;

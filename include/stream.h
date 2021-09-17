@@ -8,6 +8,7 @@
 
 #ifdef _MSC_VER
 #include <io.h>
+#define __off64_t int64_t
 #endif
 
 #ifdef __GNUC__

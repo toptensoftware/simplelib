@@ -900,7 +900,6 @@ void TestMemoryStream()
 		printf("OK\n");
 }
 
-
 // Main entry point
 int main(int argc, char* argv[])
 {
