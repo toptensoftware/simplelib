@@ -8,6 +8,7 @@
 #ifdef __GNUC__
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #endif
 
@@ -197,6 +198,12 @@ public:
 
         len -= copied;
     }
+
+	// Copy file times too
+	struct timeval t[2];
+	TIMESPEC_TO_TIMEVAL(&t[0], &stat.st_atim);
+	TIMESPEC_TO_TIMEVAL(&t[1], &stat.st_mtim);
+	futimes(fd_out, t);
 
 	// Done!
     close(fd_in);
