@@ -7,6 +7,7 @@
 #include <errno.h>
 
 #ifdef _MSC_VER
+#include <windows.h>
 #include <io.h>
 #define __off64_t int64_t
 #endif
@@ -52,7 +53,7 @@ public:
 			// Read
 			size_t cb;
 			int err = src.Read(buf, sizeof(buf), &cb);
-			if (err != EOF)
+			if (err != 0 && err != EOF)
 				return err;
 
 			// Write
@@ -68,6 +69,32 @@ public:
 				return 0;
 		}
 	}
+};
+
+template<typename T>
+class CStreamStringWriter : public IStringWriter<T>
+{
+public:
+	CStreamStringWriter(CStream& stream) : 
+		_stream(stream)
+	{
+		_err = 0;
+	}
+
+	int GetError()
+	{
+		return _err;
+	}
+
+	virtual void Write(T ch)
+	{
+		if (_err)
+			return;
+		_err = _stream.Write(ch);
+	}
+
+	 CStream& _stream;
+	 int _err;
 };
 
 // Stream class for reading and writing files
@@ -86,7 +113,7 @@ public:
 
 	// Open a file with optional mode (defaults to read)
 	template <typename T>
-	int Open(const T* filename, const char* mode = "r")
+	int Open(const T* filename, const char* mode = "rb")
 	{
 		assert(m_pFile == nullptr);
 
@@ -98,7 +125,7 @@ public:
 	template <typename T>
 	int Create(const T* filename)
 	{
-		return Open(filename, "w+");
+		return Open(filename, "wb+");
 	}
 
 	// Helper to fopen a file with any charset filename
@@ -463,4 +490,4 @@ protected:
 
 }	// namespace
 
-#endif // __simplelib_stringpool_h__
+#endif // __simplelib_stream_h__

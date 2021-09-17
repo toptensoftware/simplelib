@@ -40,6 +40,14 @@ namespace SimpleLib
 			m_pData = AllocStringData(psz, iLen);
 		}
 
+		// Constructor
+		CString(const CStringBuilder<T>& builder)
+		{
+			int length;
+			const T* psz = builder.ToString(&length);
+			m_pData = AllocStringData(psz, length);
+		}
+
 		// Destructor
 		~CString()
 		{

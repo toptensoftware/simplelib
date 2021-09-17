@@ -219,6 +219,29 @@ struct Encoding<char16_t, char> : IStringWriter<char32_t>
 	}
 };
 
+
+template<>
+struct Encoding<char, wchar_t>
+{
+	Encoding<char, char16_t> actual;
+
+	void Process(char in, IStringWriter<wchar_t>& out)
+	{
+		actual.Process(in, reinterpret_cast<IStringWriter<char16_t>&>(out));
+	}
+};
+
+template<>
+struct Encoding<wchar_t, char>
+{
+	Encoding<char16_t, char> actual;
+
+	void Process(wchar_t in, IStringWriter<char>& out)
+	{
+		actual.Process(in, out);
+	}
+};
+
 template <typename TTo, typename TFrom>
 CString<TTo> Encode(const TFrom* in)
 {

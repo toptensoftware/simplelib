@@ -1,4 +1,3 @@
-/////////////////////////////////////////////////////////////////////////////
 // SimpleTest.cpp : SimpleLib Unit Tests
 
 
@@ -900,6 +899,29 @@ void TestMemoryStream()
 		printf("OK\n");
 }
 
+void TestFile()
+{
+	printf("Testing File...");
+	g_bFailed=false;
+
+	// Read this file
+	CString<wchar_t> str;
+	CFile<char>::ReadAllText("SimpleTest.cpp", str);
+	assert(str.StartsWith(L"// SimpleTest.cpp"));
+
+	// Write it again
+	CFile<char>::WriteAllText("test.bin", str.sz());
+
+	// Read it again
+	CString<wchar_t> str2;
+	CFile<char>::ReadAllText("test.bin", str2);
+
+	assert(str.IsEqualTo(str2));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
 // Main entry point
 int main(int argc, char* argv[])
 {
@@ -914,6 +936,7 @@ int main(int argc, char* argv[])
 	TestPath();
 	TestFileStream();
 	TestMemoryStream();
+	TestFile();
 
 	if (g_bAnyFailed)
 	{

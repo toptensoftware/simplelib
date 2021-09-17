@@ -3,6 +3,7 @@
 
 #include "include/dyntype.h"
 #include "include/encoding.h"
+#include "include/file.h"
 #include "include/formatting.h"
 #include "include/keyedarray.h"
 #include "include/map.h"
