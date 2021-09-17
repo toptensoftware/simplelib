@@ -8,6 +8,7 @@
 #ifdef __GNUC__
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #endif
 
 namespace SimpleLib
@@ -145,7 +146,7 @@ public:
 		return GetFileInfo(filename, info) == 0 && info.IsFile;
 	}
 
-
+	// Copy a file
 	static int Copy(const T* source, const T* dest, bool overwrite)
 	{
 #ifdef _MSC_VER
@@ -156,6 +157,51 @@ public:
 		else
 			return EPERM;
 #else
+
+	// Open source file
+	int fd_in = open(Encode<T>(source), O_RDONLY);
+    if (fd_in == -1)
+		return errno;
+		
+	// Stat it
+	struct stat64 stat;
+    if (fstat64(fd_in, &stat) == -1) 
+	{
+		int err = errno;
+		close(fd_in);
+		return err;
+    }
+
+	// Create dest file
+    int fd_out = open(Encode<char>(dest), O_CREAT | O_WRONLY | (overwrite ? 0 : O_EXCL), 0644);
+    if (fd_out == -1) 
+	{
+		int err = errno;
+		close(fd_in);
+		return err;
+    }
+
+	// Copy
+    int64_t len = stat.st_size;
+	while (len > 0)
+	{
+		ssize_t copied = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
+		if (copied < 0)
+		{
+			int err = errno;
+			close(fd_in);
+			close(fd_out);
+			Delete(dest);
+			return err;
+		}
+
+        len -= copied;
+    }
+
+	// Done!
+    close(fd_in);
+    close(fd_out);
+	return 0;
 #endif
 	}
 };
