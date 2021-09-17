@@ -56,7 +56,7 @@ namespace SimpleLib
         static CString<T> GetDirectoryName(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(DirectorySeparators);
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
             int prefix = GetPrefixLength(path);
 
             if (lastSep < prefix)
@@ -79,7 +79,7 @@ namespace SimpleLib
         static CString<T> GetFileName(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(DirectorySeparators);
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
             if (lastSep < 0)
                 return path;
             else
@@ -91,7 +91,7 @@ namespace SimpleLib
         static CString<T> GetFileNameWithoutExtension(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(DirectorySeparators);
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
             if (lastSep < 0)
                 return path;
 
@@ -131,7 +131,7 @@ namespace SimpleLib
         static const T* FindExtension(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(DirectorySeparators);
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
             int lastDot = str.LastIndexOfAny(".");
             if (lastDot > lastSep)
                 return path + lastDot;
@@ -145,7 +145,7 @@ namespace SimpleLib
             CString<T> strPath(path);
 
             CVector<CString<T>> parts;
-            strPath.Split(DirectorySeparators, true, parts);
+            strPath.Split(GetDirectorySeparators(), true, parts);
 
             for (int i=0; i<parts.GetCount(); i++)
             {
@@ -208,9 +208,9 @@ namespace SimpleLib
         // Get the full path of a path
         static CString<T> GetFullPath(const T* path)
         {
-            int prefix = GetPrefixLength(path);
-
+#ifdef _MSC_VER
             // Special case for "C:relative/path"
+            int prefix = GetPrefixLength(path);
             if (prefix == 2 && !IsDirectorySeparator(path[2]))
             {
                 wchar_t base[512];
@@ -218,6 +218,7 @@ namespace SimpleLib
                 GetFullPathNameW(drive, 512, base, NULL);
                 return Combine(Encode<T>((char16_t*)base), path + 2);
             }
+#endif
 
             return Combine(GetCurrentDirectory(), path);
         }
@@ -275,16 +276,23 @@ namespace SimpleLib
 #endif
         }
 
+        inline static const T* GetDirectorySeparators()
+        {
 #ifdef _WIN32
-        static inline T DirectorySeparators[3] = { '\\', '/', '\0' };
+            return  { '\\', '/', '\0' };
+#else
+            static T seps[] = { '/', '\0' };
+            return seps;
+#endif
+        }
+
+#ifdef _WIN32
         static const T DirectorySeparator = '\\';
         static const T PathSeparator =';';
 #else
-        static inline T DirectorySeparators[2] = { '/', '\0'};
         static const T DirectorySeparator ='/';
         static const T PathSeparator =':';
 #endif
-
     };
 
 } // namespace

@@ -5,7 +5,14 @@
 #include <stdio.h>
 #include <assert.h>
 #include <errno.h>
+
+#ifdef _MSC_VER
 #include <io.h>
+#endif
+
+#ifdef __GNUC__
+#include <unistd.h>
+#endif
 
 namespace SimpleLib
 {
@@ -23,9 +30,9 @@ public:
 	virtual bool IsOpen() = 0;
 	virtual int Read(void* pv, size_t cb, size_t* pcb = nullptr) = 0;
 	virtual int Write(const void* pv, size_t cb) = 0;
-	virtual int Seek(int64_t offset, int origin = SEEK_SET) = 0;
-	virtual int64_t Tell() = 0;
-	virtual int64_t GetLength() = 0;
+	virtual int Seek(__off64_t offset, int origin = SEEK_SET) = 0;
+	virtual __off64_t Tell() = 0;
+	virtual __off64_t GetLength() = 0;
 	virtual int Truncate() = 0;
 	virtual bool IsEof() = 0;
 
@@ -78,11 +85,11 @@ public:
 
 	// Open a file with optional mode (defaults to read)
 	template <typename T>
-	int Open(const T* filename, char* mode = "r")
+	int Open(const T* filename, const char* mode = "r")
 	{
 		assert(m_pFile == nullptr);
 
-		m_pFile = fopen(filename, mode);
+		m_pFile = fopen<T>(filename, mode);
 		return m_pFile == nullptr ? errno : 0;
 	}
 
@@ -95,12 +102,12 @@ public:
 
 	// Helper to fopen a file with any charset filename
 	template <typename T>
-	static FILE* fopen(const T* filename, char* mode)
+	static FILE* fopen(const T* filename, const char* mode)
 	{
 #ifdef _WIN32
 		return _wfopen((wchar_t*)Encode<char16_t>(filename).sz(), (wchar_t*)Encode<char16_t>(mode).sz());
 #else
-		return fopen(Encode<char>(filename), mode);
+		return ::fopen(Encode<char>(filename).sz(), mode);
 #endif
 	};
 
@@ -153,23 +160,31 @@ public:
 	}
 
 	// Seek
-	virtual int Seek(int64_t offset, int origin = SEEK_SET) override
+	virtual int Seek(__off64_t offset, int origin = SEEK_SET) override
 	{
+#ifdef _MSC_VER
 		return _fseeki64(m_pFile, offset, origin);
+#else
+		return fseeko64(m_pFile, offset, origin);
+#endif
 	}
 
 	// Tell
-	virtual int64_t Tell() override
+	virtual __off64_t Tell() override
 	{
+#ifdef _MSC_VER
 		return _ftelli64(m_pFile);
+#else
+		return ftello64(m_pFile);
+#endif
 	}
 
 	// Get length
-	virtual int64_t GetLength() override
+	virtual __off64_t GetLength() override
 	{
-		int64_t save = Tell();
+		__off64_t save = Tell();
 		Seek(0, SEEK_END);
-		int64_t length = Tell();
+		__off64_t length = Tell();
 		Seek(save, SEEK_SET);
 		return length;
 	}
@@ -253,7 +268,7 @@ public:
 
 	// Create a new read/write stream initialized
 	// with a copy of supplied data
-	int InitWith(void* p, int64_t length)
+	int InitWith(void* p, __off64_t length)
 	{
 		assert(m_p == nullptr);
 
@@ -382,7 +397,7 @@ public:
 	}
 
 	// Seek
-	virtual int Seek(int64_t offset, int origin = SEEK_SET) override
+	virtual int Seek(__off64_t offset, int origin = SEEK_SET) override
 	{
 		assert(m_p != nullptr);
 
@@ -406,14 +421,14 @@ public:
 	}
 
 	// Tell
-	virtual int64_t Tell() override
+	virtual __off64_t Tell() override
 	{
 		assert(m_p != nullptr);
 		return m_pos;
 	}
 
 	// Get length
-	virtual int64_t GetLength() override
+	virtual __off64_t GetLength() override
 	{	
 		assert(m_p != nullptr);
 		return m_length;

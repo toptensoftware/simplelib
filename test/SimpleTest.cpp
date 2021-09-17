@@ -842,11 +842,11 @@ void TestStream(CStream& s)
 	for (int i=count-1; i>=0; i--)
 	{
 		s.Seek(i * sizeof(int));
-		assert(s.Tell() == i * sizeof(int));
+		assert((size_t)s.Tell() == i * sizeof(int));
 		int val;
 		s.Read(val);
 		assert(val == i);
-		assert(s.Tell() == (i+1) * sizeof(int));
+		assert((size_t)s.Tell() == (i+1) * sizeof(int));
 	}
 
 	// EOF test
@@ -866,7 +866,7 @@ void TestStream(CStream& s)
 	// Truncate
 	s.Seek(sizeof(int) * count / 2);
 	s.Truncate();
-	assert(s.GetLength() == sizeof(int) * count / 2);
+	assert((size_t)s.GetLength() == sizeof(int) * count / 2);
 
 	// Close
 	s.Close();
