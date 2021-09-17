@@ -11,7 +11,7 @@
                 "cwd": "${workspaceFolder}/test"
             },
             "problemMatcher": {
-                "base": "$msCompile",
+                "base": "$gcc",
                 "fileLocation": [
                     "autoDetect",
                     "${workspaceRoot}/test"

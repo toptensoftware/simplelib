@@ -206,7 +206,7 @@ namespace SimpleLib
 			int stopPos = m_pData->m_iLen - srcLen;
 			for (int i = startOffset; i <= stopPos; i++)
 			{
-				if (S::Compare(psz + i, find, srcLen) == 0)
+				if (S::Compare(m_pData->m_sz + i, find, srcLen) == 0)
 					return i;
 			}
 
@@ -410,14 +410,14 @@ namespace SimpleLib
 
 			// Copy it
 			if (srclen)
-				memcpy(buf, m_psz, srclen * sizeof(T));
+				memcpy(buf, m_pData->m_sz, srclen * sizeof(T));
 			buf[srclen] = '\0';
 			return true;
 		}
 
 		T* AllocCopy(int withLengthInChars=0)
 		{
-			if (m_psz == nullptr)
+			if (m_pData == nullptr)
 			{
 				return nullptr;
 			}
@@ -427,7 +427,7 @@ namespace SimpleLib
 				if (withLengthInChars != 0 && withLengthInChars < length)
 					return nullptr;
 				T* dest = (T*)malloc(length * sizeof(T));
-				memcpy(dest, m_psz, length * sizeof(T));
+				memcpy(dest, m_pData->m_sz, length * sizeof(T));
 				return dest;
 			}
 		}

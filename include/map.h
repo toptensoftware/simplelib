@@ -48,8 +48,8 @@ eg:
 namespace SimpleLib
 {
     template <typename TKey, typename TValue, 
-            typename TKeySem=SDefaultSemantics<TKey>::TSemantics, 
-            typename TValueSem=SDefaultSemantics<TValue>::TSemantics>
+            typename TKeySem=typename SDefaultSemantics<TKey>::TSemantics, 
+            typename TValueSem=typename SDefaultSemantics<TValue>::TSemantics>
     class CMap
     {
     public: 

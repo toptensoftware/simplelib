@@ -127,21 +127,21 @@ struct Encoding<char32_t, char>
 		}
 		if (in < 0x800)
 		{
-			out.Write( 0xC0 | (in >> 6) & 0x1f);
+			out.Write( 0xC0 | ((in >> 6) & 0x1f));
 			out.Write( 0x80 | (in & 0x3f));
 			return;
 		}
 		if (in < 0x10000)
 		{
-			out.Write( 0xE0 | (in >> 12) & 0x0F);
-			out.Write( 0x80 | (in >> 6) & 0x3F);
+			out.Write( 0xE0 | ((in >> 12) & 0x0F));
+			out.Write( 0x80 | ((in >> 6) & 0x3F));
 			out.Write( 0x80 | (in & 0x3f));
 			return;
 		}
 
-		out.Write( 0xF0 | (in >> 18) & 0x07);
-		out.Write( 0x80 | (in >> 12) & 0x3F);
-		out.Write( 0x80 | (in >> 6) & 0x3F);
+		out.Write( 0xF0 | ((in >> 18) & 0x07));
+		out.Write( 0x80 | ((in >> 12) & 0x3F));
+		out.Write( 0x80 | ((in >> 6) & 0x3F));
 		out.Write( 0x80 | (in & 0x3f));
 	}
 };
@@ -187,8 +187,8 @@ struct Encoding<char16_t, char32_t>
 			// low surrogate
 			out.Write(
 				0x10000 + 
-				((((char32_t)_pendingHighSurrogate) & 0x3FF) << 10) | 
-				(((char32_t)in) & 0x3FF)
+				(((((char32_t)_pendingHighSurrogate) & 0x3FF) << 10) | 
+				(((char32_t)in) & 0x3FF))
 				);
 			_pendingHighSurrogate = 0;
 		}
