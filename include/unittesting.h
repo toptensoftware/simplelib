@@ -121,7 +121,7 @@ public:
 
 	static const char* vsprintf(const char* format, va_list args)
 	{
-		CStringBuilder<char> buf;
+		CCoreStringBuilder<char> buf;
 		buf.FormatV(format, args);
 		return StringPool().Alloc(buf);
 	}
@@ -131,7 +131,7 @@ public:
 		if (value == nullptr)
 			return "nullptr";
 
-		CStringBuilder<char> buf;
+		CCoreStringBuilder<char> buf;
 		buf.Append(chDelim);
 
 		const char* p = value;
@@ -174,7 +174,7 @@ public:
 		return strcmp(a, b);
 	}
 
-	static CStringPool<char>& StringPool() { static CStringPool<char> val; return val; }
+	static CCoreStringPool<char>& StringPool() { static CCoreStringPool<char> val; return val; }
 
 private:
 	class CTest;

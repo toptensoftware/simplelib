@@ -33,7 +33,7 @@ eg:
 	CMap<int, CMyObject*, SValue, SOwnedPtr> mapPtrObjects;
 
 	// a map of strings to integers, with case insensitivity on the keys
-	CMap< CString<char>, int, SCaseInsensitive>	map;
+	CMap< CCoreString<char>, int, SCaseInsensitive>	map;
 	map.Add("Apples", 10);
 	map.Add("Pears", 20);
 	map.Add("Bananas", 30);

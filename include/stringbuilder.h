@@ -13,11 +13,11 @@ namespace SimpleLib
 // Simple StringBuilder class that uses embedded short buffer but switches
 // to dynamic allocations for longer strings
 template <typename T>
-class CStringBuilder : public IStringWriter<T>
+class CCoreStringBuilder : public IStringWriter<T>
 {
 public:
 	// Constructor
-	CStringBuilder()
+	CCoreStringBuilder()
 	{
 		m_iUsed = 0;
 		m_pMem = m_shortBuffer;
@@ -25,7 +25,7 @@ public:
 	}
 
 	// Destructor
-	virtual ~CStringBuilder()
+	virtual ~CCoreStringBuilder()
 	{
 		Reset();
 	}
@@ -119,7 +119,7 @@ public:
 	{
 		if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
 		{
-			const_cast<CStringBuilder*>(this)->Append((T)'\0');
+			const_cast<CCoreStringBuilder*>(this)->Append((T)'\0');
 		}
 		*piLength = m_iUsed - 1;
 		return m_pMem;
@@ -194,7 +194,7 @@ public:
 
 	static void write_callback(void* arg, T ch)
 	{
-		((CStringBuilder*)arg)->Append(ch);
+		((CCoreStringBuilder*)arg)->Append(ch);
 	}
 
 	void FormatV(const T* pFormat, va_list args)
@@ -210,6 +210,8 @@ private:
 	int m_iCapacity;
 	T m_shortBuffer[128];
 };
+
+typedef CCoreStringBuilder<char> CStringBuilder;
 
 }
 

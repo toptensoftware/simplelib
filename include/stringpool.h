@@ -11,18 +11,18 @@ namespace SimpleLib
 
 // Manages a pool of temporary strings that can all be freed at once
 template <typename T>
-class CStringPool
+class CCoreStringPool
 {
 public:
 	// Constructor
-	CStringPool(int defaultBucketSize = 4096)
+	CCoreStringPool(int defaultBucketSize = 4096)
 	{
 		m_pFirstBucket = nullptr;
 		m_iDefaultBucketSize = defaultBucketSize;
 	}
 
 	// Destructor
-	virtual ~CStringPool()
+	virtual ~CCoreStringPool()
 	{
 		Reset();
 	}

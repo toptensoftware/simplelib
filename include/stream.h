@@ -17,6 +17,7 @@
 #endif
 
 #include "semantics.h"
+#include "encoding.h"
 
 namespace SimpleLib
 {
@@ -114,30 +115,27 @@ public:
 	}
 
 	// Open a file with optional mode (defaults to read)
-	template <typename T>
-	int Open(const T* filename, const char* mode = "rb")
+	int Open(const char* filename, const char* mode = "rb")
 	{
 		assert(m_pFile == nullptr);
 
-		m_pFile = fopen<T>(filename, mode);
+		m_pFile = fopen(filename, mode);
 		return m_pFile == nullptr ? errno : 0;
 	}
 
 	// Create a new file
-	template <typename T>
-	int Create(const T* filename)
+	int Create(const char* filename)
 	{
 		return Open(filename, "wb+");
 	}
 
 	// Helper to fopen a file with any charset filename
-	template <typename T>
-	static FILE* fopen(const T* filename, const char* mode)
+	static FILE* fopen(const char* filename, const char* mode)
 	{
 #ifdef _WIN32
-		return _wfopen((wchar_t*)Encode<char16_t>(filename).sz(), (wchar_t*)Encode<char16_t>(mode).sz());
+		return _wfopen(Encode<wchar_t>(filename).sz(), Encode<wchar_t>(mode).sz());
 #else
-		return ::fopen(Encode<char>(filename).sz(), mode);
+		return ::fopen(filename, mode);
 #endif
 	};
 

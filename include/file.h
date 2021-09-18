@@ -31,9 +31,8 @@ class CFile
 {
 public:
 
-	// Reads a UTF-8 encoding text file into a CString
-	template <typename T, typename TStr>
-	static int ReadAllText(const T* filename, CString<TStr>& text)
+	// Reads a UTF-8 encoding text file into a CCoreString
+	static int ReadAllText(const char* filename, CString& text)
 	{
 		// Clear text
 		text.Clear();
@@ -45,8 +44,7 @@ public:
 			return err;
 
 		// Setup encoder
-		CStringBuilder<TStr> out;
-		Encoding<char, TStr> enc;
+		CStringBuilder out;
 
 		// Read it
 		char buf[4096];
@@ -58,11 +56,8 @@ public:
 			if (err != 0 && err != EOF)
 				return err;
 
-			// Encode
-			for (size_t i=0; i<cb; i++)
-			{
-				enc.Process(buf[i], out);
-			}
+			// Append
+			out.Append(buf, cb);
 
 			// Quit if finished
 			if (cb < sizeof(buf))
@@ -70,13 +65,12 @@ public:
 		}
 
 		// Return result
-		text = CString<TStr>(out);
+		text = CString(out);
 		return 0;
 	}
 
 	// Writes a UTF-8 encoded text file
-	template <typename T, typename TStr>
-	static int WriteAllText(const T* filename, const TStr* text)
+	static int WriteAllText(const char* filename, const char* text)
 	{
 		// Create the file
 		CFileStream file;
@@ -84,23 +78,12 @@ public:
 		if (err)
 			return err;
 
-		// Setup encoder
-		Encoding<TStr, char> enc;
-		CStreamStringWriter<char> w(file);
-
-		// Encode and write
-		const TStr* p = text;
-		while (*p)
-		{
-			enc.Process(*p++, w);
-		}
-
-		return w.GetError();
+		int length = SChar<char>::Length(text);
+		return file.Write(text, length);
 	}
 
 	// Delete a file
-	template <typename T>
-	static int Delete(const T* filename)
+	static int Delete(const char* filename)
 	{
 #ifdef _MSC_VER
 		return _wunlink(Encode<wchar_t>(filename));
@@ -110,8 +93,7 @@ public:
 	}
 
 	// Get info about a file
-	template <typename T>
-	static int GetFileInfo(const T* filename, CFileInfo& info)
+	static int GetFileInfo(const char* filename, CFileInfo& info)
 	{
 #ifdef _MSC_VER
 		struct __stat64 s;
@@ -142,16 +124,14 @@ public:
 	}
 
 	// Check if a file exists
-	template <typename T>
-	static bool Exists(const T* filename)
+	static bool Exists(const char* filename)
 	{
 		CFileInfo  info;
 		return GetFileInfo(filename, info) == 0 && info.IsFile;
 	}
 
 	// Copy a file
-	template <typename T>
-	static int Copy(const T* source, const T* dest, bool overwrite)
+	static int Copy(const char* source, const char* dest, bool overwrite)
 	{
 #ifdef _MSC_VER
 		if (CopyFile(Encode<wchar_t>(source), Encode<wchar_t>(dest), !overwrite))
@@ -163,7 +143,7 @@ public:
 #else
 
 	// Open source file
-	int fd_in = open(Encode<T>(source), O_RDONLY);
+	int fd_in = open(source, O_RDONLY);
     if (fd_in == -1)
 		return errno;
 		
@@ -177,7 +157,7 @@ public:
     }
 
 	// Create dest file
-    int fd_out = open(Encode<char>(dest), O_CREAT | O_WRONLY | (overwrite ? 0 : O_EXCL), 0644);
+    int fd_out = open(dest, O_CREAT | O_WRONLY | (overwrite ? 0 : O_EXCL), 0644);
     if (fd_out == -1) 
 	{
 		int err = errno;
@@ -216,13 +196,12 @@ public:
 	}
 
 	// Move (aka Rename) a file
-	template <typename T>
-	static int Move(const T* source, const T* dest)
+	static int Move(const char* source, const char* dest)
 	{
 #ifdef _MSC_VER
 	return _wrename(Encode<wchar_t>(source), Encode<wchar_t>(dest));
 #else
-	return rename(Encode<char>(source), Encode<char>(dest));
+	return rename(source, dest);
 #endif
 	}
 

@@ -9,8 +9,8 @@ using namespace SimpleLib;
 bool g_bAnyFailed=false;
 bool g_bFailed=false;
 
-typedef CString<char> CAnsiString;
-typedef CString<wchar_t> CUniString;
+typedef CCoreString<char> CAnsiString;
+typedef CCoreString<wchar_t> CUniString;
 
 void Failed(int iLine, const char* psz)
 {
@@ -80,7 +80,7 @@ namespace SimpleLib
 void TestStrings()
 {
 	g_bFailed=false;
-	printf("Testing CString...");
+	printf("Testing CCoreString...");
 
 
 	// Basic constructor
@@ -905,15 +905,15 @@ void TestFile()
 	g_bFailed=false;
 
 	// Read this file
-	CString<wchar_t> str;
+	CString str;
 	CFile::ReadAllText("SimpleTest.cpp", str);
-	assert(str.StartsWith(L"// SimpleTest.cpp"));
+	assert(str.StartsWith("// SimpleTest.cpp"));
 
 	// Write it again
 	CFile::WriteAllText("test.bin", str.sz());
 
 	// Read it again
-	CString<wchar_t> str2;
+	CString str2;
 	CFile::ReadAllText("test.bin", str2);
 	assert(str.IsEqualTo(str2));
 
@@ -939,18 +939,18 @@ void TestDirectory()
 	printf("Testing Directory...");
 	g_bFailed=false;
 
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "file.txt")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "file.*")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*.txt")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "fi*.txt")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*.*")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*")));
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "fi??.*")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "file.txt")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "file.*")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "*.txt")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "fi*.txt")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "*.*")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "*")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "fi??.*")));
 
 #ifdef _WIN32
-	assert((CDirectory::DoesMatchPattern<char>("file.txt", "FILE.*")));
+	assert((CPath::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #else
-	assert(!(CDirectory::DoesMatchPattern<char>("file.txt", "FILE.*")));
+	assert(!(CPath::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #endif
 
 	assert(!CDirectory::Exists("temp"));
@@ -959,7 +959,7 @@ void TestDirectory()
 	assert(!CDirectory::Delete("temp"));
 	assert(!CDirectory::Exists("temp"));
 
-	CDirectoryIterator<char> iter;
+	CDirectoryIterator iter;
 	CDirectory::Iterate("..", "*.exe", IterateFlags::All, iter);
 	while (iter.Next())
 	{
