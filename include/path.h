@@ -202,6 +202,10 @@ namespace SimpleLib
             free(psz);
             return cwd;
 #else
+            char* psz = getcwd(nullptr, 0);
+            CString cwd = psz;
+            free(psz);
+            return cwd;
 #endif
         }
 

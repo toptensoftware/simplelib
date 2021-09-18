@@ -960,7 +960,7 @@ void TestDirectory()
 	assert(!CDirectory::Exists("temp"));
 
 	CDirectoryIterator iter;
-	CDirectory::Iterate("..", "*.exe", IterateFlags::All, iter);
+	CDirectory::Iterate("..", "*.h", IterateFlags::All, iter);
 	while (iter.Next())
 	{
 		printf("%s\n", iter.Name);

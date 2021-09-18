@@ -5,6 +5,11 @@
 #include "path.h"
 #include "encoding.h"
 
+#ifndef _WIN32
+#include <sys/types.h>
+#include <dirent.h>
+#endif
+
 namespace SimpleLib
 {
 
@@ -85,6 +90,7 @@ private:
 		return 0;
 	}
 
+#ifdef _WIN32
 	struct CState
 	{
 		CState()
@@ -98,11 +104,11 @@ private:
 		}
 		int Init(const char* directory, const char* prefix)
 		{
-			hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &fd);
-			initial = true;
-			directory = directory;
-			prefix = prefix;
-			if (hFind == INVALID_HANDLE_VALUE)
+			_hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &fd);
+			_initial = true;
+			_directory = directory;
+			_prefix = prefix;
+			if (_hFind == INVALID_HANDLE_VALUE)
 			{
 				return ENOENT;		// TODO
 			}
@@ -112,40 +118,94 @@ private:
 		{
 			startAgain:
 			// Find next (unless already have it from FindFirst)
-			if (initial)
+			if (_initial)
 			{
-				initial = false;
+				_initial = false;
 			}
 			else
 			{
-				if (!FindNextFileW(hFind, &fd))
+				if (!FindNextFileW(_hFind, &_fd))
 					return false;
 			}
 
 			// Not interested in pseudo directories
-			if (wcscmp(fd.cFileName, L".") == 0 || 
-				wcscmp(fd.cFileName, L"..") == 0)
+			if (wcscmp(_fd.cFileName, L".") == 0 || 
+				wcscmp(_fd.cFileName, L"..") == 0)
 				goto startAgain;
 
-			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			if (_fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				_currentItemFlags = IterateFlags::Directories;
 			else
 				_currentItemFlags = IterateFlags::Files;
 
 			_fileName = Encode<char>(fd.cFileName);
-			_currentName = CPath::Join(prefix, _fileName);
+			_currentName = CPath::Join(_prefix, _fileName);
 			return true;
 		}
 
 		CString _fileName;
 		CString _currentName;
 		IterateFlags _currentItemFlags;
-		HANDLE hFind;
-		WIN32_FIND_DATAW fd;
-		bool initial;
-		CString prefix;
-		CString directory;
+		HANDLE _hFind;
+		WIN32_FIND_DATAW _fd;
+		bool _initial;
+		CString _prefix;
+		CString _directory;
 	};
+#else
+	struct CState
+	{
+		CState()
+		{
+			_dir = 0;
+		}
+		~CState()
+		{
+			if (_dir != nullptr)
+				closedir(_dir);
+		}
+		int Init(const char* directory, const char* prefix)
+		{
+			_directory = directory;
+			_prefix = prefix;
+			_dir = opendir(directory);
+			if (_dir == nullptr)
+				return errno;
+			return 0;
+		}
+		bool Next()
+		{
+			startAgain:
+			struct dirent* pde = readdir(_dir);
+			if (pde == nullptr)
+				return false;
+
+			if (strcmp(pde->d_name, ".") == 0 || 
+				strcmp(pde->d_name, "..") == 0)
+				goto startAgain;
+
+			_fileName = pde->d_name;
+			_currentName = CPath::Join(_prefix, _fileName);
+
+			if (pde->d_type & DT_DIR)
+				_currentItemFlags = IterateFlags::Directories;
+			else if (pde->d_type & DT_REG)
+				_currentItemFlags = IterateFlags::Files;
+			else
+				goto startAgain;
+
+			return true;
+		}
+
+		DIR* _dir;
+		CString _fileName;
+		CString _currentName;
+		IterateFlags _currentItemFlags;
+		CString _prefix;
+		CString _directory;
+	};
+#endif
+
 	CVector<CState*, SOwnedPtr> _stack;
 
 	friend class CDirectory;
@@ -185,7 +245,7 @@ public:
 #ifdef _MSC_VER
 		return _wmkdir(Encode<wchar_t>(name));
 #else
-		return mkdir(name);
+		return mkdir(name, 0644);
 #endif
 	}
 

@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <wchar.h>
+#include <string.h>
 
 #ifdef _MSC_VER
 #define DEPRECATED(x) __declspec(deprecated(x))
