@@ -34,74 +34,52 @@ public:
 
 		// Get top of stack
 		CState* pState = _stack.Tail();
-
-		// Find next (unless already have it from FindFirst)
-		if (pState->initial)
+		if (!pState->Next())
 		{
-			pState->initial = false;
-		}
-		else
-		{
-			if (!FindNextFileW(pState->hFind, &pState->fd))
-			{
-				_stack.Pop();
-				goto startAgain;
-			}
-		}
-
-		// Not interested in pseudo directories
-		if (wcscmp(pState->fd.cFileName, L".") == 0 || 
-			wcscmp(pState->fd.cFileName, L"..") == 0)
+			_stack.Pop();
 			goto startAgain;
+		}
 
 		// Setup current entry
-		_currentName = CPath::Join(pState->prefix, Encode<char>(pState->fd.cFileName));
-		Name = _currentName.sz();
+		Name = pState->_currentName.sz();
 
 		// Recurse
-		if ((_flags & IterateFlags::Recursive) && (pState->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+		if ((_flags & IterateFlags::Recursive) && (pState->_currentItemFlags & IterateFlags::Directories))
 		{
-			Add(CPath::Join(pState->directory, Encode<char>(pState->fd.cFileName)));
-
-			// Patch in the prefix name
-			CState* pNewState = _stack.Tail();
-			pNewState->prefix = _currentName;
+			Add(CPath::Join(_baseDirectory, pState->_currentName), pState->_currentName);
 		}
 
 		// Ignore directory/files
-		if (((pState->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) && (_flags & IterateFlags::Directories) == 0)
-			goto startAgain;
-		if (((pState->fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) && (_flags & IterateFlags::Files) == 0)
+		if ((pState->_currentItemFlags & _flags) == 0)
 			goto startAgain;
 
-		if (!CPath::DoesMatchPattern<wchar_t>(pState->fd.cFileName, _pattern))
+		if (!CPath::DoesMatchPattern<char>(pState->_fileName, _pattern))
 			goto startAgain;
 
 		return true;
 	}
 
 private:
-	CString _currentName;
 	IterateFlags _flags;
-	CCoreString<wchar_t> _pattern;
+	CString _baseDirectory;
+	CString _pattern;
 
 	int Init(const char* directory, const char* pattern, IterateFlags flags)
 	{
 		_flags = flags;
-		_pattern = Encode<wchar_t>(pattern);
-		return Add(directory);
+		_pattern = pattern;
+		_baseDirectory = directory;
+		return Add(directory, nullptr);
 	}
 
-	int Add(const char* directory)
+	int Add(const char* directory, const char* prefix)
 	{
 		CState* pState = new CState();
-		pState->hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &pState->fd);
-		pState->initial = true;
-		pState->directory = directory;
-		if (pState->hFind == INVALID_HANDLE_VALUE)
+		int err = pState->Init(directory, prefix);
+		if (err)
 		{
 			delete pState;
-			return ENOENT;		// TODO
+			return err;
 		}
 		_stack.Push(pState);
 		return 0;
@@ -118,6 +96,50 @@ private:
 			if (hFind != INVALID_HANDLE_VALUE)
 				FindClose(hFind);
 		}
+		int Init(const char* directory, const char* prefix)
+		{
+			hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &fd);
+			initial = true;
+			directory = directory;
+			prefix = prefix;
+			if (hFind == INVALID_HANDLE_VALUE)
+			{
+				return ENOENT;		// TODO
+			}
+			return 0;
+		}
+		bool Next()
+		{
+			startAgain:
+			// Find next (unless already have it from FindFirst)
+			if (initial)
+			{
+				initial = false;
+			}
+			else
+			{
+				if (!FindNextFileW(hFind, &fd))
+					return false;
+			}
+
+			// Not interested in pseudo directories
+			if (wcscmp(fd.cFileName, L".") == 0 || 
+				wcscmp(fd.cFileName, L"..") == 0)
+				goto startAgain;
+
+			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+				_currentItemFlags = IterateFlags::Directories;
+			else
+				_currentItemFlags = IterateFlags::Files;
+
+			_fileName = Encode<char>(fd.cFileName);
+			_currentName = CPath::Join(prefix, _fileName);
+			return true;
+		}
+
+		CString _fileName;
+		CString _currentName;
+		IterateFlags _currentItemFlags;
 		HANDLE hFind;
 		WIN32_FIND_DATAW fd;
 		bool initial;
