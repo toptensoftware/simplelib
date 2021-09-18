@@ -99,12 +99,12 @@ private:
 		}
 		~CState()
 		{
-			if (hFind != INVALID_HANDLE_VALUE)
-				FindClose(hFind);
+			if (_hFind != INVALID_HANDLE_VALUE)
+				FindClose(_hFind);
 		}
 		int Init(const char* directory, const char* prefix)
 		{
-			_hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &fd);
+			_hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &_fd);
 			_initial = true;
 			_directory = directory;
 			_prefix = prefix;
@@ -138,7 +138,7 @@ private:
 			else
 				_currentItemFlags = IterateFlags::Files;
 
-			_fileName = Encode<char>(fd.cFileName);
+			_fileName = Encode<char>(_fd.cFileName);
 			_currentName = CPath::Join(_prefix, _fileName);
 			return true;
 		}
