@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "semantics.h"
+#include "string.h"
 
 #ifdef _MSC_VER
 #include "direct.h"
@@ -18,12 +19,12 @@
 
 namespace SimpleLib
 {
-    template <typename T>
     class CPath
     {
     public:
         // Simple join of two paths ensuring one directory separator
         // between them
+        template <typename T>
         static CString<T> Join(const T* a, const T* b)
         {
             // If either empty, result is the other
@@ -53,10 +54,11 @@ namespace SimpleLib
 
         // Get the directory name from a path
         // (ie: everything up to  last separator)
+        template <typename T>
         static CString<T> GetDirectoryName(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators<T>());
             int prefix = GetPrefixLength(path);
 
             if (lastSep < prefix)
@@ -76,10 +78,11 @@ namespace SimpleLib
 
         // Get the filename component from a path
         // (ie: everything after the last separator)
+        template <typename T>
         static CString<T> GetFileName(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators<T>());
             if (lastSep < 0)
                 return path;
             else
@@ -88,10 +91,11 @@ namespace SimpleLib
 
         // Get the filename component from a path
         // (ie: everything after the last separator)
+        template <typename T>
         static CString<T> GetFileNameWithoutExtension(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators<T>());
             if (lastSep < 0)
                 return path;
 
@@ -103,6 +107,7 @@ namespace SimpleLib
         }
 
         // Change (or add) the a path's file extension
+        template <typename T>
         static CString<T> ChangeExtension(const T* path, const T* newExtension)
         {
             const T* ext = FindExtension(path);
@@ -121,6 +126,7 @@ namespace SimpleLib
 
         // Get the filename component from a path
         // (ie: everything after the last separator)
+        template <typename T>
         static CString<T> GetExtension(const T* path)
         {
             return FindExtension(path);
@@ -128,10 +134,11 @@ namespace SimpleLib
 
         // Returns a direct pointer to a path's file extension
         // (or nullptr if none)
+        template <typename T>
         static const T* FindExtension(const T* path)
         {
             CString<T> str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(GetDirectorySeparators<T>());
             int lastDot = str.LastIndexOfAny(".");
             if (lastDot > lastSep)
                 return path + lastDot;
@@ -140,12 +147,13 @@ namespace SimpleLib
         }
 
         // Canonicalize a path
+        template <typename T>
         static CString<T> Canonicalize(const T* path)
         {
             CString<T> strPath(path);
 
             CVector<CString<T>> parts;
-            strPath.Split(GetDirectorySeparators(), true, parts);
+            strPath.Split(GetDirectorySeparators<T>(), true, parts);
 
             for (int i=0; i<parts.GetCount(); i++)
             {
@@ -180,6 +188,7 @@ namespace SimpleLib
         }
 
         // Combine two paths
+        template <typename T>
         static CString<T> Combine(const T* base, const T* path)
         {
             assert(!CString<T>::IsNullOrEmpty(base));
@@ -187,13 +196,14 @@ namespace SimpleLib
             if (path != nullptr && IsDirectorySeparator(path[0]))
             {
                 int prefix = GetPrefixLength(base);
-                return Canonicalize(Join(CString<T>(base, prefix), path));
+                return Canonicalize<T>(Join<T>(CString<T>(base, prefix), path));
             }
             else
-                return Canonicalize(Join(base, path));
+                return Canonicalize<T>(Join<T>(base, path));
         }
 
         // Get the current directory
+        template <typename T>
         static CString<T> GetCurrentDirectory()
         {
 #ifdef _MSC_VER
@@ -206,6 +216,7 @@ namespace SimpleLib
         }
 
         // Get the full path of a path
+        template <typename T>
         static CString<T> GetFullPath(const T* path)
         {
 #ifdef _MSC_VER
@@ -223,6 +234,7 @@ namespace SimpleLib
             return Combine(GetCurrentDirectory(), path);
         }
 
+        template <typename T>
         static bool IsFullyQualified(const T* psz)
         {
 #if _WIN32
@@ -235,6 +247,7 @@ namespace SimpleLib
 #endif
         }
 
+        template <typename T>
         static int GetPrefixLength(const T* psz)
         {
 #ifdef _WIN32
@@ -267,6 +280,7 @@ namespace SimpleLib
             return 0;
         }
 
+        template <typename T>
         static bool IsDirectorySeparator(T ch)
         {
 #ifdef _WIN32
@@ -276,6 +290,7 @@ namespace SimpleLib
 #endif
         }
 
+        template <typename T>
         inline static const T* GetDirectorySeparators()
         {
 #ifdef _WIN32
@@ -288,11 +303,11 @@ namespace SimpleLib
         }
 
 #ifdef _WIN32
-        static const T DirectorySeparator = '\\';
-        static const T PathSeparator =';';
+        static const char DirectorySeparator = '\\';
+        static const char PathSeparator =';';
 #else
-        static const T DirectorySeparator ='/';
-        static const T PathSeparator =':';
+        static const char DirectorySeparator ='/';
+        static const char PathSeparator =':';
 #endif
     };
 

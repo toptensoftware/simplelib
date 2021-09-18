@@ -1,6 +1,7 @@
 #ifndef __SIMPLELIB_H
 #define __SIMPLELIB_H
 
+#include "include/directory.h"
 #include "include/dyntype.h"
 #include "include/encoding.h"
 #include "include/file.h"

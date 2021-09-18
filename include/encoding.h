@@ -12,32 +12,20 @@ struct Encoding
 {
 };
 
-template<>
-struct Encoding<char, char>
+template <typename T>
+struct PassthroughEncoding
 {
-	void Process(char in, IStringWriter<char>& out)
+	void Process(T in, IStringWriter<T>& out)
 	{
 		out.Write(in);
 	}
 };
 
-template<>
-struct Encoding<char16_t, char16_t>
-{
-	void Process(char16_t in, IStringWriter<char16_t>& out)
-	{
-		out.Write(in);
-	}
-};
+template<> struct Encoding<char, char> : PassthroughEncoding<char> {};
+template<> struct Encoding<char16_t, char16_t> : PassthroughEncoding<char16_t> {};
+template<> struct Encoding<char32_t, char32_t> : PassthroughEncoding<char32_t> {};
+template<> struct Encoding<wchar_t, wchar_t> : PassthroughEncoding<wchar_t> {};
 
-template<>
-struct Encoding<char32_t, char32_t>
-{
-	void Process(char32_t in, IStringWriter<char32_t>& out)
-	{
-		out.Write(in);
-	}
-};
 
 template<>
 struct Encoding<char, char32_t>
@@ -245,6 +233,9 @@ struct Encoding<wchar_t, char>
 template <typename TTo, typename TFrom>
 CString<TTo> Encode(const TFrom* in)
 {
+	if (!in)
+		return (TTo*)nullptr;
+		
 	CStringBuilder<TTo> out;
 	Encoding<TFrom, TTo> enc;
 	while (*in)

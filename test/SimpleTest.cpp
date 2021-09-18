@@ -723,97 +723,97 @@ void TestPath()
 	g_bFailed=false;
 
 #ifdef _WIN32
-	assert(CPath<char>::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
-	assert(CPath<char>::Join("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<char>::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<char>::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
+	assert(CPath::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
+	assert(CPath::Join("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
+	assert(CPath::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
 
-	assert(CPath<char>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
-	assert(CPath<char>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(CPath::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(CPath::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
 
-	assert(CPath<char>::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<char>::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<char>::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
+	assert(CPath::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
+	assert(CPath::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
+	assert(CPath::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
 
-	assert(CPath<char>::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
-	assert(CPath<char>::GetDirectoryName("C:\\").IsEmpty());
-	assert(CPath<char>::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
-	assert(CPath<char>::GetDirectoryName("\\\\unc\\share").IsEmpty());
+	assert(CPath::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
+	assert(CPath::GetDirectoryName("C:\\").IsEmpty());
+	assert(CPath::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
+	assert(CPath::GetDirectoryName("\\\\unc\\share").IsEmpty());
 
-	assert(CPath<char>::IsFullyQualified("C:") == false);
-	assert(CPath<char>::IsFullyQualified("C:\\") == true);
-	assert(CPath<char>::IsFullyQualified("C:\\file") == true);
-	assert(CPath<char>::IsFullyQualified("C:file") == false);
-	assert(CPath<char>::IsFullyQualified("\\\\unc\\share") == true);
-	assert(CPath<char>::IsFullyQualified("\\\\unc\\share\\") == true);
-	assert(CPath<char>::IsFullyQualified("\\\\unc\\share\\file") == true);
+	assert(CPath::IsFullyQualified("C:") == false);
+	assert(CPath::IsFullyQualified("C:\\") == true);
+	assert(CPath::IsFullyQualified("C:\\file") == true);
+	assert(CPath::IsFullyQualified("C:file") == false);
+	assert(CPath::IsFullyQualified("\\\\unc\\share") == true);
+	assert(CPath::IsFullyQualified("\\\\unc\\share\\") == true);
+	assert(CPath::IsFullyQualified("\\\\unc\\share\\file") == true);
 
-	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
-	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
-	assert(CPath<char>::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
 	
-	assert(CPath<char>::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
-	assert(CPath<char>::GetExtension("\\a.dir\\file").IsEmpty());
+	assert(CPath::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
+	assert(CPath::GetExtension("\\a.dir\\file").IsEmpty());
 
-	assert(CPath<char>::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<char>::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<char>::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<char>::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
 
-	assert(CPath<char>::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
-	assert(CPath<char>::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
-	assert(CPath<char>::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath<char>::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
-	assert(CPath<char>::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(CPath::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
+	assert(CPath::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
+	assert(CPath::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
+	assert(CPath::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
+	assert(CPath::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(CPath::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
 
-	assert(CPath<char>::Combine("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<char>::Combine("\\a", "\\b").IsEqualTo("\\b"));
-	assert(CPath<char>::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
-	assert(CPath<char>::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
-	assert(CPath<char>::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
-	assert(CPath<char>::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
+	assert(CPath::Combine("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath::Combine("\\a", "\\b").IsEqualTo("\\b"));
+	assert(CPath::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
+	assert(CPath::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
+	assert(CPath::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
+	assert(CPath::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
 
 #else
-	assert(CPath<char>::Join("/a", "/b").IsEqualTo("/a/b"));
-	assert(CPath<char>::Join("/a", "b").IsEqualTo("/a/b"));
-	assert(CPath<char>::Join("/a/", "b").IsEqualTo("/a/b"));
-	assert(CPath<char>::Join("/a/", "/b").IsEqualTo("/a/b"));
+	assert(CPath::Join("/a", "/b").IsEqualTo("/a/b"));
+	assert(CPath::Join("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath::Join("/a/", "b").IsEqualTo("/a/b"));
+	assert(CPath::Join("/a/", "/b").IsEqualTo("/a/b"));
 
-	assert(CPath<char>::GetFileName("/a/file.txt").IsEqualTo("file.txt"));
+	assert(CPath::GetFileName("/a/file.txt").IsEqualTo("file.txt"));
 	
-	assert(CPath<char>::GetDirectoryName("/a/b/c/file.txt").IsEqualTo("/a/b/c"));
-	assert(CPath<char>::GetDirectoryName("/a/b/c/").IsEqualTo("/a/b/c"));
-	assert(CPath<char>::GetDirectoryName("/a/b/c").IsEqualTo("/a/b"));
+	assert(CPath::GetDirectoryName("/a/b/c/file.txt").IsEqualTo("/a/b/c"));
+	assert(CPath::GetDirectoryName("/a/b/c/").IsEqualTo("/a/b/c"));
+	assert(CPath::GetDirectoryName("/a/b/c").IsEqualTo("/a/b"));
 
-	assert(CPath<char>::GetFileNameWithoutExtension("/a/file.txt").IsEqualTo("file"));
-	assert(CPath<char>::GetFileNameWithoutExtension("/a/file.").IsEqualTo("file"));
-	assert(CPath<char>::GetFileNameWithoutExtension("/a/file").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("/a/file.txt").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("/a/file.").IsEqualTo("file"));
+	assert(CPath::GetFileNameWithoutExtension("/a/file").IsEqualTo("file"));
 	
-	assert(CPath<char>::GetExtension("/a/file.txt").IsEqualTo(".txt"));
-	assert(CPath<char>::GetExtension("/a.dir/file").IsEmpty());
+	assert(CPath::GetExtension("/a/file.txt").IsEqualTo(".txt"));
+	assert(CPath::GetExtension("/a.dir/file").IsEmpty());
 
-	assert(CPath<char>::ChangeExtension("/a/file.txt", "doc").IsEqualTo("/a/file.doc"));
-	assert(CPath<char>::ChangeExtension("/a/file", "doc").IsEqualTo("/a/file.doc"));
-	assert(CPath<char>::ChangeExtension("/a/file.txt", ".doc").IsEqualTo("/a/file.doc"));
-	assert(CPath<char>::ChangeExtension("/a/file", ".doc").IsEqualTo("/a/file.doc"));
+	assert(CPath::ChangeExtension("/a/file.txt", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath::ChangeExtension("/a/file", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath::ChangeExtension("/a/file.txt", ".doc").IsEqualTo("/a/file.doc"));
+	assert(CPath::ChangeExtension("/a/file", ".doc").IsEqualTo("/a/file.doc"));
 
-	assert(CPath<char>::Canonicalize("/a/b/c").IsEqualTo("/a/b/c"));
-	assert(CPath<char>::Canonicalize("/a/./b/./c").IsEqualTo("/a/b/c"));
-	assert(CPath<char>::Canonicalize("/a/../b/c").IsEqualTo("/b/c"));
-	assert(CPath<char>::Canonicalize("/a/b/../../c").IsEqualTo("/c"));
-	assert(CPath<char>::Canonicalize("a/b/c").IsEqualTo("a/b/c"));
-	assert(CPath<char>::Canonicalize("/a/b/c/").IsEqualTo("/a/b/c/"));
-	assert(CPath<char>::Canonicalize("/a/b/c////").IsEqualTo("/a/b/c/"));
+	assert(CPath::Canonicalize("/a/b/c").IsEqualTo("/a/b/c"));
+	assert(CPath::Canonicalize("/a/./b/./c").IsEqualTo("/a/b/c"));
+	assert(CPath::Canonicalize("/a/../b/c").IsEqualTo("/b/c"));
+	assert(CPath::Canonicalize("/a/b/../../c").IsEqualTo("/c"));
+	assert(CPath::Canonicalize("a/b/c").IsEqualTo("a/b/c"));
+	assert(CPath::Canonicalize("/a/b/c/").IsEqualTo("/a/b/c/"));
+	assert(CPath::Canonicalize("/a/b/c////").IsEqualTo("/a/b/c/"));
 
-	assert(CPath<char>::Combine("/a", "b").IsEqualTo("/a/b"));
-	assert(CPath<char>::Combine("/a", "/b").IsEqualTo("/b"));
-	assert(CPath<char>::Combine("/a", "b/subdir/../otherdir/c").IsEqualTo("/a/b/otherdir/c"));
-	assert(CPath<char>::Combine("/a", "b/subdir/../otherdir/c/").IsEqualTo("/a/b/otherdir/c/"));
+	assert(CPath::Combine("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath::Combine("/a", "/b").IsEqualTo("/b"));
+	assert(CPath::Combine("/a", "b/subdir/../otherdir/c").IsEqualTo("/a/b/otherdir/c"));
+	assert(CPath::Combine("/a", "b/subdir/../otherdir/c/").IsEqualTo("/a/b/otherdir/c/"));
 #endif
 
 	if (!g_bFailed)
@@ -906,28 +906,65 @@ void TestFile()
 
 	// Read this file
 	CString<wchar_t> str;
-	CFile<char>::ReadAllText("SimpleTest.cpp", str);
+	CFile::ReadAllText("SimpleTest.cpp", str);
 	assert(str.StartsWith(L"// SimpleTest.cpp"));
 
 	// Write it again
-	CFile<char>::WriteAllText("test.bin", str.sz());
+	CFile::WriteAllText("test.bin", str.sz());
 
 	// Read it again
 	CString<wchar_t> str2;
-	CFile<char>::ReadAllText("test.bin", str2);
+	CFile::ReadAllText("test.bin", str2);
 	assert(str.IsEqualTo(str2));
 
 	// Copy/delete/exists
-	assert(CFile<char>::Exists("test.bin"));
-	assert(CFile<char>::Copy("test.bin", "copy.bin", true) == 0);
-	assert(CFile<char>::Exists("copy.bin"));
-	assert(CFile<char>::Copy("test.bin", "copy.bin", true) == 0);
-	assert(CFile<char>::Exists("copy.bin"));
-	assert(CFile<char>::Copy("test.bin", "copy.bin", false) == EEXIST);
-	CFile<char>::Delete("test.bin");
-	assert(!CFile<char>::Exists("test.bin"));
-	CFile<char>::Delete("copy.bin");
-	assert(!CFile<char>::Exists("copy.bin"));
+	assert(CFile::Exists("test.bin"));
+	assert(CFile::Copy("test.bin", "copy.bin", true) == 0);
+	assert(CFile::Exists("copy.bin"));
+	assert(CFile::Copy("test.bin", "copy.bin", true) == 0);
+	assert(CFile::Exists("copy.bin"));
+	assert(CFile::Copy("test.bin", "copy.bin", false) == EEXIST);
+	CFile::Delete("test.bin");
+	assert(!CFile::Exists("test.bin"));
+	CFile::Delete("copy.bin");
+	assert(!CFile::Exists("copy.bin"));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+
+void TestDirectory()
+{
+	printf("Testing Directory...");
+	g_bFailed=false;
+
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "file.txt")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "file.*")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*.txt")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "fi*.txt")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*.*")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "*")));
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "fi??.*")));
+
+#ifdef _WIN32
+	assert((CDirectory::DoesMatchPattern<char>("file.txt", "FILE.*")));
+#else
+	assert(!(CDirectory::DoesMatchPattern<char>("file.txt", "FILE.*")));
+#endif
+
+	assert(!CDirectory::Exists("temp"));
+	assert(!CDirectory::Create("temp"));
+	assert(CDirectory::Exists("temp"));
+	assert(!CDirectory::Delete("temp"));
+	assert(!CDirectory::Exists("temp"));
+
+	CDirectoryIterator<char> iter;
+	CDirectory::Iterate("..", "*.exe", IterateFlags::All, iter);
+	while (iter.Next())
+	{
+		printf("%s\n", iter.Name);
+	}
 
 	if (!g_bFailed)
 		printf("OK\n");
@@ -948,6 +985,7 @@ int main(int argc, char* argv[])
 	TestFileStream();
 	TestMemoryStream();
 	TestFile();
+	TestDirectory();
 
 	if (g_bAnyFailed)
 	{

@@ -16,6 +16,8 @@
 #include <unistd.h>
 #endif
 
+#include "semantics.h"
+
 namespace SimpleLib
 {
 

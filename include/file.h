@@ -27,13 +27,12 @@ public:
 };
 
 // Abstract Stream Class
-template <typename T>
 class CFile
 {
 public:
 
 	// Reads a UTF-8 encoding text file into a CString
-	template <typename TStr>
+	template <typename T, typename TStr>
 	static int ReadAllText(const T* filename, CString<TStr>& text)
 	{
 		// Clear text
@@ -76,7 +75,7 @@ public:
 	}
 
 	// Writes a UTF-8 encoded text file
-	template <typename TStr>
+	template <typename T, typename TStr>
 	static int WriteAllText(const T* filename, const TStr* text)
 	{
 		// Create the file
@@ -100,6 +99,7 @@ public:
 	}
 
 	// Delete a file
+	template <typename T>
 	static int Delete(const T* filename)
 	{
 #ifdef _MSC_VER
@@ -110,6 +110,7 @@ public:
 	}
 
 	// Get info about a file
+	template <typename T>
 	static int GetFileInfo(const T* filename, CFileInfo& info)
 	{
 #ifdef _MSC_VER
@@ -141,6 +142,7 @@ public:
 	}
 
 	// Check if a file exists
+	template <typename T>
 	static bool Exists(const T* filename)
 	{
 		CFileInfo  info;
@@ -148,6 +150,7 @@ public:
 	}
 
 	// Copy a file
+	template <typename T>
 	static int Copy(const T* source, const T* dest, bool overwrite)
 	{
 #ifdef _MSC_VER
@@ -213,6 +216,7 @@ public:
 	}
 
 	// Move (aka Rename) a file
+	template <typename T>
 	static int Move(const T* source, const T* dest)
 	{
 #ifdef _MSC_VER
