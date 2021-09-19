@@ -7,9 +7,9 @@
 namespace SimpleLib
 {
 
-struct CEncoding
+struct CEncodingUtf8
 {
-	static char32_t RecoverUtf8(const char*& p)
+	static char32_t Recover(const char*& p)
 	{
 		// Skip the problematic character
 		p++;
@@ -25,7 +25,7 @@ struct CEncoding
 	}
 
 	// Read a utf32 character from a utf8 string
-	static char32_t DecodeUtf8(const char*& p)
+	static char32_t Decode(const char*& p)
 	{
 		char32_t ch = *p;
 
@@ -43,7 +43,7 @@ struct CEncoding
 
 			// Check valid
 			if ((ch2 & 0xc0) != 0x80 || (ch2 & 0x1f) == 0)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			// Done
 			p+=2;
@@ -56,16 +56,16 @@ struct CEncoding
 
 			char32_t ch2 = p[1];
 			if ((ch2 & 0xc0) != 0x80 || (ch2 & 0x0f) == 0)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			char32_t ch3 = p[2];
 			if ((ch3 & 0xc0) != 0x80)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			ch = ((ch & 0x0f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3F);
 
 			if ((ch & 0xD800) == 0xD800)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			p+=3;
 			return ch;
@@ -77,31 +77,31 @@ struct CEncoding
 
 			char32_t ch2 = p[1];
 			if ((ch2 & 0xc0) != 0x80 && (ch & 0x07) == 0)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			char32_t ch3 = p[2];
 			if ((ch3 & 0xc0) != 0x80)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			char32_t ch4 = p[3];
 			if ((ch3 & 0xc0) != 0x80)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			ch = ((ch & 0x07) << 18) | ((ch2 & 0x3f) << 12) | 
 					((ch3 & 0x3F) << 6) | (ch4 & 0x3f);
 
 			if (ch >= 0x110000)
-				return RecoverUtf8(p);
+				return Recover(p);
 
 			p+=4;
 			return ch;
 		}
 
-		return RecoverUtf8(p);
+		return Recover(p);
 	}
 
 	// Write a utf32 character to a utf8 stream
-	static bool EncodeUtf8(char*& p, char32_t ch)
+	static bool Encode(char*& p, char32_t ch)
 	{
 		if (ch < 0x80)
 		{
@@ -138,9 +138,13 @@ struct CEncoding
 
 		return false;
 	}
+};
 
+template <typename TChar16>
+struct CEncodingUtf16
+{
 	// Read a utf32 character from a utf16 stream
-	static char32_t DecodeUtf16(const char16_t*& p)
+	static char32_t Decode(const TChar16*& p)
 	{
 		// Fast path for non-surrogate pairs
 		if ((p[0] & 0xD800) != 0xD800)
@@ -180,14 +184,14 @@ struct CEncoding
 	}
 
 	// Write a utf32 character to a utf16 stream
-	static bool EncodeUtf16(char16_t*& p, char32_t ch)
+	static bool Encode(TChar16*& p, char32_t ch)
 	{
 		if (ch < 0x10000)
 		{
 			if ((ch & 0xD800) == 0xD800)
 				return false;
 
-			*p++ = (char16_t)ch;
+			*p++ = (TChar16)ch;
 			return true;
 		}
 
@@ -201,104 +205,33 @@ struct CEncoding
 
 		return false;
 	}
-
 };
 
+template <typename T, int size>
+struct CEncodingSelector {};
+
+template <typename T>
+struct CEncodingSelector<T, 1> : public CEncodingUtf8 {};
+
+template <typename T>
+struct CEncodingSelector<T, 2> : public CEncodingUtf16<T> {};
+
+template <typename T>
+struct CEncoding : public CEncodingSelector<T, sizeof(T)> {};
 
 
-
-	template <typename TTo, typename TFrom>
-	CCoreString<TTo> Convert(const TFrom* p)
-	{
-		return (TTo*)nullptr;
-	}
-
-	template <>
-	CCoreString<char32_t> Convert<char32_t, char>(const char* p)
-	{
-		CCoreStringBuilder<char32_t> sb;
-		while (*p)
-		{
-			char32_t ch = CEncoding::DecodeUtf8(p);
-			if (ch == (char32_t)-1)
-				ch = 0xFFFD;
-			sb.Write(ch);
-		}
-		return sb.ToString();
-	}
-
-	template <>
-	CCoreString<char16_t> Convert<char16_t, char>(const char* p)
-	{
-		CCoreStringBuilder<char16_t> sb;
-		char16_t ch16[2];
-		while (*p)
-		{
-			// 8 -> 32
-			char32_t ch = CEncoding::DecodeUtf8(p);
-			if (ch == (char32_t)-1)
-				ch = 0xFFFD;
-			
-			// 32 -> 16
-			char16_t* p = ch16;
-			CEncoding::EncodeUtf16(p, ch);
-			
-			// Write
-			sb.Write(ch16[0]);
-			if (p == &ch16[2])
-				sb.Write(ch16[1]);
-		}
-
-		return sb.ToString();
-	}
-
-	template <>
-	CCoreString<char> Convert<char, char32_t>(const char32_t* p)
+// Convert via utf32
+template <typename TTo, typename TFrom>
+struct CConvertViaUtf32
+{
+	static CCoreString<TTo> Convert(const TFrom* p)
 	{
 		// Start by encoding to local buffer
-		char szBuf[1024];
-		char* out = szBuf;
+		TTo szBuf[1024];
+		TTo* out = szBuf;
 		while (*p && out < szBuf + sizeof(szBuf) - 5)
 		{
-			CEncoding::EncodeUtf8(out, *p++);
-		}
-
-		// All converted
-		if (*p == 0)
-		{
-			*out = '\0';
-			return szBuf;
-		}
-
-		// Need a string builder
-		CCoreStringBuilder<char> sb;
-		while (*p)
-		{
-			if (out >= szBuf + sizeof(szBuf) - 5)
-			{
-				*out = '\0';
-				sb.Append(szBuf);
-				out = szBuf;
-			}
-			CEncoding::EncodeUtf8(out, *p++);
-		}
-
-		// Final part
-		*out = '\0';
-		sb.Append(szBuf);
-
-		return sb.ToString();
-	}
-
-	template <>
-	CCoreString<char> Convert<char, char16_t>(const char16_t* p)
-	{
-		// Start by encoding to local buffer
-		char szBuf[1024];
-		char* out = szBuf;
-		while (*p && out < szBuf + sizeof(szBuf) - 5)
-		{
-			CEncoding::EncodeUtf8(out, CEncoding::DecodeUtf16(p));
+			CEncoding<TTo>::Encode(out, CEncoding<TFrom>::Decode(p));
 		}
 
 		// All converted
@@ -309,7 +242,7 @@ struct CEncoding
 		}
 
 		// Need a string builder
-		CCoreStringBuilder<char> sb;
+		CCoreStringBuilder<TTo> sb;
 		while (*p)
 		{
 			if (out >= szBuf + sizeof(szBuf) - 5)
@@ -318,7 +251,7 @@ struct CEncoding
 				sb.Append(szBuf);
 				out = szBuf;
 			}
-			CEncoding::EncodeUtf8(out, CEncoding::DecodeUtf16(p));
+			CEncoding<TTo>::Encode(out, CEncoding<TFrom>::Decode(p));
 		}
 
 		// Final part
@@ -327,242 +260,114 @@ struct CEncoding
 
 		return sb.ToString();
 	}
-
-
-/*
-template <typename T>
-struct PassthroughEncoding
-{
-	void Process(T in, IStringWriter<T>& out)
-	{
-		out.Write(in);
-	}
-};
-
-template<> struct Encoding<char, char> : PassthroughEncoding<char> {};
-template<> struct Encoding<char16_t, char16_t> : PassthroughEncoding<char16_t> {};
-template<> struct Encoding<char32_t, char32_t> : PassthroughEncoding<char32_t> {};
-template<> struct Encoding<wchar_t, wchar_t> : PassthroughEncoding<wchar_t> {};
-
-
-template<>
-struct Encoding<char, char32_t>
-{
-	Encoding()
-	{
-		_pending = 0;
-		_pendingCount = 0;
-	}
-
-	char32_t _pending;
-	int _pendingCount;
-
-	void Process(char in, IStringWriter<char32_t>& out)
-	{
-		if (_pendingCount == 0)
-		{
-			if ((in & 0x80) == 0)
-			{
-				// Single byte
-				out.Write(in);
-				return;
-			}
-
-			if ((in & 0xE0) == 0xC0)
-			{
-				// Double byte
-				_pending = in & 0x1f;
-				_pendingCount = 1;
-				return;
-			}
-
-			if ((in & 0xF0) == 0xE0)
-			{
-				// Triple byte
-				_pending = in & 0x0f;
-				_pendingCount = 2;
-				return;
-			}
-
-			if ((in & 0xF8) == 0xF0)
-			{
-				// Quad byte
-				_pending = in & 0x07;
-				_pendingCount = 3;
-				return;
-			}
-		}
-		else
-		{
-			_pending = (_pending << 6) | (in & 0x3f);
-			_pendingCount--;
-			if (_pendingCount == 0)
-			{
-				out.Write(_pending);
-			}
-		}
-	}
-};
-
-template<>
-struct Encoding<char32_t, char16_t>
-{
-	void Process(char32_t in, IStringWriter<char16_t>& out)
-	{
-		if (in >= 0x10000)
-		{
-			out.Write(0xD800 | (((in - 0x10000) >> 10) & 0x3FF));
-			out.Write(0xDC00 | ((in - 0x10000) & 0x3ff));
-		}
-		else
-		{
-			out.Write((char16_t)in);
-		}
-	}
-};
-
-template<>
-struct Encoding<char32_t, char>
-{
-	void Process(char32_t in, IStringWriter<char>& out)
-	{
-		if (in < 0x80)
-		{
-			out.Write(in & 0x7f);
-			return;
-		}
-		if (in < 0x800)
-		{
-			out.Write( 0xC0 | ((in >> 6) & 0x1f));
-			out.Write( 0x80 | (in & 0x3f));
-			return;
-		}
-		if (in < 0x10000)
-		{
-			out.Write( 0xE0 | ((in >> 12) & 0x0F));
-			out.Write( 0x80 | ((in >> 6) & 0x3F));
-			out.Write( 0x80 | (in & 0x3f));
-			return;
-		}
-
-		out.Write( 0xF0 | ((in >> 18) & 0x07));
-		out.Write( 0x80 | ((in >> 12) & 0x3F));
-		out.Write( 0x80 | ((in >> 6) & 0x3F));
-		out.Write( 0x80 | (in & 0x3f));
-	}
-};
-
-template<>
-struct Encoding<char, char16_t> : IStringWriter<char32_t>
-{
-	Encoding<char, char32_t> _to32;
-	Encoding<char32_t, char16_t> _to16;
-	IStringWriter<char16_t>* _out;
-
-	void Process(char in, IStringWriter<char16_t>& out)
-	{
-		_out = &out;
-		_to32.Process(in, *this);
-	}
-
-	virtual void Write(char32_t ch) override
-	{
-		_to16.Process(ch, *_out);
-	}
-};
-
-template<>
-struct Encoding<char16_t, char32_t>
-{
-	Encoding()
-	{
-		_pendingHighSurrogate = 0;
-	}
-
-	char16_t _pendingHighSurrogate;
-
-	void Process(char16_t in, IStringWriter<char32_t>& out)
-	{
-		if (in >= 0xD800 && in < 0xDC00)
-		{
-			// high surrogate
-			_pendingHighSurrogate = in;
-		}
-		else if (in >= 0xDC00 && in < 0xE000)
-		{
-			// low surrogate
-			out.Write(
-				0x10000 + 
-				(((((char32_t)_pendingHighSurrogate) & 0x3FF) << 10) | 
-				(((char32_t)in) & 0x3FF))
-				);
-			_pendingHighSurrogate = 0;
-		}
-		else
-		{
-			_pendingHighSurrogate = 0;
-			out.Write((char32_t)in);
-		}
-	}
-};
-
-template<>
-struct Encoding<char16_t, char> : IStringWriter<char32_t>
-{
-	Encoding<char16_t, char32_t> _to32;
-	Encoding<char32_t, char> _to8;
-	IStringWriter<char>* _out;
-
-	void Process(char16_t in, IStringWriter<char>& out)
-	{
-		_out = &out;
-		_to32.Process(in, *this);
-	}
-
-	virtual void Write(char32_t ch) override
-	{
-		_to8.Process(ch, *_out);
-	}
 };
 
 
-template<>
-struct Encoding<char, wchar_t>
-{
-	Encoding<char, char16_t> actual;
 
-	void Process(char in, IStringWriter<wchar_t>& out)
-	{
-		actual.Process(in, reinterpret_cast<IStringWriter<char16_t>&>(out));
-	}
-};
-
-template<>
-struct Encoding<wchar_t, char>
-{
-	Encoding<char16_t, char> actual;
-
-	void Process(wchar_t in, IStringWriter<char>& out)
-	{
-		actual.Process(in, out);
-	}
-};
-
+// Conversion directly to utf32
 template <typename TTo, typename TFrom>
-CCoreString<TTo> Encode(const TFrom* in)
+struct CConvertToUtf32
 {
-	if (!in)
-		return (TTo*)nullptr;
-		
-	CCoreStringBuilder<TTo> out;
-	Encoding<TFrom, TTo> enc;
-	while (*in)
+	// Convert anything to utf32
+	static CCoreString<TTo> Convert(const TFrom* p)
 	{
-		enc.Process(*in++, out);
+		CCoreStringBuilder<TTo> sb;
+		while (*p)
+		{
+			TTo ch = CEncoding<TFrom>::Decode(p);
+			if (ch == (TTo)-1)
+				ch = 0xFFFD;
+			sb.Write(ch);
+		}
+		return sb.ToString();
 	}
-	return out.ToString();
+};
+
+// Conversion directly from utf32
+template <typename TTo, typename TFrom>
+struct CConvertFromUtf32
+{
+	// Convert anything from utf32
+	static CCoreString<TTo> Convert(const TFrom* p)
+	{
+		// Start by encoding to local buffer
+		TTo szBuf[1024];
+		TTo* out = szBuf;
+		while (*p && out < szBuf + sizeof(szBuf) - 5)
+		{
+			CEncoding<TTo>::Encode(out, *p++);
+		}
+
+		// All converted
+		if (*p == 0)
+		{
+			*out = '\0';
+			return szBuf;
+		}
+
+		// Need a string builder
+		CCoreStringBuilder<TTo> sb;
+		while (*p)
+		{
+			if (out >= szBuf + sizeof(szBuf) - 5)
+			{
+				*out = '\0';
+				sb.Append(szBuf);
+				out = szBuf;
+			}
+			CEncoding<TTo>::Encode(out, *p++);
+		}
+
+		// Final part
+		*out = '\0';
+		sb.Append(szBuf);
+
+		return sb.ToString();
+	}
+};
+
+// Passthrough conversion
+template <typename TTo, typename TFrom>
+struct CConvertPassthrough
+{
+	// Convert anything from utf32
+	static CCoreString<TTo> Convert(const TFrom* p)
+	{
+		return (TTo*)p;
+	}
+};
+
+
+// Default conversion goes via utf32
+template <typename TTo, typename TFrom, int sizeTo, int sizeFrom>
+struct CConvertSelector : public CConvertViaUtf32<TTo, TFrom> {};
+
+// Direct when converting from utf32
+template <typename TTo, typename TFrom, int sizeTo>
+struct CConvertSelector<TTo, TFrom, sizeTo, 4> : public CConvertFromUtf32<TTo, TFrom> {};
+
+// Direct when converting to utf32
+template <typename TTo, typename TFrom, int sizeFrom>
+struct CConvertSelector<TTo, TFrom, 4, sizeFrom> : public CConvertToUtf32<TTo, TFrom> {};
+
+// Passthrough conversions
+template <typename TTo, typename TFrom>
+struct CConvertSelector<TTo, TFrom, 1, 1> : public CConvertPassthrough<TTo, TFrom> {};
+template <typename TTo, typename TFrom>
+struct CConvertSelector<TTo, TFrom, 2, 2> : public CConvertPassthrough<TTo, TFrom> {};
+template <typename TTo, typename TFrom>
+struct CConvertSelector<TTo, TFrom, 4, 4> : public CConvertPassthrough<TTo, TFrom> {};
+
+// Convert anything to anything class
+template <typename TTo, typename TFrom>
+struct CConvert : public CConvertSelector<TTo, TFrom, sizeof(TTo), sizeof(TFrom)> {};
+
+// Function to convert anything to anything
+template <typename TTo, typename TFrom>
+CCoreString<TTo> Convert(const TFrom* p)
+{
+	return CConvert<TTo, TFrom>::Convert(p);
 }
-*/
 
 } // namespace
 

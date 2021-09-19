@@ -671,6 +671,18 @@ void TestEncoding()
 	printf("Testing Encoding...");
 	g_bFailed=false;
 
+	// via
+	assert((Convert<char>(u"Hello World").IsEqualTo(u8"Hello World")));
+
+	// passthrough
+	assert((Convert<char16_t>(u"Hello World").IsEqualTo(u"Hello World")));
+
+	// direct to 32
+	assert((Convert<char32_t>("Hello World").IsEqualTo(U"Hello World")));
+
+	// direct from 32
+	assert((Convert<char>(U"Hello World").IsEqualTo("Hello World")));
+
 	// Test utf8 -> utf32
 	assert((Convert<char32_t>("\x24").IsEqualTo(U"\x24")));
 	assert((Convert<char32_t>("\xC2\xA2").IsEqualTo(U"\xA2")));
@@ -693,12 +705,10 @@ void TestEncoding()
 	assert((Convert<char>(u"\U00010348").IsEqualTo("\xF0\x90\x8D\x88")));
 
 	// Test utf16 -> utf32
-	/*
 	assert((Convert<char32_t>(u"\x24").IsEqualTo(U"\x24")));
 	assert((Convert<char32_t>(u"\u20AC").IsEqualTo(U"\u20AC")));
 	assert((Convert<char32_t>(u"\U00010437").IsEqualTo(U"\U00010437")));
 	assert((Convert<char32_t>(u"\U00024B62").IsEqualTo(U"\U00024B62")));
-	*/
 
 	// Test utf32 -> utf8
 	assert((Convert<char>(U"\x24").IsEqualTo("\x24")));
@@ -708,13 +718,10 @@ void TestEncoding()
 	assert((Convert<char>(U"\U00010348").IsEqualTo("\xF0\x90\x8D\x88")));
 
 	// Test utf32 -> utf16
-	/*
 	assert((Convert<char16_t>(U"\x24").IsEqualTo(u"\x24")));
 	assert((Convert<char16_t>(U"\u20AC").IsEqualTo(u"\u20AC")));
 	assert((Convert<char16_t>(U"\U00010437").IsEqualTo(u"\U00010437")));
 	assert((Convert<char16_t>(U"\U00024B62").IsEqualTo(u"\U00024B62")));
-	*/
-
 
 	if (!g_bFailed)
 		printf("OK\n");
@@ -978,9 +985,6 @@ void TestDirectory()
 int main(int argc, char* argv[])
 {
 	printf("SimpleLib Unit Test Cases\n");
-
-	printf("%x", toupper(0x01E5));
-	return 0;
 
 	TestStrings();
 	TestVector();
