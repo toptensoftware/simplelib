@@ -104,7 +104,7 @@ private:
 		}
 		int Init(const char* directory, const char* prefix)
 		{
-			_hFind = FindFirstFileW(Encode<wchar_t>(CPath::Join(directory, "*").sz()), &_fd);
+			_hFind = FindFirstFileW(Convert<wchar_t>(CPath::Join(directory, "*").sz()), &_fd);
 			_initial = true;
 			_directory = directory;
 			_prefix = prefix;
@@ -138,7 +138,7 @@ private:
 			else
 				_currentItemFlags = IterateFlags::Files;
 
-			_fileName = Encode<char>(_fd.cFileName);
+			_fileName = Convert<char>(_fd.cFileName);
 			_currentName = CPath::Join(_prefix, _fileName);
 			return true;
 		}
@@ -243,7 +243,7 @@ public:
 
 		// Create this directory
 #ifdef _MSC_VER
-		return _wmkdir(Encode<wchar_t>(name));
+		return _wmkdir(Convert<wchar_t>(name));
 #else
 		return mkdir(name, 0644);
 #endif
@@ -253,7 +253,7 @@ public:
 	static int Delete(const char* name)
 	{
 #ifdef _MSC_VER
-		return _wrmdir(Encode<wchar_t>(name));
+		return _wrmdir(Convert<wchar_t>(name));
 #else
 		return rmdir(name);
 #endif

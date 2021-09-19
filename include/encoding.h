@@ -7,11 +7,329 @@
 namespace SimpleLib
 {
 
-template <typename TFrom, typename TTo>
-struct Encoding
+struct CEncoding
 {
+	static char32_t RecoverUtf8(const char*& p)
+	{
+		// Skip the problematic character
+		p++;
+
+		// Find the next lead byte
+		while (true)
+		{
+			char ch = *p;
+			if ((ch & 0x80) == 0 || (ch & 0xE0) == 0xC0 || (ch & 0xF0) == 0xE0 || (ch & 0xF8) == 0xF0)
+				return -1;
+			p++;
+		}
+	}
+
+	// Read a utf32 character from a utf8 string
+	static char32_t DecodeUtf8(const char*& p)
+	{
+		char32_t ch = *p;
+
+		if ((ch & 0x80) == 0)
+		{
+			// 1-byte character
+			p++;
+			return ch;
+		}
+
+		if ((ch & 0xE0) == 0xC0)
+		{
+			// 2-byte character
+			char32_t ch2 = p[1];
+
+			// Check valid
+			if ((ch2 & 0xc0) != 0x80 || (ch2 & 0x1f) == 0)
+				return RecoverUtf8(p);
+
+			// Done
+			p+=2;
+			return ((ch & 0x1f) << 6) | (ch2 & 0x3f);
+		}
+
+		if ((ch & 0xF0) == 0xE0)
+		{
+			// 3-byte character
+
+			char32_t ch2 = p[1];
+			if ((ch2 & 0xc0) != 0x80 || (ch2 & 0x0f) == 0)
+				return RecoverUtf8(p);
+
+			char32_t ch3 = p[2];
+			if ((ch3 & 0xc0) != 0x80)
+				return RecoverUtf8(p);
+
+			ch = ((ch & 0x0f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3F);
+
+			if ((ch & 0xD800) == 0xD800)
+				return RecoverUtf8(p);
+
+			p+=3;
+			return ch;
+		}
+
+		if ((ch & 0xF8) == 0xF0)
+		{
+			// 4-byte character
+
+			char32_t ch2 = p[1];
+			if ((ch2 & 0xc0) != 0x80 && (ch & 0x07) == 0)
+				return RecoverUtf8(p);
+
+			char32_t ch3 = p[2];
+			if ((ch3 & 0xc0) != 0x80)
+				return RecoverUtf8(p);
+
+			char32_t ch4 = p[3];
+			if ((ch3 & 0xc0) != 0x80)
+				return RecoverUtf8(p);
+
+			ch = ((ch & 0x07) << 18) | ((ch2 & 0x3f) << 12) | 
+					((ch3 & 0x3F) << 6) | (ch4 & 0x3f);
+
+			if (ch >= 0x110000)
+				return RecoverUtf8(p);
+
+			p+=4;
+			return ch;
+		}
+
+		return RecoverUtf8(p);
+	}
+
+	// Write a utf32 character to a utf8 stream
+	static bool EncodeUtf8(char*& p, char32_t ch)
+	{
+		if (ch < 0x80)
+		{
+			*p++ = ch & 0x7f;
+			return true;
+		}
+		if (ch < 0x800)
+		{
+			*p++ = 0xC0 | ((ch >> 6) & 0x1f);
+			*p++ = 0x80 | (ch & 0x3f);
+			return true;
+		}
+
+		// Can't encode utf16 surrogate pairs
+		if (ch & 0xD800 == 0xD800)
+			return false;
+
+		if (ch < 0x10000)
+		{
+			*p++ = 0xE0 | ((ch >> 12) & 0x0F);
+			*p++ = 0x80 | ((ch >> 6) & 0x3F);
+			*p++ = 0x80 | (ch & 0x3f);
+			return true;
+		}
+
+		if (ch < 0x110000)
+		{
+			*p++ = 0xF0 | ((ch >> 18) & 0x07);
+			*p++ = 0x80 | ((ch >> 12) & 0x3F);
+			*p++ = 0x80 | ((ch >> 6) & 0x3F);
+			*p++ = 0x80 | (ch & 0x3f);
+			return true;
+		}
+
+		return false;
+	}
+
+	// Read a utf32 character from a utf16 stream
+	static char32_t DecodeUtf16(const char16_t*& p)
+	{
+		// Fast path for non-surrogate pairs
+		if ((p[0] & 0xD800) != 0xD800)
+		{
+			return *p++;
+		}
+
+		// High surrogate
+		if ((p[0] & 0xDC00) == 0xD800)
+		{
+			// Low surrogate
+			if ((p[1] & 0xDC00) == 0xDC00)
+			{
+				// Pack
+				char32_t ch = 0x10000 + (char32_t((p[0] & 0x3FF) << 10) | char32_t(p[1] & 0x3FF));
+				p += 2;
+
+				if ((ch & 0xD800) == 0xD800)
+				{
+					// Surrogate character encoded as surrogates
+					return -1;
+				}
+				else
+					return ch;
+			}
+			else
+			{
+				// High surrogate without low
+				p++;
+				return -1;
+			}
+		}
+
+		// Low surrogate without high
+		p++;
+		return -1;
+	}
+
+	// Write a utf32 character to a utf16 stream
+	static bool EncodeUtf16(char16_t*& p, char32_t ch)
+	{
+		if (ch < 0x10000)
+		{
+			if ((ch & 0xD800) == 0xD800)
+				return false;
+
+			*p++ = (char16_t)ch;
+			return true;
+		}
+
+		if (ch < 0x110000)
+		{
+			ch -= 0x10000;
+			*p++ = 0xD800 | ((ch >> 10) & 0x3FF);
+			*p++ = 0xDC00 | (ch & 0x3ff);
+			return true;
+		}
+
+		return false;
+	}
+
 };
 
+
+
+
+	template <typename TTo, typename TFrom>
+	static CCoreString<TTo> Convert(const TFrom* p)
+	{
+		return (TTo*)nullptr;
+	}
+
+	template <>
+	static CCoreString<char32_t> Convert<char32_t, char>(const char* p)
+	{
+		CCoreStringBuilder<char32_t> sb;
+		while (*p)
+		{
+			char32_t ch = CEncoding::DecodeUtf8(p);
+			if (ch == -1)
+				ch = 0xFFFD;
+			sb.Write(ch);
+		}
+		return sb.ToString();
+	}
+
+	template <>
+	static CCoreString<char16_t> Convert<char16_t, char>(const char* p)
+	{
+		CCoreStringBuilder<char16_t> sb;
+		char16_t ch16[2];
+		while (*p)
+		{
+			// 8 -> 32
+			char32_t ch = CEncoding::DecodeUtf8(p);
+			if (ch == -1)
+				ch = 0xFFFD;
+			
+			// 32 -> 16
+			char16_t* p = ch16;
+			CEncoding::EncodeUtf16(p, ch);
+			
+			// Write
+			sb.Write(ch16[0]);
+			if (p == &ch16[2])
+				sb.Write(ch16[1]);
+		}
+
+		return sb.ToString();
+	}
+
+	template <>
+	static CCoreString<char> Convert<char, char32_t>(const char32_t* p)
+	{
+		// Start by encoding to local buffer
+		char szBuf[1024];
+		char* out = szBuf;
+		while (*p && out < szBuf + sizeof(szBuf) - 5)
+		{
+			CEncoding::EncodeUtf8(out, *p++);
+		}
+
+		// All converted
+		if (*p == 0)
+		{
+			*out = '\0';
+			return szBuf;
+		}
+
+		// Need a string builder
+		CCoreStringBuilder<char> sb;
+		while (*p)
+		{
+			if (out >= szBuf + sizeof(szBuf) - 5)
+			{
+				*out = '\0';
+				sb.Append(szBuf);
+				out = szBuf;
+			}
+			CEncoding::EncodeUtf8(out, *p++);
+		}
+
+		// Final part
+		*out = '\0';
+		sb.Append(szBuf);
+
+		return sb.ToString();
+	}
+
+	template <>
+	static CCoreString<char> Convert<char, char16_t>(const char16_t* p)
+	{
+		// Start by encoding to local buffer
+		char szBuf[1024];
+		char* out = szBuf;
+		while (*p && out < szBuf + sizeof(szBuf) - 5)
+		{
+			CEncoding::EncodeUtf8(out, CEncoding::DecodeUtf16(p));
+		}
+
+		// All converted
+		if (*p == 0)
+		{
+			*out++ = '\0';
+			return szBuf;
+		}
+
+		// Need a string builder
+		CCoreStringBuilder<char> sb;
+		while (*p)
+		{
+			if (out >= szBuf + sizeof(szBuf) - 5)
+			{
+				*out = '\0';
+				sb.Append(szBuf);
+				out = szBuf;
+			}
+			CEncoding::EncodeUtf8(out, CEncoding::DecodeUtf16(p));
+		}
+
+		// Final part
+		*out = '\0';
+		sb.Append(szBuf);
+
+		return sb.ToString();
+	}
+
+
+/*
 template <typename T>
 struct PassthroughEncoding
 {
@@ -244,7 +562,7 @@ CCoreString<TTo> Encode(const TFrom* in)
 	}
 	return out.ToString();
 }
-
+*/
 
 } // namespace
 

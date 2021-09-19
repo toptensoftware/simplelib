@@ -198,7 +198,7 @@ namespace SimpleLib
         {
 #ifdef _MSC_VER
             char16_t* psz = (char16_t*)_wgetcwd(nullptr, 0);
-            CString cwd= Encode<char>(psz);
+            CString cwd= Convert<char>(psz);
             free(psz);
             return cwd;
 #else
@@ -220,7 +220,7 @@ namespace SimpleLib
                 wchar_t base[512];
                 wchar_t drive[3] = { (wchar_t)path[0], ':', '\0' };
                 GetFullPathNameW(drive, 512, base, NULL);
-                return Combine(Encode<char>((char16_t*)base), path + 2);
+                return Combine(Convert<char>((char16_t*)base), path + 2);
             }
 #endif
 

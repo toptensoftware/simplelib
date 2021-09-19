@@ -133,7 +133,7 @@ public:
 	static FILE* fopen(const char* filename, const char* mode)
 	{
 #ifdef _WIN32
-		return _wfopen(Encode<wchar_t>(filename).sz(), Encode<wchar_t>(mode).sz());
+		return _wfopen(Convert<wchar_t>(filename).sz(), Convert<wchar_t>(mode).sz());
 #else
 		return ::fopen(filename, mode);
 #endif
