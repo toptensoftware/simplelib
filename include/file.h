@@ -86,9 +86,9 @@ public:
 	static int Delete(const char* filename)
 	{
 #ifdef _MSC_VER
-		return _wunlink(Encode<wchar_t>(filename));
+		return _wunlink(Convert<wchar_t>(filename));
 #else
-		return unlink(Encode<char>(filename));
+		return unlink(filenam));
 #endif
 	}
 
@@ -97,7 +97,7 @@ public:
 	{
 #ifdef _MSC_VER
 		struct __stat64 s;
-		int err = _wstat64(Encode<wchar_t>(filename), &s);
+		int err = _wstat64(Convert<wchar_t>(filename), &s);
 		if (!err)
 		{
 			info.IsDirectory = (s.st_mode & _S_IFDIR) != 0;
@@ -109,7 +109,7 @@ public:
 		}
 #else
 		struct stat64 s;
-		int err = stat64(Encode<char>(filename), &s);
+		int err = stat64(filename, &s);
 		if (!err)
 		{
 			info.IsDirectory = (s.st_mode & S_IFDIR) != 0;
@@ -134,7 +134,7 @@ public:
 	static int Copy(const char* source, const char* dest, bool overwrite)
 	{
 #ifdef _MSC_VER
-		if (CopyFile(Encode<wchar_t>(source), Encode<wchar_t>(dest), !overwrite))
+		if (CopyFile(Convert<wchar_t>(source), Convert<wchar_t>(dest), !overwrite))
 			return 0;
 		if (GetLastError() == ERROR_FILE_EXISTS)
 			return EEXIST;
@@ -199,7 +199,7 @@ public:
 	static int Move(const char* source, const char* dest)
 	{
 #ifdef _MSC_VER
-	return _wrename(Encode<wchar_t>(source), Encode<wchar_t>(dest));
+	return _wrename(Convert<wchar_t>(source), Convert<wchar_t>(dest));
 #else
 	return rename(source, dest);
 #endif
