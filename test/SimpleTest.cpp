@@ -979,7 +979,7 @@ int main(int argc, char* argv[])
 {
 	printf("SimpleLib Unit Test Cases\n");
 
-	printf("%x", towupper(0x01E5));
+	printf("%x", toupper(0x01E5));
 	return 0;
 
 	TestStrings();

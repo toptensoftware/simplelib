@@ -88,7 +88,7 @@ public:
 #ifdef _MSC_VER
 		return _wunlink(Convert<wchar_t>(filename));
 #else
-		return unlink(filenam));
+		return unlink(filename);
 #endif
 	}
 

@@ -116,7 +116,7 @@ struct CEncoding
 		}
 
 		// Can't encode utf16 surrogate pairs
-		if (ch & 0xD800 == 0xD800)
+		if ((ch & 0xD800) == 0xD800)
 			return false;
 
 		if (ch < 0x10000)
@@ -208,19 +208,19 @@ struct CEncoding
 
 
 	template <typename TTo, typename TFrom>
-	static CCoreString<TTo> Convert(const TFrom* p)
+	CCoreString<TTo> Convert(const TFrom* p)
 	{
 		return (TTo*)nullptr;
 	}
 
 	template <>
-	static CCoreString<char32_t> Convert<char32_t, char>(const char* p)
+	CCoreString<char32_t> Convert<char32_t, char>(const char* p)
 	{
 		CCoreStringBuilder<char32_t> sb;
 		while (*p)
 		{
 			char32_t ch = CEncoding::DecodeUtf8(p);
-			if (ch == -1)
+			if (ch == (char32_t)-1)
 				ch = 0xFFFD;
 			sb.Write(ch);
 		}
@@ -228,7 +228,7 @@ struct CEncoding
 	}
 
 	template <>
-	static CCoreString<char16_t> Convert<char16_t, char>(const char* p)
+	CCoreString<char16_t> Convert<char16_t, char>(const char* p)
 	{
 		CCoreStringBuilder<char16_t> sb;
 		char16_t ch16[2];
@@ -236,7 +236,7 @@ struct CEncoding
 		{
 			// 8 -> 32
 			char32_t ch = CEncoding::DecodeUtf8(p);
-			if (ch == -1)
+			if (ch == (char32_t)-1)
 				ch = 0xFFFD;
 			
 			// 32 -> 16
@@ -253,7 +253,7 @@ struct CEncoding
 	}
 
 	template <>
-	static CCoreString<char> Convert<char, char32_t>(const char32_t* p)
+	CCoreString<char> Convert<char, char32_t>(const char32_t* p)
 	{
 		// Start by encoding to local buffer
 		char szBuf[1024];
@@ -291,7 +291,7 @@ struct CEncoding
 	}
 
 	template <>
-	static CCoreString<char> Convert<char, char16_t>(const char16_t* p)
+	CCoreString<char> Convert<char, char16_t>(const char16_t* p)
 	{
 		// Start by encoding to local buffer
 		char szBuf[1024];
