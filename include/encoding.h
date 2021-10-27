@@ -138,6 +138,23 @@ struct CEncodingUtf8
 
 		return false;
 	}
+
+	static const char* Rewind(const char* p)
+	{
+		while (true)
+		{
+			p--;
+			char ch = p[0];
+			if ((ch & 0x80) == 0)
+				return p;
+			if ((ch & 0xE0) == 0xC0)
+				return p;
+			if ((ch & 0xF0) == 0xE0)
+				return p;
+			if ((ch & 0xF8) == 0xF0)
+				return p;
+		}		
+	}
 };
 
 template <typename TChar16>
@@ -205,6 +222,18 @@ struct CEncodingUtf16
 
 		return false;
 	}
+
+	static const TChar16* Rewind(const TChar16* p)
+	{
+		while (true)
+		{
+			p--;
+
+			// Low surrogate?
+			if ((p[0] & 0xDC00) != 0xDC00)
+				return p;
+		}		
+	}
 };
 
 template <typename T, int size>
@@ -217,7 +246,98 @@ template <typename T>
 struct CEncodingSelector<T, 2> : public CEncodingUtf16<T> {};
 
 template <typename T>
-struct CEncoding : public CEncodingSelector<T, sizeof(T)> {};
+struct CEncoding : public CEncodingSelector<T, sizeof(T)> 
+{
+	// Return an empty string of type T*
+	static const T* Empty() 
+	{ 
+		static T z = 0;
+		return &z; 
+	}
+
+	// Check if string is empty
+	static bool IsEmpty(const T* a)
+	{
+		return a == nullptr || *a == 0;
+	}
+
+	// Get the length of a string in T units
+	static int Length(const T* a)
+	{
+		const T* p = a;
+		while (*p) p++;
+		return (int)(p - a);
+	}
+
+	// Get the number of code points in a string
+	static int Count(const T* a)
+	{
+		int count = 0;
+		while (*a)
+		{
+			Decode(a);
+			count++;
+		}
+		return count;
+	}
+
+	// Compare two strings (case sensitive)
+	static int Compare(const T* a, const T* b)
+	{
+		COMPARE_NULL_PTRS;
+		while (*a && *b && *a == *b)
+		{
+			a++;
+			b++;
+		}
+		return *a - *b;
+	}
+
+	// Compare two strings up to N characters (case sensitive)
+	static int Compare(int charCount, const T* a, const T* b)
+	{
+		COMPARE_NULL_PTRS;
+		while (charCount)
+		{
+			char32_t cha = Decode(a);
+			char32_t chb = Decode(b);
+			if (cha != cbb)
+				return cha - chb;
+			charCount--;
+		}
+		return 0;
+	}
+
+	// Compare two strings (case insensitive)
+	static int CompareI(const T* a, const T* b)
+	{
+		COMPARE_NULL_PTRS;
+		while (*a || *b)
+		{
+			char32_t cha = SCaseConversion::ToUpper(Decode(a));
+			char32_t chb = SCaseConversion::ToLower(Decode(b));
+			if (cha != cbb)
+				return cha - chb;
+		}
+		return 0;
+	}
+
+	// Compare two strings up to N characters (case insensitive)
+	static int CompareI(int charCount, const T* a, const T* b)
+	{
+		COMPARE_NULL_PTRS;
+		while (charCount)
+		{
+			char32_t cha = SCaseConversion::ToUpper(Decode(a));
+			char32_t chb = SCaseConversion::ToLower(Decode(b));
+			if (cha != cbb)
+				return cha - chb;
+			charCount--;
+		}
+		return 0;
+	}
+};
+
 
 
 // Convert via utf32
@@ -368,6 +488,7 @@ CCoreString<TTo> Convert(const TFrom* p)
 {
 	return CConvert<TTo, TFrom>::Convert(p);
 }
+
 
 } // namespace
 

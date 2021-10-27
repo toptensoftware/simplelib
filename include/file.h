@@ -78,7 +78,7 @@ public:
 		if (err)
 			return err;
 
-		int length = SChar<char>::Length(text);
+		int length = CEncoding<char>::Length(text);
 		return file.Write(text, length);
 	}
 

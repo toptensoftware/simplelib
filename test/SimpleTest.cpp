@@ -2,15 +2,19 @@
 
 
 #define SIMPLELIB_POSIX_PATHS
-#include "../SimpleLib.h"
 
+#include "../SimpleLib.h"
 using namespace SimpleLib;
+
+#include <stdio.h>
 
 bool g_bAnyFailed=false;
 bool g_bFailed=false;
 
+/*
 typedef CCoreString<char> CAnsiString;
 typedef CCoreString<wchar_t> CUniString;
+*/
 
 void Failed(int iLine, const char* psz)
 {
@@ -76,7 +80,86 @@ namespace SimpleLib
 }
 */
 
+void TestCaseConversion()
+{
+	g_bFailed=false;
+	printf("Testing SCaseConversion...");
 
+	assert(SCaseConversion::ToUpper('i') == 'I');
+	assert(SCaseConversion::ToLower('I') == 'i');
+	assert(SCaseConversion::ToUpper(0x1e5) == 0x1e4);
+	assert(SCaseConversion::ToLower(0x1e4) == 0x1e5);
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+void TestCodePointIterator()
+{
+	g_bFailed=false;
+	printf("Testing CCodePointIterator...");
+
+	CCodePointIterator<char> iter(u8"H\u01e5llo World", -1);
+	assert(iter.Advance(11));
+	assert(iter.Rewind(11));
+	assert(iter.GetCodePointCount() == 11);
+	assert(iter.GetCodePointAt(0) == 'H');
+	assert(iter.GetCodePointAt(1) == 0x1e5);
+	assert(iter.GetCodePointAt(2) == 'l');
+	assert(iter.GetCodePointAt(10) == 'd');
+	assert(iter.GetCodePointAt(11) == '\0');
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+void TestStringOps()
+{
+	g_bFailed=false;
+	printf("Testing SStringOps...");
+
+	assert(SStringOps::StartsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("Hello")
+			));
+	assert(SStringOps::EndsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("World")
+			));
+	assert(SStringOps::StartsWith<SCaseI>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("HELLO")
+			));
+	assert(SStringOps::EndsWith<SCaseI>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("WORLD")
+			));
+
+	assert(SStringOps::StartsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("Hello World")
+			));
+
+	assert(SStringOps::EndsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("Hello World")
+			));
+
+	assert(!SStringOps::StartsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("Hello World TooLong")
+			));
+
+	assert(!SStringOps::EndsWith<SCase>(
+			CCodePointIterator<char>("Hello World"), 
+			CCodePointIterator<char>("Hello World TooLong")
+			));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+#ifdef NOPE
 void TestStrings()
 {
 	g_bFailed=false;
@@ -122,8 +205,8 @@ void TestStrings()
 	assert(strW.ToLower().IsEqualTo(L"hello world"));
 	assert(strW.IsEqualTo(L"Hello World"));
 
-	assert(SCaseI::Compare("Hello World", "hello world")==0);
-	assert(SCaseI::Compare(L"Hello World", L"hello world")==0);
+	assert(SCaseI::TCompare::Compare("Hello World", "hello world")==0);
+	assert(SCaseI::TCompare::Compare(L"Hello World", L"hello world")==0);
 
 	assert(strA.StartsWith("Hello"));
 	assert(strA.EndsWith("World"));
@@ -160,6 +243,7 @@ void TestStrings()
 	if (!g_bFailed)
 		printf("OK\n");
 }
+
 
 void TestVector()
 {
@@ -974,18 +1058,25 @@ void TestDirectory()
 	CDirectory::Iterate("..", "*.h", IterateFlags::All, iter);
 	while (iter.Next())
 	{
-		printf("%s\n", iter.Name);
+		//printf("%s\n", iter.Name);
 	}
 
 	if (!g_bFailed)
 		printf("OK\n");
 }
 
+#endif
+
 // Main entry point
 int main(int argc, char* argv[])
 {
 	printf("SimpleLib Unit Test Cases\n");
 
+	TestCaseConversion();
+	TestCodePointIterator();
+	TestStringOps();
+
+/*
 	TestStrings();
 	TestVector();
 	TestMap();
@@ -997,6 +1088,7 @@ int main(int argc, char* argv[])
 	TestMemoryStream();
 	TestFile();
 	TestDirectory();
+	*/
 
 	if (g_bAnyFailed)
 	{

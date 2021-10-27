@@ -167,7 +167,7 @@ namespace SimpleLib
 			return CCoreString<T>(pNew);
 		}
 
-		CCoreString<T> ToLower()
+		CCoreString<T> ToLowerX()
 		{
 			if (m_pData == nullptr)
 				return CCoreString<T>();

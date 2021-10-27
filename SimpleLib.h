@@ -1,6 +1,12 @@
 #ifndef __SIMPLELIB_H
 #define __SIMPLELIB_H
 
+#include "include/caseconversion.h"
+#include "include/codepointiterator.h"
+#include "include/stringops.h"
+
+
+/*
 #include "include/directory.h"
 #include "include/dyntype.h"
 #include "include/encoding.h"
@@ -18,5 +24,6 @@
 #include "include/stringpool.h"
 #include "include/unittesting.h"
 #include "include/vector.h"
+*/
 
 #endif // __SIMPLELIB_H

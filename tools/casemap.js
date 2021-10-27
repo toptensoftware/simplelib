@@ -722,14 +722,16 @@ function dump_ranges(ranges)
 {
     for (let i=0; i<ranges.length; i++)
     {
-        console.log("0x" + ranges[i].start.toString(16).padStart(4, 0) + ", " + ranges[i].length + ", " + ranges[i].offset + ", ")
+        process.stdout.write("0x" + ranges[i].start.toString(16).padStart(4, 0) + "," + ranges[i].length + "," + ranges[i].offset + ",\t");
+        if ((i+1) % 8 == 0)
+            process.stdout.write("\n");
     }
 }
 
 var ranges_u2l = create_ranges(create_reverse_map(), 'u', 'l');
 var ranges_l2u = create_ranges(map_l2u, 'l', 'u');
 
-dump_ranges(ranges_u2l);
+dump_ranges(ranges_l2u);
 //console.log(ranges_l2u);
 
 console.log("Map:", map_l2u.length);

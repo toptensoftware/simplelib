@@ -299,6 +299,20 @@ namespace SimpleLib
 			return m_pData;
 		}
 
+		// Detach buffer from this vector
+		T* Detach(int* piCount = nullptr)
+		{
+			T* p = m_pData;
+			if (piCount != nullptr)
+				*piCount = m_iSize;
+
+			m_pData = nullptr;
+			m_iSize = 0;
+			m_iMemSize = 0;
+
+			return p;
+		}
+
 		// GetCount
 		int GetCount() const
 		{

@@ -151,6 +151,9 @@ namespace SimpleLib
 		typedef const T& TArgType;
 	};
 
+
+
+/*
 	// Character semantics
 	template <typename T>
 	struct SChar
@@ -483,6 +486,7 @@ namespace SimpleLib
 			return Compare(a, b) == 0;
 		}
 	};
+*/
 
 	template <typename T>
 	struct IStringWriter
