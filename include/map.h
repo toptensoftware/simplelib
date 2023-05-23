@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
+#include "placed_constructor.h"
+#include "compare.h"
 #include "plex.h"
 
 /*
@@ -47,17 +48,10 @@ eg:
 
 namespace SimpleLib
 {
-    template <typename TKey, typename TValue, 
-            typename TKeySem=typename SDefaultSemantics<TKey>::TSemantics, 
-            typename TValueSem=typename SDefaultSemantics<TValue>::TSemantics>
+    template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
     class CMap
     {
     public: 
-		typedef typename SArgType<TKey>::TArgType TKeyArg;
-		typedef typename TKeySem::TCompare TKeyCompare;
-        typedef CMap<TKey, TValue, TKeySem, TValueSem> _CMap;
-
-
         // Constructor
         CMap() :
             m_pRoot(&m_Leaf),
@@ -235,10 +229,8 @@ namespace SimpleLib
 
                     // Found a duplicate, replace it. We replace the key too, since
                     // equivalence is not always exact (e.g. case insensitive strings)
-                    TKeySem::TStorage::OnRemove(pNode->m_KeyPair.m_Key, this);
-                    TValueSem::TStorage::OnRemove(pNode->m_KeyPair.m_Value, this);
-                    pNode->m_KeyPair.m_Value = TValueSem::TStorage::OnAdd(Value, this);
-                    pNode->m_KeyPair.m_Key = TKeySem::TStorage::OnAdd(Key, this);
+                    pNode->m_KeyPair.m_Value = Value;
+                    pNode->m_KeyPair.m_Key = Key;
                     #ifdef _DEBUG_CHECKS
                     CheckAll();
                     #endif
@@ -251,8 +243,8 @@ namespace SimpleLib
             pNew->m_pLeft = &m_Leaf;
             pNew->m_pRight = &m_Leaf;
             pNew->m_bRed = true;
-            pNew->m_KeyPair.m_Value = TValueSem::TStorage::OnAdd(Value, this);
-            pNew->m_KeyPair.m_Key = TKeySem::TStorage::OnAdd(Key, this);
+            pNew->m_KeyPair.m_Value = Value;
+            pNew->m_KeyPair.m_Key = Key;
 
             if (pParent)
             {
@@ -372,282 +364,7 @@ namespace SimpleLib
         }
 
         // Remove an item from the map
-        void Remove(const TKeyArg& Key)
-        {
-            RemoveOrDetach(Key, nullptr);
-        }
-
-        // Remove all items from the map
-        void RemoveAll()
-        {
-            FreeNode(m_pRoot);
-            m_pRoot = &m_Leaf;
-            m_pFirst = nullptr;
-            m_pLast = nullptr;
-            m_iSize = 0;
-            m_iIterPos = -1;
-            m_pIterNode = nullptr;
-
-    #ifdef _DEBUG_CHECKS
-            CheckAll();
-    #endif
-        }
-
-        // Detach an item from the map and return it
-        TValue Detach(const TKeyArg& Key)
-        {
-            TValue val;
-            RemoveOrDetach(Key, &val);
-            return val;
-        }
-
-        // Get an item from the map, return default if doesn't exist
-        const TValue& Get(const TKeyArg& Key) const
-        {
-            CNode* pNode = FindNode(Key);
-            assert(pNode != nullptr);
-            return pNode->m_KeyPair.m_Value;
-        }
-
-        // Get an item from the map, return default if doesn't exist
-        const TValue& Get(const TKeyArg& Key, const TValue& Default) const
-        {
-            CNode* pNode = FindNode(Key);
-            if (!pNode)
-                return Default;
-            return pNode->m_KeyPair.m_Value;
-        }
-
-		// Shortcut to above
-		const TValue& operator[](TKeyArg key) const
-		{
-			return GetValue(key);
-		}
-
-        // Find an item in the map and return true/false if found or not
-        bool TryGetValue(const TKeyArg& Key, TValue& Value) const
-        {
-            CNode* pNode = FindNode(Key);
-            if (!pNode)
-                return false;
-            Value = pNode->m_KeyPair.m_Value;
-            return true;
-        }
-
-        // Check if the map contains a key
-        bool ContainsKey(const TKeyArg& Key) const
-        {
-            return FindNode(Key) != nullptr;
-        }
-
-    #ifdef _DEBUG
-        void CheckAll()
-        {
-            CheckTree();
-            CheckChain();
-        }
-    #endif
-
-        // Implementation
-    protected:
-
-        // CKeyPairInternal
-        struct CKeyPairInternal
-        {
-            TKey	m_Key;
-            TValue	m_Value;
-        };
-
-        // CNode
-        struct CNode
-        {
-            CKeyPairInternal	m_KeyPair;
-            CNode* m_pParent;
-            CNode* m_pLeft;
-            CNode* m_pRight;
-            CNode* m_pPrev;
-            CNode* m_pNext;
-            bool	m_bRed;
-        };
-
-        // Operations
-    #ifdef _DEBUG
-        void CheckChain()
-        {
-            if (m_pFirst)
-            {
-                assert(m_pFirst->m_pPrev == nullptr);
-                assert(m_pLast != nullptr);
-                assert(m_pLast->m_pNext == nullptr);
-
-                int i = 0;
-                CNode* pNode = m_pFirst;
-                while (pNode)
-                {
-                    if (pNode->m_pPrev)
-                    {
-                        assert(pNode->m_pPrev->m_pNext == pNode);
-                    }
-                    else
-                    {
-                        assert(pNode == m_pFirst);
-                    }
-
-                    if (pNode->m_pNext)
-                    {
-                        // Check order
-                        int iCompare = TKeyCompare::Compare(pNode->m_KeyPair.m_Key, pNode->m_pNext->m_KeyPair.m_Key);
-                        assert(iCompare < 0);
-
-                        assert(pNode->m_pNext->m_pPrev == pNode);
-                    }
-                    else
-                    {
-                        assert(pNode == m_pLast);
-                    }
-
-                    if (i == m_iIterPos)
-                    {
-                        assert(m_pIterNode == pNode);
-                    }
-
-                    pNode = pNode->m_pNext;
-                    i++;
-                }
-
-                if (m_iIterPos >= 0)
-                {
-                    assert(m_pIterNode != nullptr);
-                }
-
-
-                assert(i == m_iSize);
-            }
-
-        }
-
-        bool CheckTree(CNode* pNode = nullptr)
-        {
-            int lh = 1, rh = 1;
-
-            if (!pNode)
-                pNode = m_pRoot;
-
-            if (pNode->m_pLeft != &m_Leaf)
-                lh = CheckTree(pNode->m_pLeft);
-
-            if (pNode->m_pRight != &m_Leaf)
-                rh = CheckTree(pNode->m_pRight);
-
-            assert(lh == rh);
-
-            return !!(lh + !pNode->m_bRed);
-        }
-    #endif
-
-        // Free a node
-        void FreeNode(CNode* pNode)
-        {
-            if (pNode && pNode != &m_Leaf)
-            {
-                FreeNode(pNode->m_pLeft);
-                FreeNode(pNode->m_pRight);
-                TKeySem::TStorage::OnRemove(pNode->m_KeyPair.m_Key, this);
-                TValueSem::TStorage::OnRemove(pNode->m_KeyPair.m_Value, this);
-                m_NodePlex.Free(pNode);
-            }
-        }
-
-        // Find the next node
-        CNode* nextNode(CNode* pNode)
-        {
-            if (pNode->m_pRight != &m_Leaf)
-            {
-                pNode = pNode->m_pRight;
-
-                while (pNode->m_pLeft != &m_Leaf)
-                    pNode = pNode->m_pLeft;
-
-                return pNode;
-            }
-
-            CNode* pParent = pNode->m_pParent;
-
-            while (pParent != &m_Leaf && pNode == &m_Leaf)
-            {
-                pNode = pParent;
-                pParent = pParent->m_pParent;
-            }
-
-            return pParent;
-        }
-
-        // Rotate tree left
-        void RotateLeft(CNode* x)
-        {
-            CNode* parent = m_Leaf.m_pParent;
-            CNode* y = x->m_pRight;
-
-            // Turn y's left subtree into x's right subtree
-
-            x->m_pRight = y->m_pLeft;
-            x->m_pRight->m_pParent = x;
-
-            // Link x's parent to y
-
-            y->m_pParent = x->m_pParent;
-
-            if (x != m_pRoot)
-            {
-                if (x->m_pParent->m_pLeft == x)
-                    x->m_pParent->m_pLeft = y;
-                else
-                    x->m_pParent->m_pRight = y;
-            }
-            else
-                m_pRoot = y;
-
-            // Put x on y's left
-
-            y->m_pLeft = x;
-            x->m_pParent = y;
-            m_Leaf.m_pParent = parent;
-        }
-
-        // Rotate tree right
-        void RotateRight(CNode* y)
-        {
-            CNode* parent = m_Leaf.m_pParent;
-            CNode* x = y->m_pLeft;
-
-            // Turn x's right subtree into y's left subtree
-
-            y->m_pLeft = x->m_pRight;
-            y->m_pLeft->m_pParent = y;
-
-            // Link y's parent to x
-
-            x->m_pParent = y->m_pParent;
-
-            if (y != m_pRoot)
-            {
-                if (y->m_pParent->m_pLeft == y)
-                    y->m_pParent->m_pLeft = x;
-                else
-                    y->m_pParent->m_pRight = x;
-            }
-            else
-                m_pRoot = x;
-
-            // Put y on x's right
-
-            x->m_pRight = y;
-            y->m_pParent = x;
-            m_Leaf.m_pParent = parent;
-        }
-
-        // Helper for Remove() and Detach()
-        void RemoveOrDetach(const TKeyArg& Key, TValue* pvalDetached)
+        void Remove(const TKey& Key)
         {
     #ifdef _DEBUG_CHECKS
             CheckAll();
@@ -698,18 +415,6 @@ namespace SimpleLib
                     m_pIterNode = m_pIterNode->m_pNext;
                 }
             }
-
-            TKeySem::TStorage::OnRemove(z->m_KeyPair.m_Key, this);
-            if (!pvalDetached)
-            {
-                TValueSem::TStorage::OnRemove(z->m_KeyPair.m_Value, this);
-            }
-            else
-            {
-                TValueSem::TStorage::OnDetach(z->m_KeyPair.m_Value, this);
-                *pvalDetached = z->m_KeyPair.m_Value;
-            }
-
 
             if (y != z)
             {
@@ -839,8 +544,267 @@ namespace SimpleLib
     #endif
         }
 
+        // Remove all items from the map
+        void RemoveAll()
+        {
+            FreeNode(m_pRoot);
+            m_pRoot = &m_Leaf;
+            m_pFirst = nullptr;
+            m_pLast = nullptr;
+            m_iSize = 0;
+            m_iIterPos = -1;
+            m_pIterNode = nullptr;
+
+    #ifdef _DEBUG_CHECKS
+            CheckAll();
+    #endif
+        }
+
+        // Get an item from the map, return default if doesn't exist
+        const TValue& Get(const TKey& Key) const
+        {
+            CNode* pNode = FindNode(Key);
+            assert(pNode != nullptr);
+            return pNode->m_KeyPair.m_Value;
+        }
+
+        // Get an item from the map, return default if doesn't exist
+        const TValue& Get(const TKey& Key, const TValue& Default) const
+        {
+            CNode* pNode = FindNode(Key);
+            if (!pNode)
+                return Default;
+            return pNode->m_KeyPair.m_Value;
+        }
+
+		// Shortcut to above
+		const TValue& operator[](TKey key) const
+		{
+			return GetValue(key);
+		}
+
+        // Find an item in the map and return true/false if found or not
+        bool TryGetValue(const TKey& Key, TValue& Value) const
+        {
+            CNode* pNode = FindNode(Key);
+            if (!pNode)
+                return false;
+            Value = pNode->m_KeyPair.m_Value;
+            return true;
+        }
+
+        // Check if the map contains a key
+        bool ContainsKey(const TKey& Key) const
+        {
+            return FindNode(Key) != nullptr;
+        }
+
+    #ifdef _DEBUG
+        void CheckAll()
+        {
+            CheckTree();
+            CheckChain();
+        }
+    #endif
+
+        // Implementation
+    protected:
+
+        // CKeyPairInternal
+        struct CKeyPairInternal
+        {
+            TKey	m_Key;
+            TValue	m_Value;
+        };
+
+        // CNode
+        struct CNode
+        {
+            CKeyPairInternal	m_KeyPair;
+            CNode* m_pParent;
+            CNode* m_pLeft;
+            CNode* m_pRight;
+            CNode* m_pPrev;
+            CNode* m_pNext;
+            bool	m_bRed;
+        };
+
+        // Operations
+    #ifdef _DEBUG
+        void CheckChain()
+        {
+            if (m_pFirst)
+            {
+                assert(m_pFirst->m_pPrev == nullptr);
+                assert(m_pLast != nullptr);
+                assert(m_pLast->m_pNext == nullptr);
+
+                int i = 0;
+                CNode* pNode = m_pFirst;
+                while (pNode)
+                {
+                    if (pNode->m_pPrev)
+                    {
+                        assert(pNode->m_pPrev->m_pNext == pNode);
+                    }
+                    else
+                    {
+                        assert(pNode == m_pFirst);
+                    }
+
+                    if (pNode->m_pNext)
+                    {
+                        // Check order
+                        int iCompare = TKeyCompare::Compare(pNode->m_KeyPair.m_Key, pNode->m_pNext->m_KeyPair.m_Key);
+                        assert(iCompare < 0);
+
+                        assert(pNode->m_pNext->m_pPrev == pNode);
+                    }
+                    else
+                    {
+                        assert(pNode == m_pLast);
+                    }
+
+                    if (i == m_iIterPos)
+                    {
+                        assert(m_pIterNode == pNode);
+                    }
+
+                    pNode = pNode->m_pNext;
+                    i++;
+                }
+
+                if (m_iIterPos >= 0)
+                {
+                    assert(m_pIterNode != nullptr);
+                }
+
+
+                assert(i == m_iSize);
+            }
+
+        }
+
+        bool CheckTree(CNode* pNode = nullptr)
+        {
+            int lh = 1, rh = 1;
+
+            if (!pNode)
+                pNode = m_pRoot;
+
+            if (pNode->m_pLeft != &m_Leaf)
+                lh = CheckTree(pNode->m_pLeft);
+
+            if (pNode->m_pRight != &m_Leaf)
+                rh = CheckTree(pNode->m_pRight);
+
+            assert(lh == rh);
+
+            return !!(lh + !pNode->m_bRed);
+        }
+    #endif
+
+        // Free a node
+        void FreeNode(CNode* pNode)
+        {
+            if (pNode && pNode != &m_Leaf)
+            {
+                FreeNode(pNode->m_pLeft);
+                FreeNode(pNode->m_pRight);
+                m_NodePlex.Free(pNode);
+            }
+        }
+
+        // Find the next node
+        CNode* nextNode(CNode* pNode)
+        {
+            if (pNode->m_pRight != &m_Leaf)
+            {
+                pNode = pNode->m_pRight;
+
+                while (pNode->m_pLeft != &m_Leaf)
+                    pNode = pNode->m_pLeft;
+
+                return pNode;
+            }
+
+            CNode* pParent = pNode->m_pParent;
+
+            while (pParent != &m_Leaf && pNode == &m_Leaf)
+            {
+                pNode = pParent;
+                pParent = pParent->m_pParent;
+            }
+
+            return pParent;
+        }
+
+        // Rotate tree left
+        void RotateLeft(CNode* x)
+        {
+            CNode* parent = m_Leaf.m_pParent;
+            CNode* y = x->m_pRight;
+
+            // Turn y's left subtree into x's right subtree
+
+            x->m_pRight = y->m_pLeft;
+            x->m_pRight->m_pParent = x;
+
+            // Link x's parent to y
+
+            y->m_pParent = x->m_pParent;
+
+            if (x != m_pRoot)
+            {
+                if (x->m_pParent->m_pLeft == x)
+                    x->m_pParent->m_pLeft = y;
+                else
+                    x->m_pParent->m_pRight = y;
+            }
+            else
+                m_pRoot = y;
+
+            // Put x on y's left
+
+            y->m_pLeft = x;
+            x->m_pParent = y;
+            m_Leaf.m_pParent = parent;
+        }
+
+        // Rotate tree right
+        void RotateRight(CNode* y)
+        {
+            CNode* parent = m_Leaf.m_pParent;
+            CNode* x = y->m_pLeft;
+
+            // Turn x's right subtree into y's left subtree
+
+            y->m_pLeft = x->m_pRight;
+            y->m_pLeft->m_pParent = y;
+
+            // Link y's parent to x
+
+            x->m_pParent = y->m_pParent;
+
+            if (y != m_pRoot)
+            {
+                if (y->m_pParent->m_pLeft == y)
+                    y->m_pParent->m_pLeft = x;
+                else
+                    y->m_pParent->m_pRight = x;
+            }
+            else
+                m_pRoot = x;
+
+            // Put y on x's right
+
+            x->m_pRight = y;
+            y->m_pParent = x;
+            m_Leaf.m_pParent = parent;
+        }
+
         // Find a node with specified key
-        CNode* FindNode(const TKeyArg& Key) const
+        CNode* FindNode(const TKey& Key) const
         {
             CNode* pNode = m_pRoot;
 

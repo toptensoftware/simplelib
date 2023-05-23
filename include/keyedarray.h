@@ -4,21 +4,15 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "semantics.h"
+#include "compare.h"
 #include "vector.h"
 
 namespace SimpleLib
 {
-    template <typename TKey, typename TValue, 
-            typename TKeySem=typename SDefaultSemantics<TKey>::TSemantics, 
-            typename TValueSem=typename SDefaultSemantics<TValue>::TSemantics>
+    template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
 	class CKeyedArray
 	{
 	public:
-
-		typedef typename SArgType<TKey>::TArgType TKeyArg;
-		typedef typename TKeySem::TCompare TKeyCompare;
-        typedef CKeyedArray<TKey, TValue, TKeySem, TValueSem> _CKeyedArray;
 
 		// Constructor
 		CKeyedArray()
@@ -74,7 +68,7 @@ namespace SimpleLib
 		}
 
 		// Remove entry by key
-		void Remove(const TKeyArg& Key)
+		void Remove(const TKey& Key)
 		{
 			int index = IndexOf(Key);
 			if (index >= 0)
@@ -98,7 +92,7 @@ namespace SimpleLib
 		}
 
 		// Detach
-		TValue Detach(const TKeyArg& Key)
+		TValue Detach(const TKey& Key)
 		{
 			int index = IndexOf(Key);
 			return DetachAt(index);
@@ -132,7 +126,7 @@ namespace SimpleLib
 		}
 
 		// Get by key, assert if unknown key
-		const TValue& Get(const TKeyArg& Key) const
+		const TValue& Get(const TKey& Key) const
 		{
 			int index = IndexOf(Key);
 			assert(index >= 0);
@@ -140,7 +134,7 @@ namespace SimpleLib
 		}
 
 		// Get by key, return default if unknown key
-		const TValue& Get(const TKeyArg& Key, const TValue& Default) const
+		const TValue& Get(const TKey& Key, const TValue& Default) const
 		{
 			int index = IndexOf(Key);
 			if (index < 0)
@@ -150,13 +144,13 @@ namespace SimpleLib
 		}
 
 		// Shortcut to above
-		const TValue& operator[](TKeyArg key) const
+		const TValue& operator[](TKey key) const
 		{
 			return GetValue(key);
 		}
 
 		// Get to get a value
-		bool TryGetValue(const TKeyArg& Key, TValue& Value) const
+		bool TryGetValue(const TKey& Key, TValue& Value) const
 		{
 			int index = IndexOf(Key);
 			if (index < 0)
@@ -167,15 +161,15 @@ namespace SimpleLib
 		}
 
 		// Check if contains a key
-		bool ContainsKey(const TKeyArg& Key) const
+		bool ContainsKey(const TKey& Key) const
 		{
 			return IndexOf(Key) >= 0;
 		}
 
 		// Find index of key
-		int IndexOf(const TKeyArg& Key) const
+		int IndexOf(const TKey& Key) const
 		{
-			return m_Keys.IndexOf(Key);
+			return m_Keys.IndexOf<TKeyCompare>(Key);
 		}
 
 		// Type used as return value from GetAt
@@ -202,8 +196,8 @@ namespace SimpleLib
 
 
 	protected:
-		CVector<TKey, TKeySem>			m_Keys;
-		CVector<TValue, TValueSem>		m_Values;
+		CVector<TKey>		m_Keys;
+		CVector<TValue>		m_Values;
 
 	private:
 		// Unsupported

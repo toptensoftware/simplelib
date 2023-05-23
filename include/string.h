@@ -7,7 +7,6 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "semantics.h"
 #include "vector.h"
 #include "stringbuilder.h"
 
@@ -17,7 +16,7 @@ namespace SimpleLib
 	Simple immutable string class stores a string.
 	*/
 
-	template <typename T=char>
+	template <typename T>
 	class CCoreString
 	{
 	public:
@@ -27,23 +26,30 @@ namespace SimpleLib
 			m_pData = nullptr;
 		}
 
-		// Constructor
-		CCoreString(const CCoreString<T>& Other)
+		// Copy Constructor
+		CCoreString(const CCoreString<T>& other)
 		{
 			m_pData = nullptr;
-			Assign(Other);
+			Assign(other);
+		}
+
+		// Move Constructor
+		CCoreString(CCoreString<T>&& other)
+		{
+			m_pData = other.m_pData;
+			other.m_pData = nullptr;
 		}
 
 		// Constructor
 		CCoreString(const T* psz, int iLen)
 		{
-			m_pData = AlloCCoreStringData(psz, iLen);
+			m_pData = AllocCoreStringData(psz, iLen);
 		}
 
 		// Constructor
 		CCoreString(const T* psz)
 		{
-			m_pData = AlloCCoreStringData(psz, -1);
+			m_pData = AllocCoreStringData(psz, -1);
 		}
 
 		// Constructor
@@ -51,7 +57,7 @@ namespace SimpleLib
 		{
 			int length;
 			const T* psz = builder.ToString(&length);
-			m_pData = AlloCCoreStringData(psz, length);
+			m_pData = AllocCoreStringData(psz, length);
 		}
 
 		// Destructor
@@ -67,6 +73,14 @@ namespace SimpleLib
 		CCoreString<T>& operator=(const CCoreString<T>& Other)
 		{
 			Assign(Other);
+			return *this;
+		}
+
+		// Move Assignment
+		CCoreString<T>& operator=(CCoreString<T>&& Other)
+		{
+			m_pData = Other.m_pData;
+			Other.m_pData = nullptr;
 			return *this;
 		}
 
@@ -136,7 +150,7 @@ namespace SimpleLib
 			Clear();
 
 			// Store new
-			m_pData = AlloCCoreStringData(psz, iLen);
+			m_pData = AllocCoreStringData(psz, iLen);
 		}
 
 		int GetLength() const
@@ -150,7 +164,7 @@ namespace SimpleLib
 				return CCoreString<T>();
 
 			// Allocate new string buffer
-			StringData* pNew = AlloCCoreStringData(nullptr, GetLength());
+			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
 
 			// Get source/dest
 			const T* pSrc = sz();
@@ -173,7 +187,7 @@ namespace SimpleLib
 				return CCoreString<T>();
 
 			// Allocate new string buffer
-			StringData* pNew = AlloCCoreStringData(nullptr, GetLength());
+			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
 
 			// Get source/dest
 			const T* pSrc = sz();
@@ -411,7 +425,7 @@ namespace SimpleLib
 		{
 			CCoreStringBuilder<T> buf;
 			buf.FormatV(pFormat, args);
-			return buf.sz();
+			return buf.ToString();
 		}
 
 
@@ -454,7 +468,7 @@ namespace SimpleLib
 			T	m_sz[1];
 		};
 
-		static StringData* AlloCCoreStringData(const T* psz, int length)
+		static StringData* AllocCoreStringData(const T* psz, int length)
 		{
 			if (psz == nullptr && length <= 0)
 				return nullptr;
@@ -476,30 +490,6 @@ namespace SimpleLib
 		{
 			m_pData = pData;
 		}
-	};
-
-	// String semantics
-	template <typename T>
-	struct SString
-	{
-		typedef SStorageValue TStorage;
-		typedef SCase TCompare;
-	};
-
-	// Make SString the default semantics for CCoreString
-	template <typename T>
-	struct SDefaultSemantics<CCoreString<T>>
-	{
-		typedef SString<T> TSemantics;
-	};
-
-	// Make collections of CCoreString<T> accept 'const T*' 
-	// as arguments instead of const CCoreString<T>& which
-	// would require memory allocation to pass.
-	template <typename T>
-	struct SArgType<CCoreString<T>>
-	{
-		typedef const T* TArgType;
 	};
 
 	typedef CCoreString<char> CString;

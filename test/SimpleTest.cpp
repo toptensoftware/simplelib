@@ -287,21 +287,17 @@ void TestVector()
 
 
 	// Test construction/destruction when holding owned object pointers
-	CVector<CInstanceCounter*, SOwnedPtr> vecPtrs;
+	CVector<CSharedPtr<CInstanceCounter>> vecPtrs;
 	vecPtrs.Add(new CInstanceCounter());
 	vecPtrs.Add(new CInstanceCounter());
 	vecPtrs.Add(new CInstanceCounter());
 	assert(CInstanceCounter::m_iInstances==3);
 	vecPtrs.RemoveAt(0);
 	assert(CInstanceCounter::m_iInstances==2);
-	CInstanceCounter* pDetach=vecPtrs.DetachAt(0);
-	assert(CInstanceCounter::m_iInstances==2);
 	vecPtrs.Clear();
-	assert(CInstanceCounter::m_iInstances==1);
-	delete pDetach;
 	assert(CInstanceCounter::m_iInstances==0);
 
-	CVector<CUniString, SString<wchar_t>> strs;
+	CVector<CCoreString<wchar_t>> strs;
 	strs.Add(L"Apples");
 	strs.Add(L"Pears");
 	strs.Add(L"Bananas");
@@ -469,18 +465,14 @@ void TestMap()
 
 
 	// Test construction/destruction when holding owned object pointers
-	CMap<int, CInstanceCounter*, SValue, SOwnedPtr> mapPtrs;
+	CMap<int, CSharedPtr<CInstanceCounter>> mapPtrs;
 	mapPtrs.Add(10, new CInstanceCounter());
 	mapPtrs.Add(20, new CInstanceCounter());
 	mapPtrs.Add(30, new CInstanceCounter());
 	assert(CInstanceCounter::m_iInstances==4);
 	mapPtrs.Remove(10);
 	assert(CInstanceCounter::m_iInstances==3);
-	CInstanceCounter* pDetach=mapPtrs.Detach(20);
-	assert(CInstanceCounter::m_iInstances==3);
 	mapPtrs.RemoveAll();
-	assert(CInstanceCounter::m_iInstances==2);
-	delete pDetach;
 	assert(CInstanceCounter::m_iInstances==1);
 
 	CMap<CAnsiString, int> strs;
@@ -608,18 +600,14 @@ void TestKeyedArray()
 
 
 	// Test construction/destruction when holding owned object pointers
-	CKeyedArray<int, CInstanceCounter*, SValue, SOwnedPtr> kaPtrs;
+	CKeyedArray<int, CSharedPtr<CInstanceCounter>> kaPtrs;
 	kaPtrs.Add(10, new CInstanceCounter());
 	kaPtrs.Add(20, new CInstanceCounter());
 	kaPtrs.Add(30, new CInstanceCounter());
 	assert(CInstanceCounter::m_iInstances==3);
 	kaPtrs.Remove(10);
 	assert(CInstanceCounter::m_iInstances==2);
-	CInstanceCounter* pDetach=kaPtrs.Detach(20);
-	assert(CInstanceCounter::m_iInstances==2);
 	kaPtrs.Clear();
-	assert(CInstanceCounter::m_iInstances==1);
-	delete pDetach;
 	assert(CInstanceCounter::m_iInstances==0);
 
 	CKeyedArray<CAnsiString, int> strs;
@@ -723,97 +711,97 @@ void TestPath()
 	g_bFailed=false;
 
 #ifdef _WIN32
-	assert(CPath::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
-	assert(CPath::Join("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
-	assert(CPath::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
+	assert(CPath<>::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
+	assert(CPath<>::Join("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<>::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<>::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
 
-	assert(CPath::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
-	assert(CPath::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(CPath<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(CPath<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
 
-	assert(CPath::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
-	assert(CPath::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
-	assert(CPath::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
+	assert(CPath<>::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<>::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<>::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
 
-	assert(CPath::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
-	assert(CPath::GetDirectoryName("C:\\").IsEmpty());
-	assert(CPath::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
-	assert(CPath::GetDirectoryName("\\\\unc\\share").IsEmpty());
+	assert(CPath<>::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
+	assert(CPath<>::GetDirectoryName("C:\\").IsEmpty());
+	assert(CPath<>::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
+	assert(CPath<>::GetDirectoryName("\\\\unc\\share").IsEmpty());
 
-	assert(CPath::IsFullyQualified("C:") == false);
-	assert(CPath::IsFullyQualified("C:\\") == true);
-	assert(CPath::IsFullyQualified("C:\\file") == true);
-	assert(CPath::IsFullyQualified("C:file") == false);
-	assert(CPath::IsFullyQualified("\\\\unc\\share") == true);
-	assert(CPath::IsFullyQualified("\\\\unc\\share\\") == true);
-	assert(CPath::IsFullyQualified("\\\\unc\\share\\file") == true);
+	assert(CPath<>::IsFullyQualified("C:") == false);
+	assert(CPath<>::IsFullyQualified("C:\\") == true);
+	assert(CPath<>::IsFullyQualified("C:\\file") == true);
+	assert(CPath<>::IsFullyQualified("C:file") == false);
+	assert(CPath<>::IsFullyQualified("\\\\unc\\share") == true);
+	assert(CPath<>::IsFullyQualified("\\\\unc\\share\\") == true);
+	assert(CPath<>::IsFullyQualified("\\\\unc\\share\\file") == true);
 
-	assert(CPath::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
-	assert(CPath::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
-	assert(CPath::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
 	
-	assert(CPath::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
-	assert(CPath::GetExtension("\\a.dir\\file").IsEmpty());
+	assert(CPath<>::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
+	assert(CPath<>::GetExtension("\\a.dir\\file").IsEmpty());
 
-	assert(CPath::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<>::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<>::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<>::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(CPath<>::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
 
-	assert(CPath::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
-	assert(CPath::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
-	assert(CPath::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
-	assert(CPath::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
-	assert(CPath::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
-	assert(CPath::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(CPath<>::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<>::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
+	assert(CPath<>::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
+	assert(CPath<>::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
+	assert(CPath<>::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
+	assert(CPath<>::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
+	assert(CPath<>::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath<>::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(CPath<>::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(CPath<>::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
 
-	assert(CPath::Combine("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath::Combine("\\a", "\\b").IsEqualTo("\\b"));
-	assert(CPath::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
-	assert(CPath::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
-	assert(CPath::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
-	assert(CPath::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
+	assert(CPath<>::Combine("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(CPath<>::Combine("\\a", "\\b").IsEqualTo("\\b"));
+	assert(CPath<>::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
+	assert(CPath<>::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
+	assert(CPath<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
+	assert(CPath<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
 
 #else
-	assert(CPath::Join("/a", "/b").IsEqualTo("/a/b"));
-	assert(CPath::Join("/a", "b").IsEqualTo("/a/b"));
-	assert(CPath::Join("/a/", "b").IsEqualTo("/a/b"));
-	assert(CPath::Join("/a/", "/b").IsEqualTo("/a/b"));
+	assert(CPath<>::Join("/a", "/b").IsEqualTo("/a/b"));
+	assert(CPath<>::Join("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath<>::Join("/a/", "b").IsEqualTo("/a/b"));
+	assert(CPath<>::Join("/a/", "/b").IsEqualTo("/a/b"));
 
-	assert(CPath::GetFileName("/a/file.txt").IsEqualTo("file.txt"));
+	assert(CPath<>::GetFileName("/a/file.txt").IsEqualTo("file.txt"));
 	
-	assert(CPath::GetDirectoryName("/a/b/c/file.txt").IsEqualTo("/a/b/c"));
-	assert(CPath::GetDirectoryName("/a/b/c/").IsEqualTo("/a/b/c"));
-	assert(CPath::GetDirectoryName("/a/b/c").IsEqualTo("/a/b"));
+	assert(CPath<>::GetDirectoryName("/a/b/c/file.txt").IsEqualTo("/a/b/c"));
+	assert(CPath<>::GetDirectoryName("/a/b/c/").IsEqualTo("/a/b/c"));
+	assert(CPath<>::GetDirectoryName("/a/b/c").IsEqualTo("/a/b"));
 
-	assert(CPath::GetFileNameWithoutExtension("/a/file.txt").IsEqualTo("file"));
-	assert(CPath::GetFileNameWithoutExtension("/a/file.").IsEqualTo("file"));
-	assert(CPath::GetFileNameWithoutExtension("/a/file").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("/a/file.txt").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("/a/file.").IsEqualTo("file"));
+	assert(CPath<>::GetFileNameWithoutExtension("/a/file").IsEqualTo("file"));
 	
-	assert(CPath::GetExtension("/a/file.txt").IsEqualTo(".txt"));
-	assert(CPath::GetExtension("/a.dir/file").IsEmpty());
+	assert(CPath<>::GetExtension("/a/file.txt").IsEqualTo(".txt"));
+	assert(CPath<>::GetExtension("/a.dir/file").IsEmpty());
 
-	assert(CPath::ChangeExtension("/a/file.txt", "doc").IsEqualTo("/a/file.doc"));
-	assert(CPath::ChangeExtension("/a/file", "doc").IsEqualTo("/a/file.doc"));
-	assert(CPath::ChangeExtension("/a/file.txt", ".doc").IsEqualTo("/a/file.doc"));
-	assert(CPath::ChangeExtension("/a/file", ".doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<>::ChangeExtension("/a/file.txt", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<>::ChangeExtension("/a/file", "doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<>::ChangeExtension("/a/file.txt", ".doc").IsEqualTo("/a/file.doc"));
+	assert(CPath<>::ChangeExtension("/a/file", ".doc").IsEqualTo("/a/file.doc"));
 
-	assert(CPath::Canonicalize("/a/b/c").IsEqualTo("/a/b/c"));
-	assert(CPath::Canonicalize("/a/./b/./c").IsEqualTo("/a/b/c"));
-	assert(CPath::Canonicalize("/a/../b/c").IsEqualTo("/b/c"));
-	assert(CPath::Canonicalize("/a/b/../../c").IsEqualTo("/c"));
-	assert(CPath::Canonicalize("a/b/c").IsEqualTo("a/b/c"));
-	assert(CPath::Canonicalize("/a/b/c/").IsEqualTo("/a/b/c/"));
-	assert(CPath::Canonicalize("/a/b/c////").IsEqualTo("/a/b/c/"));
+	assert(CPath<>::Canonicalize("/a/b/c").IsEqualTo("/a/b/c"));
+	assert(CPath<>::Canonicalize("/a/./b/./c").IsEqualTo("/a/b/c"));
+	assert(CPath<>::Canonicalize("/a/../b/c").IsEqualTo("/b/c"));
+	assert(CPath<>::Canonicalize("/a/b/../../c").IsEqualTo("/c"));
+	assert(CPath<>::Canonicalize("a/b/c").IsEqualTo("a/b/c"));
+	assert(CPath<>::Canonicalize("/a/b/c/").IsEqualTo("/a/b/c/"));
+	assert(CPath<>::Canonicalize("/a/b/c////").IsEqualTo("/a/b/c/"));
 
-	assert(CPath::Combine("/a", "b").IsEqualTo("/a/b"));
-	assert(CPath::Combine("/a", "/b").IsEqualTo("/b"));
-	assert(CPath::Combine("/a", "b/subdir/../otherdir/c").IsEqualTo("/a/b/otherdir/c"));
-	assert(CPath::Combine("/a", "b/subdir/../otherdir/c/").IsEqualTo("/a/b/otherdir/c/"));
+	assert(CPath<>::Combine("/a", "b").IsEqualTo("/a/b"));
+	assert(CPath<>::Combine("/a", "/b").IsEqualTo("/b"));
+	assert(CPath<>::Combine("/a", "b/subdir/../otherdir/c").IsEqualTo("/a/b/otherdir/c"));
+	assert(CPath<>::Combine("/a", "b/subdir/../otherdir/c/").IsEqualTo("/a/b/otherdir/c/"));
 #endif
 
 	if (!g_bFailed)
@@ -939,28 +927,28 @@ void TestDirectory()
 	printf("Testing Directory...");
 	g_bFailed=false;
 
-	assert((CPath::DoesMatchPattern<char>("file.txt", "file.txt")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "file.*")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "*.txt")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "fi*.txt")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "*.*")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "*")));
-	assert((CPath::DoesMatchPattern<char>("file.txt", "fi??.*")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "file.txt")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "file.*")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*.txt")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "fi*.txt")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*.*")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "fi??.*")));
 
 #ifdef _WIN32
-	assert((CPath::DoesMatchPattern<char>("file.txt", "FILE.*")));
+	assert((CPath<>::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #else
-	assert(!(CPath::DoesMatchPattern<char>("file.txt", "FILE.*")));
+	assert(!(CPath<>::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #endif
 
-	assert(!CDirectory::Exists("temp"));
-	assert(!CDirectory::Create("temp"));
-	assert(CDirectory::Exists("temp"));
-	assert(!CDirectory::Delete("temp"));
-	assert(!CDirectory::Exists("temp"));
+	assert(!CDirectory<>::Exists("temp"));
+	assert(!CDirectory<>::Create("temp"));
+	assert(CDirectory<>::Exists("temp"));
+	assert(!CDirectory<>::Delete("temp"));
+	assert(!CDirectory<>::Exists("temp"));
 
 	CDirectoryIterator iter;
-	CDirectory::Iterate("..", "*.h", IterateFlags::All, iter);
+	CDirectory<>::Iterate("..", "*.h", IterateFlags::All, iter);
 	while (iter.Next())
 	{
 		printf("%s\n", iter.Name);

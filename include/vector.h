@@ -5,20 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
+#include "placed_constructor.h"
 
 namespace SimpleLib
 {
 	// CVector
-	template <typename T, typename TSem = typename SDefaultSemantics<T>::TSemantics>
+	template <typename T>
 	class CVector
 	{
 	public:
-
-		typedef typename SArgType<T>::TArgType TArg;
-		typedef CVector<T, TSem>	_CVector;
-
-
 		// Constructor
 		CVector()
 		{
@@ -68,7 +63,7 @@ namespace SimpleLib
 		}
 
 		// Set size...
-		void SetSize(int iRequiredSize, TArg val)
+		void SetSize(int iRequiredSize, const T& val)
 		{
 			GrowTo(iRequiredSize);
 			while (GetCount() < iRequiredSize)
@@ -122,9 +117,8 @@ namespace SimpleLib
 		{
 			assert(iPosition >= 0 && iPosition < GetCount());
 
-			TSem::TStorage::OnRemove(m_pData[iPosition], this);
 			Destructor(m_pData + iPosition);
-			Constructor(m_pData + iPosition, TSem::TStorage::OnAdd(val, this));
+			Constructor(m_pData + iPosition, val);
 		}
 
 		// Swap two elements in the collection
@@ -175,13 +169,13 @@ namespace SimpleLib
 			if (m_iSize + 1 > m_iMemSize)
 				GrowTo(m_iSize + 1);
 
-			Constructor(m_pData + m_iSize, TSem::TStorage::OnAdd(val, this));
+			Constructor(m_pData + m_iSize, val);
 			m_iSize++;
 			return m_iSize - 1;
 		}
 
 		// Remove a particular item
-		int Remove(TArg val)
+		int Remove(const T& val)
 		{
 			int iPos = IndexOf(val);
 			if (iPos >= 0)
@@ -195,7 +189,6 @@ namespace SimpleLib
 			assert(iPosition >= 0);
 			assert(iPosition < GetCount());
 
-			TSem::TStorage::OnRemove(m_pData[iPosition], this);
 			Destructor(m_pData + iPosition);
 
 			// Shuffle memory
@@ -220,7 +213,6 @@ namespace SimpleLib
 
 			for (int i = 0; i < iCount; i++)
 			{
-				TSem::TStorage::OnRemove(m_pData[iPosition + i], this);
 				Destructor(m_pData + iPosition + i);
 			}
 
@@ -230,42 +222,6 @@ namespace SimpleLib
 
 			// Update size
 			m_iSize -= iCount;
-		}
-
-		// DetachAt
-		T DetachAt(int iPosition)
-		{
-			assert(iPosition >= 0);
-			assert(iPosition < GetCount());
-
-			T temp = GetAt(iPosition);
-
-			TSem::TStorage::OnDetach(m_pData[iPosition], this);
-			Destructor(m_pData + iPosition);
-
-			// Shuffle memory
-			if (iPosition < GetCount() - 1)
-				memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iSize - iPosition - 1) * sizeof(T));
-
-			// Update size
-			m_iSize--;
-
-			return temp;
-		}
-
-		// Detach the specified item from the collection
-		void Detach(TArg val)
-		{
-			int iIndex = IndexOf(val);
-			assert(iIndex >= 0);
-			DetachAt(iIndex);
-		}
-
-		// Detach all items from the collection
-		void DetachAll()
-		{
-			for (int i = GetCount() - 1; i >= 0; i--)
-				DetachAt(i);
 		}
 
 		// RemoveAll
@@ -306,13 +262,13 @@ namespace SimpleLib
 		}
 
 		// Find index of an item(linear)
-		template <typename TEquality=typename TSem::TCompare>
-		int IndexOf(TArg val, int iStartAfter = -1) const
+		template <typename TCompare = SDefaultCompare>
+		int IndexOf(const T& val, int iStartAfter = -1) const
 		{
 			// Find an item
 			for (int i = iStartAfter + 1; i < m_iSize; i++)
 			{
-				if (TEquality::AreEqual(m_pData[i], val))
+				if (TCompare::AreEqual(m_pData[i], val))
 					return i;
 			}
 
@@ -321,7 +277,7 @@ namespace SimpleLib
 		}
 
 		// Check if the vector contains an item
-		bool Contains(TArg val) const
+		bool Contains(const T& val) const
 		{
 			return IndexOf(val) >= 0;
 		}
@@ -333,7 +289,7 @@ namespace SimpleLib
 		}
 
 		// Push
-		void Push(TArg val)
+		void Push(const T& val)
 		{
 			Add(val);
 		}
@@ -342,7 +298,9 @@ namespace SimpleLib
 		T Pop()
 		{
 			assert(!IsEmpty());
-			return DetachAt(GetCount() - 1);
+			T temp = GetAt(GetCount() - 1);
+			RemoveAt(GetCount() - 1);
+			return temp;
 		}
 
 		// Pop
@@ -356,7 +314,6 @@ namespace SimpleLib
 
 			val = m_pData[m_iSize];
 
-			TSem::TStorage::OnDetach(m_pData[m_iSize], this);
 			Destructor(m_pData + m_iSize);
 
 			return true;
@@ -395,7 +352,7 @@ namespace SimpleLib
 		}
 
 		// Enqueue
-		void Enqueue(TArg val)
+		void Enqueue(const T& val)
 		{
 			Add(val);
 		}
@@ -404,7 +361,9 @@ namespace SimpleLib
 		T Dequeue()
 		{
 			assert(!IsEmpty());
-			return DetachAt(0);
+			T temp = GetAt(0);
+			RemoveAt(0);
+			return temp;
 		}
 
 		// Remove and return the first item in the list
@@ -441,7 +400,7 @@ namespace SimpleLib
 			// Store pointer
 			for (int i = 0; i < iCount; i++)
 			{
-				Constructor(m_pData + iPosition + i, TSem::TStorage::OnAdd(*(pVal + i), this));
+				Constructor(m_pData + iPosition + i, *(pVal + i));
 			}
 
 			// Update size

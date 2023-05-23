@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
+#include "placed_constructor.h"
 
 
 namespace SimpleLib
@@ -14,7 +14,7 @@ namespace SimpleLib
 
 	// If only the (Try)Enqueue and (Try)Dequeue methods are used then this class is safe
 	// for single reader / single writer multi threaded use
-	template <typename T, typename TSem = SValue>
+	template <typename T>
 	class CRingBuffer
 	{
 	public:
@@ -34,9 +34,6 @@ namespace SimpleLib
 			RemoveAll();
 			free(m_pMem);
 		}
-
-		// Types
-		typedef CRingBuffer<T, TSem> _CRingBuffer;
 
 		// Reset and optionally resize 
 		void Reset(int iNewCapacity = 0)
@@ -84,7 +81,7 @@ namespace SimpleLib
 
 			T* pNextWritePos = AdvancePtr(m_pWritePos);
 
-			Constructor(m_pWritePos, TSem::OnAdd(t, this));
+			Constructor(m_pWritePos, t);
 
 			// Store next write pos
 			m_pWritePos = pNextWritePos;
@@ -100,7 +97,7 @@ namespace SimpleLib
 
 			T* pNextWritePos = AdvancePtr(m_pWritePos);
 
-			Constructor(m_pWritePos, TSem::OnAdd(t, this));
+			Constructor(m_pWritePos, t);
 
 			// Store next write pos
 			m_pWritePos = pNextWritePos;
@@ -139,7 +136,7 @@ namespace SimpleLib
 
 			T* pNextWritePos = AdvancePtr(m_pWritePos);
 
-			Constructor(m_pWritePos, TSem::OnAdd(t, this));
+			Constructor(m_pWritePos, t);
 
 			// Store next write pos
 			m_pWritePos = pNextWritePos;
@@ -168,9 +165,6 @@ namespace SimpleLib
 
 			// Return data
 			T temp = *pSave;
-
-			// Detach
-			TSem::OnDetach(*pSave, this);
 
 			// and destroy
 			Destructor(pSave);
@@ -216,9 +210,6 @@ namespace SimpleLib
 
 			// Return data
 			T temp = *m_pWritePos;
-
-			// Detach
-			TSem::OnDetach(*m_pWritePos, this);
 
 			// and destroy
 			Destructor(m_pWritePos);
@@ -294,18 +285,6 @@ namespace SimpleLib
 			return GetAt(iPos);
 		}
 
-
-
-		DEPRECATED("Use TryDequeue() instead")
-			bool Dequeue(T& t) { return TryDequeue(t); }
-		DEPRECATED("Use TryPeek() instead")
-			bool Peek(T& t) { return TryPeek(t); }
-		DEPRECATED("Use TryUnqueue() instead")
-			bool Unenqueue(T& t) { return TryUnenqueue(t); }
-		DEPRECATED("Use TryPeekLast() instead")
-			bool PeekLast(T& t) { return TryPeekLast(t); }
-		DEPRECATED("Use GetCount() instead")
-			int GetSize() const { return GetCount(); }
 
 		// Implementation
 	protected:

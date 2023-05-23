@@ -1,7 +1,7 @@
 #ifndef __simplelib_encoding_h__
 #define __simplelib_encoding_h__
 
-#include "semantics.h"
+#include "string_semantics.h"
 #include "string.h"
 
 namespace SimpleLib

@@ -109,7 +109,7 @@ public:
 		}
 #else
 		struct stat64 s;
-		int err = stat64(Encode<char>(filename), &s);
+		int err = stat64(filename, &s);
 		if (!err)
 		{
 			info.IsDirectory = (s.st_mode & S_IFDIR) != 0;

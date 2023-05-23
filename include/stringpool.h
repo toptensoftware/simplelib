@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
+#include "string_semantics.h"
 
 namespace SimpleLib
 {

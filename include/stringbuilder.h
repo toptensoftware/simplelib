@@ -4,11 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
 #include "formatting.h"
+#include "string_semantics.h"
 
 namespace SimpleLib
 {
+
 
 // Simple StringBuilder class that uses embedded short buffer but switches
 // to dynamic allocations for longer strings

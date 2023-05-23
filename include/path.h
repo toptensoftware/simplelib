@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "semantics.h"
 #include "string.h"
 
 #ifdef _MSC_VER
@@ -19,6 +18,53 @@
 
 namespace SimpleLib
 {
+    struct SPathSemanticsWindows
+    {
+        static bool IsDirectorySeparator(char ch)
+        {
+            return ch == '\\' || ch == '/';
+        }
+
+        inline static const char* GetDirectorySeparators()
+        {
+            static char seps[] = { '\\', '/', '\0' };
+            return  seps;
+        }
+
+        static const char DirectorySeparator = '\\';
+        static const char PathSeparator =';';
+
+        typedef SCaseI FileSystemCase;
+
+    };
+
+    struct SPathSemanticsPosix
+    {
+        static bool IsDirectorySeparator(char ch)
+        {
+            return ch == '/';
+        }
+
+        inline static const char* GetDirectorySeparators()
+        {
+            static char seps[] = { '/', '\0' };
+            return seps;
+        }
+
+        static const char DirectorySeparator ='/';
+        static const char PathSeparator =':';
+
+        typedef SCase FileSystemCase;
+    };
+
+    #ifdef _WIN32
+    typedef SPathSemanticsWindows SPathSemanticsAuto;
+    #else
+    typedef SPathSemanticsPosix SPathSemanticsAuto;
+    #endif
+
+
+    template <typename SPathSemantics = SPathSemanticsAuto>
     class CPath
     {
     public:
@@ -37,11 +83,11 @@ namespace SimpleLib
             sb.Append(a);
 
             // Make sure there's a separator
-            if (!IsDirectorySeparator(a[SChar<char>::Length(a)-1]))
-                sb.Append(DirectorySeparator);
+            if (!SPathSemantics::IsDirectorySeparator(a[SChar<char>::Length(a)-1]))
+                sb.Append(SPathSemantics::DirectorySeparator);
 
             // Skip leading separator on b
-            if (IsDirectorySeparator(b[0]))
+            if (SPathSemantics::IsDirectorySeparator(b[0]))
                 b++;
             
             // Join
@@ -56,7 +102,7 @@ namespace SimpleLib
         static CString GetDirectoryName(const char* path)
         {
             CString str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(SPathSemantics::GetDirectorySeparators());
             int prefix = GetPrefixLength(path);
 
             if (lastSep < prefix)
@@ -79,7 +125,7 @@ namespace SimpleLib
         static CString GetFileName(const char* path)
         {
             CString str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(SPathSemantics::GetDirectorySeparators());
             if (lastSep < 0)
                 return path;
             else
@@ -91,7 +137,7 @@ namespace SimpleLib
         static CString GetFileNameWithoutExtension(const char* path)
         {
             CString str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(SPathSemantics::GetDirectorySeparators());
             if (lastSep < 0)
                 return path;
 
@@ -131,7 +177,7 @@ namespace SimpleLib
         static const char* FindExtension(const char* path)
         {
             CString str(path);
-            int lastSep = str.LastIndexOfAny(GetDirectorySeparators());
+            int lastSep = str.LastIndexOfAny(SPathSemantics::GetDirectorySeparators());
             int lastDot = str.LastIndexOfAny(".");
             if (lastDot > lastSep)
                 return path + lastDot;
@@ -145,7 +191,7 @@ namespace SimpleLib
             CString strPath(path);
 
             CVector<CString> parts;
-            strPath.Split(GetDirectorySeparators(), true, parts);
+            strPath.Split(SPathSemantics::GetDirectorySeparators(), true, parts);
 
             for (int i=0; i<parts.GetCount(); i++)
             {
@@ -176,7 +222,7 @@ namespace SimpleLib
                 }
             }
 
-            return CString::Join(parts, DirectorySeparator);
+            return CString::Join(parts, SPathSemantics::DirectorySeparator);
         }
 
         // Combine two paths
@@ -184,7 +230,7 @@ namespace SimpleLib
         {
             assert(!CString::IsNullOrEmpty(base));
 
-            if (path != nullptr && IsDirectorySeparator(path[0]))
+            if (path != nullptr && SPathSemantics::IsDirectorySeparator(path[0]))
             {
                 int prefix = GetPrefixLength(base);
                 return Canonicalize(Join(CString(base, prefix), path));
@@ -215,7 +261,7 @@ namespace SimpleLib
 #ifdef _MSC_VER
             // Special case for "C:relative/path"
             int prefix = GetPrefixLength(path);
-            if (prefix == 2 && !IsDirectorySeparator(path[2]))
+            if (prefix == 2 && !SPathSemantics::IsDirectorySeparator(path[2]))
             {
                 wchar_t base[512];
                 wchar_t drive[3] = { (wchar_t)path[0], ':', '\0' };
@@ -233,9 +279,9 @@ namespace SimpleLib
             int prefix = GetPrefixLength(psz);
             if (prefix == 0)
                 return false;
-            return prefix > 2 || IsDirectorySeparator(psz[prefix]);
+            return prefix > 2 || SPathSemantics::IsDirectorySeparator(psz[prefix]);
 #else
-            return IsDirectorySeparator(psz[0]);
+            return SPathSemantics::IsDirectorySeparator(psz[0]);
 #endif
         }
 
@@ -252,17 +298,17 @@ namespace SimpleLib
                 return 2;
 
             // Unc
-            if (IsDirectorySeparator(psz[0]) && IsDirectorySeparator(psz[1]))
+            if (SPathSemantics::IsDirectorySeparator(psz[0]) && SPathSemantics::IsDirectorySeparator(psz[1]))
             {
                 const char* p = psz + 2;
                 int seps = 0;
                 while (*p && seps < 2)
                 {
-                    if (IsDirectorySeparator(*p++))
+                    if (SPathSemantics::IsDirectorySeparator(*p++))
                         seps++;
                 }
 
-                if (IsDirectorySeparator(p[-1]))
+                if (SPathSemantics::IsDirectorySeparator(p[-1]))
                     p--;
 
                 return p - psz;
@@ -272,14 +318,8 @@ namespace SimpleLib
         }
 
         
-        #ifdef _WIN32
-        typedef SCaseI DefaultFileSystemCase;
-        #else
-        typedef SCase DefaultFileSystemCase;
-        #endif
 
-
-        template <typename T, typename S = DefaultFileSystemCase>
+        template <typename T>
         static bool DoesMatchPattern(const T* filename, const T* pattern)
         {
             const T* f = filename;
@@ -314,7 +354,7 @@ namespace SimpleLib
                         return true;
                     while (*f!='\0')
                     {
-                        if (DoesMatchPattern<T,S>(f, p))
+                        if (DoesMatchPattern<T>(f, p))
                             return true;
                         f++;
                     }
@@ -322,7 +362,7 @@ namespace SimpleLib
                 }
 
                 // Same character?
-                if (S::Compare(*p, *f) != 0)
+                if (SPathSemantics::FileSystemCase::Compare(*p, *f) != 0)
                     return false;
 
                 // Next
@@ -331,35 +371,7 @@ namespace SimpleLib
             }
         }
 
-        static bool IsDirectorySeparator(char ch)
-        {
-#ifdef _WIN32
-            return ch == '\\' || ch == '/';
-#else
-            return ch == '/';
-#endif
-        }
-
-        inline static const char* GetDirectorySeparators()
-        {
-#ifdef _WIN32
-            static char seps[] = { '\\', '/', '\0' };
-            return  seps;
-#else
-            static char seps[] = { '/', '\0' };
-            return seps;
-#endif
-        }
-
-#ifdef _WIN32
-        static const char DirectorySeparator = '\\';
-        static const char PathSeparator =';';
-#else
-        static const char DirectorySeparator ='/';
-        static const char PathSeparator =':';
-#endif
     };
-
 } // namespace
 
 #endif  // __simplelib_path_h__

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "string_semantics.h"
 #include "stringbuilder.h"
 
 namespace SimpleLib
@@ -491,7 +492,7 @@ namespace SimpleLib
 			return ReverseChars(buf, p);
 		}
 
-		// This floating point number formatter isn't perfect, but it's pretty good.
+		// This floating point number formatter
 		template <typename T>
 		static int FormatDouble(T* buf, double value, int precision, T positiveSign)
 		{
@@ -513,110 +514,8 @@ namespace SimpleLib
 			}
 			*buf++ = '\0';
 			return (int)(p - szTemp);
-			/*
-			T* p = buf;
-			if (isnan(value))
-			{
-				*p++ = 'N';
-				*p++ = 'a';
-				*p++ = 'N';
-			}
-			else if (isinf(value)) 
-			{
-				if (value < 0)
-					*p++ = '-';
-				*p++ = 'i';
-				*p++ = 'n';
-				*p++ = 'f';
-			}
-			else
-			{
-				// check precision bounds
-				if (precision < 0)
-					precision = 0;
-
-				// Handle negative
-				bool negative = value < 0;
-				if (negative)
-					value = -value;
-
-				// Get the integer part
-				long long intPart = (long long)value;
-				int roundUp = 0;
-
-				// Get fractional part and round it according to the requested precision
-				double frac = value - intPart;
-				frac += 0.5 / pow(10, precision);
-				if (frac >= 1.0)
-				{
-					roundUp = 1;
-					frac -= 1.0;
-				}
-
-				// Format the integer part
-				intPart += roundUp;
-				do
-				{
-					*p++ = (intPart % 10) + '0';
-					intPart /= 10;
-				} while (intPart != 0);
-				if (negative)
-				{
-					*p++ = '-';
-				}
-				else if (positiveSign)
-				{
-					*p++ = positiveSign;
-				}
-				ReverseChars(buf, p);
-
-				// Format the decimal part first
-				if (precision)
-				{
-					// place decimal point
-					*p++ = '.';
-
-					// convert
-					while (precision--)
-					{
-						// Get the digit
-						frac *= 10.0;
-						int c = (int)frac;
-
-						// Keep the fraction part
-						frac -= c;
-
-						// On the last digit, see if what's left should round up
-						// This is a bit of hack but solved formatting numbers like
-						// 0.12345 at 4 decimals.  Above we round to 0.1235, but on
-						// after multiply by 10, we get 1.234999...
-						if (precision == 0 && frac >= 0.5 && c < 9)
-							c++;
-
-						// Store the digit
-						*p++ = '0' + c;
-					}
-				}
-			}
-
-			// Terminate and return length
-			*p = '\0';
-			return (int)(p - buf);
-			*/
 		}
 	};
-
-
-
-
-/*
-	template <typename T>
-	void simplelib_vcbprintf(void (*write)(void*, T), void* arg, const T* format, va_list args)
-	{
-		CFormatCallback<T> cb(write, arg);
-		CFormatting::FormatV<T>(&cb, format, args);
-	}
-*/
 
 }	// namespace
 
