@@ -66,7 +66,7 @@ public:
 	}
 
 	// Append a string of specified length
-	void Append(const T* psz, int length)
+	void Append(const T* psz, size_t length)
 	{
 		T* dest = Reserve(length);
 		memcpy(dest, psz, sizeof(T) * length);
@@ -76,12 +76,12 @@ public:
 	// of characters and return pointer to uninitialized buffer
 	// NB: This reserves space at the end of anything already
 	//     allocated
-	T* Reserve(int length)
+	T* Reserve(size_t length)
 	{
 		if (m_iUsed + length > m_iCapacity)
 		{
 			// Work out new capacity
-			int newCap = m_iCapacity;
+			size_t newCap = m_iCapacity;
 			while (newCap < m_iUsed + length)
 				newCap *= 2;
 
@@ -111,12 +111,12 @@ public:
 	// Finish building and return the current string (doesn't reset the builder)
 	T* ToString() const
 	{
-		int unused;
+		size_t unused;
 		return ToString(&unused);
 	}
 
 	// Finish building and return the current string and its length
-	T* ToString(int* piLength) const
+	T* ToString(size_t* piLength) const
 	{
 		if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
 		{
@@ -207,8 +207,8 @@ public:
 
 private:
 	T* m_pMem;
-	int m_iUsed;
-	int m_iCapacity;
+	size_t m_iUsed;
+	size_t m_iCapacity;
 	T m_shortBuffer[128];
 };
 

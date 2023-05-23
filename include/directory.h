@@ -64,7 +64,7 @@ public:
 		if ((pState->_currentItemFlags & _flags) == 0)
 			goto startAgain;
 
-		if (!Path<SPathSemantics>::DoesMatchPattern<char>(pState->_fileName, _pattern))
+		if (!Path<SPathSemantics>::template DoesMatchPattern<char>(pState->_fileName, _pattern))
 			goto startAgain;
 
 		return true;

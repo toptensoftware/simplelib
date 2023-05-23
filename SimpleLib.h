@@ -16,6 +16,7 @@
 #include "include/formatting.h"
 
 // Collections
+#include "include/buffer.h"
 #include "include/sharedptr.h"
 #include "include/list.h"
 #include "include/dictionary.h"

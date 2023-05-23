@@ -55,8 +55,8 @@ namespace SimpleLib
 	{
 	public:
 #ifdef _MSC_VER
-		static char ToUpper(char ch) { return towupper(ch); }
-		static char ToLower(char ch) { return towlower(ch); }
+		static wchar_t ToUpper(wchar_t ch) { return towupper(ch); }
+		static wchar_t ToLower(wchar_t ch) { return towlower(ch); }
 #else
 		static char ToUpper(char ch) { return toupper(ch); }
 		static char ToLower(char ch) { return tolower(ch); }
@@ -263,7 +263,7 @@ namespace SimpleLib
 			if (b == nullptr)
 				return -1;
 #ifdef _MSC_VER
-			return stricmp(a, b);
+			return _stricmp(a, b);
 #else
 			return strcasecmp(a, b);
 #endif
@@ -278,7 +278,7 @@ namespace SimpleLib
 			if (b == nullptr)
 				return -1;
 #ifdef _MSC_VER
-			return strnicmp(a, b, len);
+			return _strnicmp(a, b, len);
 #else
 			return strncasecmp(a, b, len);
 #endif
@@ -303,7 +303,7 @@ namespace SimpleLib
 			if (b == nullptr)
 				return -1;
 #ifdef _MSC_VER
-			return wcsicmp(a, b);
+			return _wcsicmp(a, b);
 #else
 			while (*a && *b)
 			{
@@ -324,7 +324,7 @@ namespace SimpleLib
 			if (b == nullptr)
 				return -1;
 #ifdef _MSC_VER
-			return wcsnicmp(a, b, len);
+			return _wcsnicmp(a, b, len);
 #else
 			const wchar_t* end = a + len;
 			while (a < end)

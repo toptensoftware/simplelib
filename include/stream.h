@@ -132,7 +132,11 @@ public:
 	static FILE* fopen(const char* filename, const char* mode)
 	{
 #ifdef _WIN32
-		return _wfopen(Encode<wchar_t>(filename).sz(), Encode<wchar_t>(mode).sz());
+		FILE* pFile;
+		if (_wfopen_s(&pFile, Encode<wchar_t>(filename).sz(), Encode<wchar_t>(mode).sz()) == 0)
+			return pFile;
+		else
+			return nullptr;
 #else
 		return ::fopen(filename, mode);
 #endif
@@ -220,7 +224,7 @@ public:
 	virtual int Truncate() override
 	{
 #ifdef _WIN32
-		::SetEndOfFile((HANDLE)_get_osfhandle(fileno(m_pFile)));
+		::SetEndOfFile((HANDLE)_get_osfhandle(_fileno(m_pFile)));
 		return 0;		// don't really care
 #else
 		return ftruncate(fileno(m_pFile), Tell());

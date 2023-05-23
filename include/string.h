@@ -55,7 +55,7 @@ namespace SimpleLib
 		// Constructor
 		CoreString(const CoreStringBuilder<T>& builder)
 		{
-			int length;
+			size_t length;
 			const T* psz = builder.ToString(&length);
 			m_pData = AllocCoreStringData(psz, length);
 		}
@@ -464,11 +464,11 @@ namespace SimpleLib
 		struct StringData
 		{
 			int m_iRef;
-			int m_iLength;
+			size_t m_iLength;
 			T	m_sz[1];
 		};
 
-		static StringData* AllocCoreStringData(const T* psz, int length)
+		static StringData* AllocCoreStringData(const T* psz, size_t length)
 		{
 			if (psz == nullptr && length <= 0)
 				return nullptr;

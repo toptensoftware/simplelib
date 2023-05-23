@@ -139,7 +139,7 @@ namespace SimpleLib
 
 		Rectangle Outset(T left, T top, T right, T bottom) const
 		{
-			return Rectangle(Left - left, Top - t, Width + left + right, Height + top + bottom);
+			return Rectangle(Left - left, Top - top, Width + left + right, Height + top + bottom);
 		}
 
 		bool Contains(T x, T y) const
