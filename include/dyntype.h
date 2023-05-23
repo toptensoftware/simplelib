@@ -10,20 +10,20 @@ namespace SimpleLib
 	// WHAT THE HELL IS THIS???
 	// It's a cross platform version of __declspec(selectany) to store
 	// the global pointer to the first type entry
-	class CDynType;
+	class DynType;
 	template <int iDummy = 0>
 	struct CDynTypeFirstHolder
 	{
-		static CDynType* m_pFirst;
+		static DynType* m_pFirst;
 	};
-	template <int iDummy> CDynType* CDynTypeFirstHolder<iDummy>::m_pFirst = nullptr;
+	template <int iDummy> DynType* CDynTypeFirstHolder<iDummy>::m_pFirst = nullptr;
 
 	// Store information about a CDynamicBase type
-	class CDynType
+	class DynType
 	{
 	public:
 		// Construction
-		CDynType(int iID, void* (*pfnCreate)(), const char* pszName) :
+		DynType(int iID, void* (*pfnCreate)(), const char* pszName) :
 			m_iID(iID),
 			m_pfnCreate(pfnCreate),
 			m_pszName(pszName)
@@ -36,9 +36,9 @@ namespace SimpleLib
 		}
 
 		// Given a type ID, return the CDynType for it
-		static CDynType* GetTypeFromID(int iID)
+		static DynType* GetTypeFromID(int iID)
 		{
-			CDynType* p = CDynTypeFirstHolder<>::m_pFirst;
+			DynType* p = CDynTypeFirstHolder<>::m_pFirst;
 			while (p)
 			{
 				if (p->m_iID == iID)
@@ -48,9 +48,9 @@ namespace SimpleLib
 			return nullptr;
 		}
 
-		static CDynType* GetTypeFromName(const char* pszName)
+		static DynType* GetTypeFromName(const char* pszName)
 		{
-			CDynType* p = CDynTypeFirstHolder<>::m_pFirst;
+			DynType* p = CDynTypeFirstHolder<>::m_pFirst;
 			while (p)
 			{
 				if (p->m_pszName != nullptr)
@@ -83,21 +83,21 @@ namespace SimpleLib
 		int	m_iID;
 		void* (*m_pfnCreate)();
 		const char* m_pszName;
-		CDynType* m_pNext;
+		DynType* m_pNext;
 	};
 
 	// Base class for CDynamicBase classes that dont derive from another dynamic type
-	class CDynamicBaseNone
+	class DynamicBaseNone
 	{
 	public:
-		virtual void* QueryCast(CDynType* ptype) { return nullptr; }
-		virtual CDynType* QueryType() { return nullptr; };
-		static CDynType* GetType() { return nullptr; };
+		virtual void* QueryCast(DynType* ptype) { return nullptr; }
+		virtual DynType* QueryType() { return nullptr; };
+		static DynType* GetType() { return nullptr; };
 	};
 
 	// CDynamicBase
-	template <typename TSelf, typename TBase = CDynamicBaseNone>
-	class CDynamicBase : public TBase
+	template <typename TSelf, typename TBase = DynamicBaseNone>
+	class DynamicBase : public TBase
 	{
 	public:
 		template <typename T>
@@ -115,12 +115,12 @@ namespace SimpleLib
 			return (T*)QueryCast(&T::dyntype);
 		}
 
-		static CDynType* GetType()
+		static DynType* GetType()
 		{
 			return &TSelf::dyntype;
 		}
 
-		static CDynType* GetBaseType()
+		static DynType* GetBaseType()
 		{
 			return TBase::GetType();
 		}
@@ -130,7 +130,7 @@ namespace SimpleLib
 			return nullptr;
 		}
 
-		virtual void* QueryCast(CDynType* ptype)
+		virtual void* QueryCast(DynType* ptype)
 		{
 			if (ptype == GetType())
 			{
@@ -141,7 +141,7 @@ namespace SimpleLib
 			return p;
 		}
 
-		virtual CDynType* QueryType()
+		virtual DynType* QueryType()
 		{
 			return GetType();
 		}
@@ -149,17 +149,17 @@ namespace SimpleLib
 
 
 	// CDynamic
-	template <typename TSelf, typename TBase = CDynamicBaseNone>
-	class CDynamic : public CDynamicBase<TSelf, TBase>
+	template <typename TSelf, typename TBase = DynamicBaseNone>
+	class Dynamic : public DynamicBase<TSelf, TBase>
 	{
 	public:
-		static CDynType dyntype;
+		static DynType dyntype;
 	};
 
 
 	// CDynamicCreatable
-	template <typename TSelf, typename TBase = CDynamicBaseNone, int iID = 0>
-	class CDynamicCreatable : public CDynamicBase<TSelf, TBase>
+	template <typename TSelf, typename TBase = DynamicBaseNone, int iID = 0>
+	class DynamicCreatable : public DynamicBase<TSelf, TBase>
 	{
 	public:
 		static void* CreateInstance()
@@ -171,14 +171,14 @@ namespace SimpleLib
 		{
 			return 0;
 		}
-		static CDynType dyntype;
+		static DynType dyntype;
 	};
 
 	template <typename TSelf, typename TBase>
-	CDynType CDynamic<TSelf, TBase>::dyntype(0, nullptr, TSelf::GetTypeName());
+	DynType Dynamic<TSelf, TBase>::dyntype(0, nullptr, TSelf::GetTypeName());
 
 	template <typename TSelf, typename TBase, int iID>
-	CDynType CDynamicCreatable<TSelf, TBase, iID>::dyntype(iID ? iID : TSelf::GenerateTypeID(), TSelf::CreateInstance, TSelf::GetTypeName());
+	DynType DynamicCreatable<TSelf, TBase, iID>::dyntype(iID ? iID : TSelf::GenerateTypeID(), TSelf::CreateInstance, TSelf::GetTypeName());
 
 } // namespace
 

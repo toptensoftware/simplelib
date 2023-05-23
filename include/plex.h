@@ -9,13 +9,13 @@
 
 namespace SimpleLib
 {
-    // Simple block allocator used by CMap
+    // Simple block allocator used by Dictionary
     template <typename T>
-    class CPlex
+    class Plex
     {
     public:
         // Constructor
-        CPlex(int iBlockSize = -1)
+        Plex(int iBlockSize = -1)
         {
             if (iBlockSize == -1)
             {
@@ -33,7 +33,7 @@ namespace SimpleLib
         }
 
         // Destructor
-        ~CPlex()
+        ~Plex()
         {
             FreeAll();
         }

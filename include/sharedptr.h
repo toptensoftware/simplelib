@@ -7,10 +7,10 @@ namespace SimpleLib
 {
 
 template <typename T>
-class CSharedPtr
+class SharedPtr
 {
 public:
-	CSharedPtr(T* ptr = nullptr)
+	SharedPtr(T* ptr = nullptr)
 	{
 		if (ptr == nullptr)
 			_pControl = nullptr;
@@ -18,20 +18,20 @@ public:
 			_pControl = new CONTROL(ptr);
 	}
 
-	CSharedPtr(const CSharedPtr& other)
+	SharedPtr(const SharedPtr& other)
 	{
 		_pControl = other._pControl;
 		if (_pControl)
 			_pControl->AddRef();
 	}
 
-	CSharedPtr(CSharedPtr&& other)
+	SharedPtr(SharedPtr&& other)
 	{
 		_pControl = other._pControl;
 		other._pControl = nullptr;
 	}
 
-	~CSharedPtr()
+	~SharedPtr()
 	{
 		if (_pControl)
 			_pControl->Release();
@@ -59,7 +59,7 @@ public:
 		return pNew;
 	}
 
-	const CSharedPtr<T>& operator=(const CSharedPtr<T>& other)
+	const SharedPtr<T>& operator=(const SharedPtr<T>& other)
 	{
 		if (_pControl)
 			_pControl->Release();
@@ -71,7 +71,7 @@ public:
 		return *this;
 	}
 
-	CSharedPtr<T>& operator=(CSharedPtr<T>&& Other)
+	SharedPtr<T>& operator=(SharedPtr<T>&& Other)
 	{
 		_pControl = Other._pControl;
 		Other._pControl = nullptr;

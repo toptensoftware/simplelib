@@ -58,10 +58,10 @@ namespace SimpleLib
 	};
 
 	template <typename T>
-	class CFormatCallback : public IFormatOutput<T>
+	class FormatCallback : public IFormatOutput<T>
 	{
 	public:
-		CFormatCallback(void (*cb)(void*, T), void* arg)
+		FormatCallback(void (*cb)(void*, T), void* arg)
 		{
 			m_cb = cb;
 			m_arg = arg;
@@ -78,10 +78,10 @@ namespace SimpleLib
 
 
 	template <typename T>
-	class CFormatStringWriter : public IFormatOutput<T>
+	class FormatStringWriter : public IFormatOutput<T>
 	{
 	public:
-		CFormatStringWriter(IStringWriter<T>* sw)
+		FormatStringWriter(IStringWriter<T>* sw)
 		{
 			m_sw = sw;
 		}
@@ -96,7 +96,7 @@ namespace SimpleLib
 
 
 	// Number formatting helpers used by CString::Format
-	class CFormatting
+	class Formatting
 	{
 	public:
 

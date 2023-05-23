@@ -9,8 +9,8 @@ using namespace SimpleLib;
 bool g_bAnyFailed=false;
 bool g_bFailed=false;
 
-typedef CCoreString<char> CAnsiString;
-typedef CCoreString<wchar_t> CUniString;
+typedef CoreString<char> CAnsiString;
+typedef CoreString<wchar_t> CUniString;
 
 void Failed(int iLine, const char* psz)
 {
@@ -23,20 +23,20 @@ void Failed(int iLine, const char* psz)
 #undef assert
 #define assert(x)  if (!(x)) Failed(__LINE__, #x);
 
-class CInstanceCounter
+class InstanceCounter
 {
 public:
-	CInstanceCounter()
+	InstanceCounter()
 	{
 		m_iInstances++;
 	}
 
-	CInstanceCounter(const CInstanceCounter& Other)
+	InstanceCounter(const InstanceCounter& Other)
 	{
 		m_iInstances++;
 	}
 
-	virtual ~CInstanceCounter()
+	virtual ~InstanceCounter()
 	{
 		m_iInstances--;
 	}
@@ -44,43 +44,72 @@ public:
 	static int m_iInstances;
 };
 
-int CInstanceCounter::m_iInstances=0;
+int InstanceCounter::m_iInstances=0;
 
-class CMyObject
+class MyObject
 {
 public:
-	CMyObject(int iVal) : m_iVal(iVal)
+	MyObject(int iVal) : m_iVal(iVal)
 	{
 	}
-	CMyObject(const CMyObject& Other) : m_iVal(Other.m_iVal)
+	MyObject(const MyObject& Other) : m_iVal(Other.m_iVal)
 	{
 	}
 
 	int m_iVal;
 };
 
-/*
-namespace SimpleLib
+void TestMath()
 {
-	template <>
-	int Compare(CMyObject* const& a, CMyObject* const& b)
-	{
-		return a->m_iVal-b->m_iVal;
-	}
+	printf("Testing Math...");
+	g_bFailed=false;
 
-	template <>
-	int Compare(const CMyObject& a, const CMyObject& b)
-	{
-		return a.m_iVal-b.m_iVal;
-	}
+	assert(Math::Min(10, 20) == 10);
+	assert(Math::Max(10, 20) == 20);
+
+	if (!g_bFailed)
+		printf("OK\n");
 }
-*/
 
+void TestVector()
+{
+	printf("Testing Vector...");
+
+	VectorI a(10, 10);
+	VectorI b(10, 10);
+	VectorI c(1,2);
+	assert(a == b);
+	assert(a != c);
+
+	auto x = VectorD(0, 10).Magnitude();
+	auto y = VectorD::Distance(VectorD(10, 10), VectorD(20, 20));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+void TestRectangle()
+{
+	printf("Testing Rectangle...");
+
+	assert(RectangleD(10, 10, 20, 20).Area() == 400.0);
+	assert(RectangleF(10, 10, 20, 20).Area() == 400.0F);
+	assert(RectangleI(10, 10, 20, 20).Area() == 400);
+
+	RectangleI a(10, 10, 20, 20);
+	RectangleI b(10, 10, 20, 20);
+	RectangleI c(1,2,3,4);
+	assert(a == b);
+	assert(a != c);
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
 
 void TestStrings()
 {
 	g_bFailed=false;
-	printf("Testing CCoreString...");
+	printf("Testing CoreString...");
 
 
 	// Basic constructor
@@ -137,7 +166,7 @@ void TestStrings()
 
 	strA = "Apples;Pears;;Bananas";
 
-	CVector<CAnsiString> parts;
+	List<CAnsiString> parts;
 	strA.Split(";", true, parts);
 	assert(parts.GetCount() == 4);
 	assert(parts[0].IsEqualTo("Apples"));
@@ -161,143 +190,143 @@ void TestStrings()
 		printf("OK\n");
 }
 
-void TestVector()
+void TestList()
 {
 	g_bFailed=false;
-	printf("Testing CVector...");
+	printf("Testing List...");
 
-	// Setup a vector
-	CVector<int> vec;
+	// Setup a list
+	List<int> list;
 
-	vec.Add(10);
-	assert(vec.IndexOf(10) == 0);
-	vec.Clear();
+	list.Add(10);
+	assert(list.IndexOf(10) == 0);
+	list.Clear();
 
 	// Add 10 items
 	int i;
 	for (i=0; i<10; i++)
 	{
-		vec.Add(i);
+		list.Add(i);
 	}
 
 	// Test initial addd
-	assert(vec.GetCount()==10);
+	assert(list.GetCount()==10);
 	for (i=0; i<10; i++)
 	{
-		assert(vec[i]==i);
+		assert(list[i]==i);
 	}
 
 	// Insert At
-	vec.InsertAt(5, 100);
-	assert(vec[4]==4);
-	assert(vec[5]==100);
-	assert(vec[6]==5);
+	list.InsertAt(5, 100);
+	assert(list[4]==4);
+	assert(list[5]==100);
+	assert(list[6]==5);
 
 	// Remove At
-	vec.RemoveAt(5);
-	assert(vec[4]==4);
-	assert(vec[5]==5);
+	list.RemoveAt(5);
+	assert(list[4]==4);
+	assert(list[5]==5);
 
 	// Remove At (multiple)
-	vec.InsertAt(5, 100);
-	vec.InsertAt(5, 100);
-	vec.InsertAt(5, 100);
-	vec.InsertAt(5, 100);
-	vec.RemoveAt(5, 4);
-	assert(vec[4]==4);
-	assert(vec[5]==5);
+	list.InsertAt(5, 100);
+	list.InsertAt(5, 100);
+	list.InsertAt(5, 100);
+	list.InsertAt(5, 100);
+	list.RemoveAt(5, 4);
+	assert(list[4]==4);
+	assert(list[5]==5);
 
 	// Swap
-	vec.Swap(1,2);
-	assert(vec[0]==0);
-	assert(vec[1]==2);
-	assert(vec[2]==1);
-	assert(vec[3]==3);
-	vec.Swap(1,2);
+	list.Swap(1,2);
+	assert(list[0]==0);
+	assert(list[1]==2);
+	assert(list[2]==1);
+	assert(list[3]==3);
+	list.Swap(1,2);
 
 	// Move
-	vec.Move(3,1);
-	assert(vec[0]==0);
-	assert(vec[1]==3);
-	assert(vec[2]==1);
-	assert(vec[3]==2);
+	list.Move(3,1);
+	assert(list[0]==0);
+	assert(list[1]==3);
+	assert(list[2]==1);
+	assert(list[3]==2);
 
 	// Move back
-	vec.Move(1,3);
-	assert(vec[0]==0);
-	assert(vec[1]==1);
-	assert(vec[2]==2);
-	assert(vec[3]==3);
+	list.Move(1,3);
+	assert(list[0]==0);
+	assert(list[1]==1);
+	assert(list[2]==2);
+	assert(list[3]==3);
 
 	// Find
-	assert(vec.IndexOf(100)==-1);
-	assert(vec.IndexOf(8)==8);
+	assert(list.IndexOf(100)==-1);
+	assert(list.IndexOf(8)==8);
 
 	// Find with start position
-	vec.Add(1);
-	assert(vec.IndexOf(1)==1);
-	assert(vec.IndexOf(1,5)==10);
-	assert(!vec.IsEmpty());
+	list.Add(1);
+	assert(list.IndexOf(1)==1);
+	assert(list.IndexOf(1,5)==10);
+	assert(!list.IsEmpty());
 
 	// Remove All
-	vec.Clear();
-	assert(vec.GetCount()==0);
-	assert(vec.IsEmpty());
+	list.Clear();
+	assert(list.GetCount()==0);
+	assert(list.IsEmpty());
 
 	// Test stack operations
-	vec.Clear();
-	vec.Push(10);
-	vec.Push(20);
-	vec.Push(30);
-	assert(vec[0]==10);
-	assert(vec[1]==20);
-	assert(vec[2]==30);
-	assert(vec.Tail()==30);
-	assert(vec.Pop()==30);
-	assert(vec.Pop()==20);
-	assert(vec.Pop()==10);
-	assert(vec.IsEmpty());
+	list.Clear();
+	list.Push(10);
+	list.Push(20);
+	list.Push(30);
+	assert(list[0]==10);
+	assert(list[1]==20);
+	assert(list[2]==30);
+	assert(list.Tail()==30);
+	assert(list.Pop()==30);
+	assert(list.Pop()==20);
+	assert(list.Pop()==10);
+	assert(list.IsEmpty());
 
 	// Test queue operations
-	vec.Clear();
-	vec.Enqueue(10);
-	vec.Enqueue(20);
-	vec.Enqueue(30);
-	assert(vec[0]==10);
-	assert(vec[1]==20);
-	assert(vec[2]==30);
-	assert(vec.Head()==10);
-	assert(vec.Dequeue()==10);
-	assert(vec.Dequeue()==20);
-	assert(vec.Dequeue()==30);
-	assert(vec.IsEmpty());
+	list.Clear();
+	list.Enqueue(10);
+	list.Enqueue(20);
+	list.Enqueue(30);
+	assert(list[0]==10);
+	assert(list[1]==20);
+	assert(list[2]==30);
+	assert(list.Head()==10);
+	assert(list.Dequeue()==10);
+	assert(list.Dequeue()==20);
+	assert(list.Dequeue()==30);
+	assert(list.IsEmpty());
 
 	// Test construction/destruction when holding objects
-	CVector<CInstanceCounter>	vecObjs;
+	List<InstanceCounter>	vecObjs;
 	{
-	vecObjs.Add(CInstanceCounter());
-	vecObjs.Add(CInstanceCounter());
-	vecObjs.Add(CInstanceCounter());
+	vecObjs.Add(InstanceCounter());
+	vecObjs.Add(InstanceCounter());
+	vecObjs.Add(InstanceCounter());
 	}
-	assert(CInstanceCounter::m_iInstances==3);
+	assert(InstanceCounter::m_iInstances==3);
 	vecObjs.RemoveAt(0);
-	assert(CInstanceCounter::m_iInstances==2);
+	assert(InstanceCounter::m_iInstances==2);
 	vecObjs.Clear();
-	assert(CInstanceCounter::m_iInstances==0);
+	assert(InstanceCounter::m_iInstances==0);
 
 
 	// Test construction/destruction when holding owned object pointers
-	CVector<CSharedPtr<CInstanceCounter>> vecPtrs;
-	vecPtrs.Add(new CInstanceCounter());
-	vecPtrs.Add(new CInstanceCounter());
-	vecPtrs.Add(new CInstanceCounter());
-	assert(CInstanceCounter::m_iInstances==3);
+	List<SharedPtr<InstanceCounter>> vecPtrs;
+	vecPtrs.Add(new InstanceCounter());
+	vecPtrs.Add(new InstanceCounter());
+	vecPtrs.Add(new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==3);
 	vecPtrs.RemoveAt(0);
-	assert(CInstanceCounter::m_iInstances==2);
+	assert(InstanceCounter::m_iInstances==2);
 	vecPtrs.Clear();
-	assert(CInstanceCounter::m_iInstances==0);
+	assert(InstanceCounter::m_iInstances==0);
 
-	CVector<CCoreString<wchar_t>> strs;
+	List<CoreString<wchar_t>> strs;
 	strs.Add(L"Apples");
 	strs.Add(L"Pears");
 	strs.Add(L"Bananas");
@@ -311,11 +340,11 @@ void TestVector()
 
 void TestMap()
 {
-	printf("Testing CMap...");
+	printf("Testing Dictionary...");
 	g_bFailed=false;
 
 	// Start with empty map
-	CMap<int, int> map;
+	Dictionary<int, int> map;
 	assert(map.IsEmpty());
 	assert(map.GetCount()==0);
 
@@ -451,31 +480,31 @@ void TestMap()
 	// Test construction/destruction when holding objects
 	// NB: There's an extra 1 on the reference count because of the instance in
 	//		the m_Leaf member of the map itself.
-	CMap<int, CInstanceCounter>	mapObjs;
-	{ mapObjs.Add(10, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==2);
-	{ mapObjs.Add(20, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==3);
-	{ mapObjs.Add(30, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==4);
+	Dictionary<int, InstanceCounter>	mapObjs;
+	{ mapObjs.Add(10, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==2);
+	{ mapObjs.Add(20, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==3);
+	{ mapObjs.Add(30, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==4);
 	mapObjs.Remove(10);
-	assert(CInstanceCounter::m_iInstances==3);
+	assert(InstanceCounter::m_iInstances==3);
 	mapObjs.RemoveAll();
-	assert(CInstanceCounter::m_iInstances==1);
+	assert(InstanceCounter::m_iInstances==1);
 
 
 	// Test construction/destruction when holding owned object pointers
-	CMap<int, CSharedPtr<CInstanceCounter>> mapPtrs;
-	mapPtrs.Add(10, new CInstanceCounter());
-	mapPtrs.Add(20, new CInstanceCounter());
-	mapPtrs.Add(30, new CInstanceCounter());
-	assert(CInstanceCounter::m_iInstances==4);
+	Dictionary<int, SharedPtr<InstanceCounter>> mapPtrs;
+	mapPtrs.Add(10, new InstanceCounter());
+	mapPtrs.Add(20, new InstanceCounter());
+	mapPtrs.Add(30, new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==4);
 	mapPtrs.Remove(10);
-	assert(CInstanceCounter::m_iInstances==3);
+	assert(InstanceCounter::m_iInstances==3);
 	mapPtrs.RemoveAll();
-	assert(CInstanceCounter::m_iInstances==1);
+	assert(InstanceCounter::m_iInstances==1);
 
-	CMap<CAnsiString, int> strs;
+	Dictionary<CAnsiString, int> strs;
 	strs.Add("Apples", 1);
 	strs.Add("Pears", 2);
 	strs.Add("Bananas", 3);
@@ -483,7 +512,7 @@ void TestMap()
 	assert(!strs.TryGetValue("APPLES", val));
 	assert(val == 0);
 
-	CMap<CAnsiString, int, SCaseI> strsI;
+	Dictionary<CAnsiString, int, SCaseI> strsI;
 	strsI.Add("Apples", 1);
 	strsI.Add("Pears", 2);
 	strsI.Add("Bananas", 3);
@@ -497,11 +526,11 @@ void TestMap()
 
 void TestKeyedArray()
 {
-	printf("Testing CKeyedArray...");
+	printf("Testing KeyedArray...");
 	g_bFailed=false;
 
 	// Start with empty ka
-	CKeyedArray<int, int> ka;
+	KeyedArray<int, int> ka;
 	assert(ka.IsEmpty());
 	assert(ka.GetCount()==0);
 
@@ -586,31 +615,31 @@ void TestKeyedArray()
 	// Test construction/destruction when holding objects
 	// NB: There's an extra 1 on the reference count because of the instance in
 	//		the m_Leaf member of the ka itself.
-	CKeyedArray<int, CInstanceCounter>	kaObjs;
-	{ kaObjs.Add(10, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==1);
-	{ kaObjs.Add(20, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==2);
-	{ kaObjs.Add(30, CInstanceCounter()); }
-	assert(CInstanceCounter::m_iInstances==3);
+	KeyedArray<int, InstanceCounter>	kaObjs;
+	{ kaObjs.Add(10, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==1);
+	{ kaObjs.Add(20, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==2);
+	{ kaObjs.Add(30, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==3);
 	kaObjs.Remove(10);
-	assert(CInstanceCounter::m_iInstances==2);
+	assert(InstanceCounter::m_iInstances==2);
 	kaObjs.Clear();
-	assert(CInstanceCounter::m_iInstances==0);
+	assert(InstanceCounter::m_iInstances==0);
 
 
 	// Test construction/destruction when holding owned object pointers
-	CKeyedArray<int, CSharedPtr<CInstanceCounter>> kaPtrs;
-	kaPtrs.Add(10, new CInstanceCounter());
-	kaPtrs.Add(20, new CInstanceCounter());
-	kaPtrs.Add(30, new CInstanceCounter());
-	assert(CInstanceCounter::m_iInstances==3);
+	KeyedArray<int, SharedPtr<InstanceCounter>> kaPtrs;
+	kaPtrs.Add(10, new InstanceCounter());
+	kaPtrs.Add(20, new InstanceCounter());
+	kaPtrs.Add(30, new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==3);
 	kaPtrs.Remove(10);
-	assert(CInstanceCounter::m_iInstances==2);
+	assert(InstanceCounter::m_iInstances==2);
 	kaPtrs.Clear();
-	assert(CInstanceCounter::m_iInstances==0);
+	assert(InstanceCounter::m_iInstances==0);
 
-	CKeyedArray<CAnsiString, int> strs;
+	KeyedArray<CAnsiString, int> strs;
 	strs.Add("Apples", 1);
 	strs.Add("Pears", 2);
 	strs.Add("Bananas", 3);
@@ -618,7 +647,7 @@ void TestKeyedArray()
 	assert(!strs.TryGetValue("APPLES", val));
 	assert(val == 0);
 
-	CKeyedArray<CAnsiString, int, SCaseI> strsI;
+	KeyedArray<CAnsiString, int, SCaseI> strsI;
 	strsI.Add("Apples", 1);
 	strsI.Add("Pears", 2);
 	strsI.Add("Bananas", 3);
@@ -711,60 +740,60 @@ void TestPath()
 	g_bFailed=false;
 
 #ifdef _WIN32
-	assert(CPath<>::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
-	assert(CPath<>::Join("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<>::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<>::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
+	assert(Path<>::Join("\\a", "\\b").IsEqualTo("\\a\\b"));
+	assert(Path<>::Join("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(Path<>::Join("\\a\\", "b").IsEqualTo("\\a\\b"));
+	assert(Path<>::Join("\\a\\", "\\b").IsEqualTo("\\a\\b"));
 
-	assert(CPath<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
-	assert(CPath<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(Path<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
+	assert(Path<>::GetFileName("\\a\\file.txt").IsEqualTo("file.txt"));
 
-	assert(CPath<>::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<>::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<>::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
+	assert(Path<>::GetDirectoryName("\\a\\b\\c\\file.txt").IsEqualTo("\\a\\b\\c"));
+	assert(Path<>::GetDirectoryName("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c"));
+	assert(Path<>::GetDirectoryName("\\a\\b\\c").IsEqualTo("\\a\\b"));
 
-	assert(CPath<>::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
-	assert(CPath<>::GetDirectoryName("C:\\").IsEmpty());
-	assert(CPath<>::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
-	assert(CPath<>::GetDirectoryName("\\\\unc\\share").IsEmpty());
+	assert(Path<>::GetDirectoryName("C:\\MyDir").IsEqualTo("C:\\"));
+	assert(Path<>::GetDirectoryName("C:\\").IsEmpty());
+	assert(Path<>::GetDirectoryName("\\\\unc\\share\\dir").IsEqualTo("\\\\unc\\share"));
+	assert(Path<>::GetDirectoryName("\\\\unc\\share").IsEmpty());
 
-	assert(CPath<>::IsFullyQualified("C:") == false);
-	assert(CPath<>::IsFullyQualified("C:\\") == true);
-	assert(CPath<>::IsFullyQualified("C:\\file") == true);
-	assert(CPath<>::IsFullyQualified("C:file") == false);
-	assert(CPath<>::IsFullyQualified("\\\\unc\\share") == true);
-	assert(CPath<>::IsFullyQualified("\\\\unc\\share\\") == true);
-	assert(CPath<>::IsFullyQualified("\\\\unc\\share\\file") == true);
+	assert(Path<>::IsFullyQualified("C:") == false);
+	assert(Path<>::IsFullyQualified("C:\\") == true);
+	assert(Path<>::IsFullyQualified("C:\\file") == true);
+	assert(Path<>::IsFullyQualified("C:file") == false);
+	assert(Path<>::IsFullyQualified("\\\\unc\\share") == true);
+	assert(Path<>::IsFullyQualified("\\\\unc\\share\\") == true);
+	assert(Path<>::IsFullyQualified("\\\\unc\\share\\file") == true);
 
-	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
-	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
-	assert(CPath<>::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
+	assert(Path<>::GetFileNameWithoutExtension("\\a\\file.txt").IsEqualTo("file"));
+	assert(Path<>::GetFileNameWithoutExtension("\\a\\file.").IsEqualTo("file"));
+	assert(Path<>::GetFileNameWithoutExtension("\\a\\file").IsEqualTo("file"));
 	
-	assert(CPath<>::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
-	assert(CPath<>::GetExtension("\\a.dir\\file").IsEmpty());
+	assert(Path<>::GetExtension("\\a\\file.txt").IsEqualTo(".txt"));
+	assert(Path<>::GetExtension("\\a.dir\\file").IsEmpty());
 
-	assert(CPath<>::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<>::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<>::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
-	assert(CPath<>::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(Path<>::ChangeExtension("\\a\\file.txt", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(Path<>::ChangeExtension("\\a\\file", "doc").IsEqualTo("\\a\\file.doc"));
+	assert(Path<>::ChangeExtension("\\a\\file.txt", ".doc").IsEqualTo("\\a\\file.doc"));
+	assert(Path<>::ChangeExtension("\\a\\file", ".doc").IsEqualTo("\\a\\file.doc"));
 
-	assert(CPath<>::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<>::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
-	assert(CPath<>::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
-	assert(CPath<>::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
-	assert(CPath<>::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
-	assert(CPath<>::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
-	assert(CPath<>::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath<>::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
-	assert(CPath<>::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
-	assert(CPath<>::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(Path<>::Canonicalize("\\a\\b\\c").IsEqualTo("\\a\\b\\c"));
+	assert(Path<>::Canonicalize("\\a\\.\\b\\.\\c").IsEqualTo("\\a\\b\\c"));
+	assert(Path<>::Canonicalize("\\a\\..\\b\\c").IsEqualTo("\\b\\c"));
+	assert(Path<>::Canonicalize("\\a\\b\\..\\..\\c").IsEqualTo("\\c"));
+	assert(Path<>::Canonicalize("a\\b\\c").IsEqualTo("a\\b\\c"));
+	assert(Path<>::Canonicalize("C:\\a\\b\\c").IsEqualTo("C:\\a\\b\\c"));
+	assert(Path<>::Canonicalize("\\\\a\\b\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(Path<>::Canonicalize("\\\\a\\b\\\\c").IsEqualTo("\\\\a\\b\\c"));
+	assert(Path<>::Canonicalize("\\a\\b\\c\\").IsEqualTo("\\a\\b\\c\\"));
+	assert(Path<>::Canonicalize("\\a\\b\\c\\\\\\\\").IsEqualTo("\\a\\b\\c\\"));
 
-	assert(CPath<>::Combine("\\a", "b").IsEqualTo("\\a\\b"));
-	assert(CPath<>::Combine("\\a", "\\b").IsEqualTo("\\b"));
-	assert(CPath<>::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
-	assert(CPath<>::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
-	assert(CPath<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
-	assert(CPath<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
+	assert(Path<>::Combine("\\a", "b").IsEqualTo("\\a\\b"));
+	assert(Path<>::Combine("\\a", "\\b").IsEqualTo("\\b"));
+	assert(Path<>::Combine("C:\\a", "\\b").IsEqualTo("C:\\b"));
+	assert(Path<>::Combine("\\\\unc\\share\\subdir", "\\b").IsEqualTo("\\\\unc\\share\\b"));
+	assert(Path<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c").IsEqualTo("\\a\\b\\otherdir\\c"));
+	assert(Path<>::Combine("\\a", "b\\subdir\\..\\otherdir\\c\\").IsEqualTo("\\a\\b\\otherdir\\c\\"));
 
 #else
 	assert(CPath<>::Join("/a", "/b").IsEqualTo("/a/b"));
@@ -809,7 +838,7 @@ void TestPath()
 
 }
 
-void TestStream(CStream& s)
+void TestStream(Stream& s)
 {
 	assert(s.IsOpen());
 	assert(s.GetLength() == 0);
@@ -865,7 +894,7 @@ void TestFileStream()
 	printf("Testing File Stream...");
 	g_bFailed=false;
 
-	CFileStream s;
+	FileStream s;
 	s.Create("test.bin");
 	TestStream(s);
 
@@ -879,7 +908,7 @@ void TestMemoryStream()
 	printf("Testing Memory Stream...");
 	g_bFailed=false;
 
-	CMemoryStream s;
+	MemoryStream s;
 	s.Create();
 	TestStream(s);
 
@@ -894,28 +923,28 @@ void TestFile()
 
 	// Read this file
 	CString str;
-	CFile::ReadAllText("SimpleTest.cpp", str);
+	File::ReadAllText("SimpleTest.cpp", str);
 	assert(str.StartsWith("// SimpleTest.cpp"));
 
 	// Write it again
-	CFile::WriteAllText("test.bin", str.sz());
+	File::WriteAllText("test.bin", str.sz());
 
 	// Read it again
 	CString str2;
-	CFile::ReadAllText("test.bin", str2);
+	File::ReadAllText("test.bin", str2);
 	assert(str.IsEqualTo(str2));
 
 	// Copy/delete/exists
-	assert(CFile::Exists("test.bin"));
-	assert(CFile::Copy("test.bin", "copy.bin", true) == 0);
-	assert(CFile::Exists("copy.bin"));
-	assert(CFile::Copy("test.bin", "copy.bin", true) == 0);
-	assert(CFile::Exists("copy.bin"));
-	assert(CFile::Copy("test.bin", "copy.bin", false) == EEXIST);
-	CFile::Delete("test.bin");
-	assert(!CFile::Exists("test.bin"));
-	CFile::Delete("copy.bin");
-	assert(!CFile::Exists("copy.bin"));
+	assert(File::Exists("test.bin"));
+	assert(File::Copy("test.bin", "copy.bin", true) == 0);
+	assert(File::Exists("copy.bin"));
+	assert(File::Copy("test.bin", "copy.bin", true) == 0);
+	assert(File::Exists("copy.bin"));
+	assert(File::Copy("test.bin", "copy.bin", false) == EEXIST);
+	File::Delete("test.bin");
+	assert(!File::Exists("test.bin"));
+	File::Delete("copy.bin");
+	assert(!File::Exists("copy.bin"));
 
 	if (!g_bFailed)
 		printf("OK\n");
@@ -927,28 +956,28 @@ void TestDirectory()
 	printf("Testing Directory...");
 	g_bFailed=false;
 
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "file.txt")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "file.*")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*.txt")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "fi*.txt")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*.*")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "*")));
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "fi??.*")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "file.txt")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "file.*")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "*.txt")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "fi*.txt")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "*.*")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "*")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "fi??.*")));
 
 #ifdef _WIN32
-	assert((CPath<>::DoesMatchPattern<char>("file.txt", "FILE.*")));
+	assert((Path<>::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #else
 	assert(!(CPath<>::DoesMatchPattern<char>("file.txt", "FILE.*")));
 #endif
 
-	assert(!CDirectory<>::Exists("temp"));
-	assert(!CDirectory<>::Create("temp"));
-	assert(CDirectory<>::Exists("temp"));
-	assert(!CDirectory<>::Delete("temp"));
-	assert(!CDirectory<>::Exists("temp"));
+	assert(!Directory<>::Exists("temp"));
+	assert(!Directory<>::Create("temp"));
+	assert(Directory<>::Exists("temp"));
+	assert(!Directory<>::Delete("temp"));
+	assert(!Directory<>::Exists("temp"));
 
-	CDirectoryIterator iter;
-	CDirectory<>::Iterate("..", "*.h", IterateFlags::All, iter);
+	DirectoryIterator iter;
+	Directory<>::Iterate("..", "*.h", IterateFlags::All, iter);
 	while (iter.Next())
 	{
 		printf("%s\n", iter.Name);
@@ -963,8 +992,11 @@ int main(int argc, char* argv[])
 {
 	printf("SimpleLib Unit Test Cases\n");
 
-	TestStrings();
+	TestMath();
 	TestVector();
+	TestRectangle();
+	TestStrings();
+	TestList();
 	TestMap();
 	TestKeyedArray();
 	TestFormatting();

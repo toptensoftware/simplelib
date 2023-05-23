@@ -22,12 +22,12 @@ namespace SimpleLib
 {
 
 // Abstract Stream Class
-class CStream
+class Stream
 {
 public:
 // Construction
-			CStream() {}
-	virtual ~CStream() {}
+			Stream() {}
+	virtual ~Stream() {}
 
 // Abstract operations
 	virtual void Close() = 0;
@@ -47,7 +47,7 @@ public:
 	int Write(const T& t) { return Write(&t, sizeof(T)); }
 
 	// Copy everything from one stream to another
-	static int Copy(CStream& dest, CStream& src)
+	static int Copy(Stream& dest, Stream& src)
 	{
 		char buf[4096];
 		while (true)
@@ -74,10 +74,10 @@ public:
 };
 
 template<typename T>
-class CStreamStringWriter : public IStringWriter<T>
+class StreamStringWriter : public IStringWriter<T>
 {
 public:
-	CStreamStringWriter(CStream& stream) : 
+	StreamStringWriter(Stream& stream) : 
 		_stream(stream)
 	{
 		_err = 0;
@@ -95,20 +95,20 @@ public:
 		_err = _stream.Write(ch);
 	}
 
-	 CStream& _stream;
+	 Stream& _stream;
 	 int _err;
 };
 
 // Stream class for reading and writing files
-class CFileStream : public CStream
+class FileStream : public Stream
 {
 public:
-	CFileStream() 
+	FileStream() 
 	{
 		m_pFile = nullptr;
 	}
 
-	virtual ~CFileStream()
+	virtual ~FileStream()
 	{
 		Close();
 	}
@@ -238,11 +238,11 @@ public:
 };
 
 // Stream class for reading and writing blocks of memory
-class CMemoryStream : public CStream
+class MemoryStream : public Stream
 {
 public:
 	// Constructor
-	CMemoryStream() 
+	MemoryStream() 
 	{
 		m_p = nullptr;
 		m_length = 0;
@@ -252,7 +252,7 @@ public:
 	}
 
 	// Destructor
-	virtual ~CMemoryStream()
+	virtual ~MemoryStream()
 	{
 		Close();
 	}

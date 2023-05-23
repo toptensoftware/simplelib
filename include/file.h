@@ -15,7 +15,7 @@
 namespace SimpleLib
 {
 
-class CFileInfo
+class FileInfo
 {
 public:
 	bool IsFile;
@@ -27,7 +27,7 @@ public:
 };
 
 // Abstract Stream Class
-class CFile
+class File
 {
 public:
 
@@ -38,7 +38,7 @@ public:
 		text.Clear();
 
 		// Open file
-		CFileStream file;
+		FileStream file;
 		int err = file.Open(filename);
 		if (err)
 			return err;
@@ -73,7 +73,7 @@ public:
 	static int WriteAllText(const char* filename, const char* text)
 	{
 		// Create the file
-		CFileStream file;
+		FileStream file;
 		int err = file.Create(filename);
 		if (err)
 			return err;
@@ -93,7 +93,7 @@ public:
 	}
 
 	// Get info about a file
-	static int GetFileInfo(const char* filename, CFileInfo& info)
+	static int GetFileInfo(const char* filename, FileInfo& info)
 	{
 #ifdef _MSC_VER
 		struct __stat64 s;
@@ -126,7 +126,7 @@ public:
 	// Check if a file exists
 	static bool Exists(const char* filename)
 	{
-		CFileInfo  info;
+		FileInfo  info;
 		return GetFileInfo(filename, info) == 0 && info.IsFile;
 	}
 

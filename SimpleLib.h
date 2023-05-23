@@ -1,6 +1,13 @@
 #ifndef __SIMPLELIB_H
 #define __SIMPLELIB_H
 
+// Utils
+#include "include/math.h"
+
+// Geometry
+#include "include/vector.h"
+#include "include/rectangle.h"
+
 // Strings
 #include "include/string.h"
 #include "include/stringbuilder.h"
@@ -10,8 +17,8 @@
 
 // Collections
 #include "include/sharedptr.h"
-#include "include/vector.h"
-#include "include/map.h"
+#include "include/list.h"
+#include "include/dictionary.h"
 #include "include/keyedarray.h"
 #include "include/plex.h"
 #include "include/ringbuffer.h"

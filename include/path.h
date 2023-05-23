@@ -65,7 +65,7 @@ namespace SimpleLib
 
 
     template <typename SPathSemantics = SPathSemanticsAuto>
-    class CPath
+    class Path
     {
     public:
         // Simple join of two paths ensuring one directory separator
@@ -190,7 +190,7 @@ namespace SimpleLib
         {
             CString strPath(path);
 
-            CVector<CString> parts;
+            List<CString> parts;
             strPath.Split(SPathSemantics::GetDirectorySeparators(), true, parts);
 
             for (int i=0; i<parts.GetCount(); i++)

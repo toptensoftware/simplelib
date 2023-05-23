@@ -27,11 +27,11 @@ enum IterateFlags
 };
 
 template <typename SPathSemantics>
-class CDirectory;
+class Directory;
 
 
 template <typename SPathSemantics = SPathSemanticsAuto>
-class CDirectoryIterator
+class DirectoryIterator
 {
 public:
 	const char* Name;
@@ -44,7 +44,7 @@ public:
 			return false;
 
 		// Get top of stack
-		CSharedPtr<CState> pState = _stack.Tail();
+		SharedPtr<CState> pState = _stack.Tail();
 		if (!pState->Next())
 		{
 			_stack.Pop();
@@ -57,14 +57,14 @@ public:
 		// Recurse
 		if ((_flags & IterateFlags::Recursive) && (pState->_currentItemFlags & IterateFlags::Directories))
 		{
-			Add(CPath<SPathSemantics>::Join(_baseDirectory, pState->_currentName), pState->_currentName);
+			Add(Path<SPathSemantics>::Join(_baseDirectory, pState->_currentName), pState->_currentName);
 		}
 
 		// Ignore directory/files
 		if ((pState->_currentItemFlags & _flags) == 0)
 			goto startAgain;
 
-		if (!CPath<SPathSemantics>::DoesMatchPattern<char>(pState->_fileName, _pattern))
+		if (!Path<SPathSemantics>::DoesMatchPattern<char>(pState->_fileName, _pattern))
 			goto startAgain;
 
 		return true;
@@ -110,7 +110,7 @@ private:
 		}
 		int Init(const char* directory, const char* prefix)
 		{
-			_hFind = FindFirstFileW(Encode<wchar_t>(CPath<SPathSemantics>::Join(directory, "*").sz()), &_fd);
+			_hFind = FindFirstFileW(Encode<wchar_t>(Path<SPathSemantics>::Join(directory, "*").sz()), &_fd);
 			_initial = true;
 			_directory = directory;
 			_prefix = prefix;
@@ -145,7 +145,7 @@ private:
 				_currentItemFlags = IterateFlags::Files;
 
 			_fileName = Encode<char>(_fd.cFileName);
-			_currentName = CPath<SPathSemantics>::Join(_prefix, _fileName);
+			_currentName = Path<SPathSemantics>::Join(_prefix, _fileName);
 			return true;
 		}
 
@@ -212,24 +212,24 @@ private:
 	};
 #endif
 
-	CVector<CSharedPtr<CState>> _stack;
+	List<SharedPtr<CState>> _stack;
 
-	friend class CDirectory<SPathSemantics>;
+	friend class Directory<SPathSemantics>;
 };
 
 
 
 // Abstract Stream Class
 template <typename SPathSemantics = SPathSemanticsAuto>
-class CDirectory
+class Directory
 {
 public:
 
 	// Check if a directory exists (and that it's a directory)
 	static bool Exists(const char* name)
 	{
-		CFileInfo  info;
-		return CFile::GetFileInfo(name, info) == 0 && info.IsDirectory;
+		FileInfo  info;
+		return File::GetFileInfo(name, info) == 0 && info.IsDirectory;
 	}
 
 	// Create a directory path
@@ -240,7 +240,7 @@ public:
 			return 0;
 
 		// Create parent directory
-		auto parent = CPath<SPathSemantics>::GetDirectoryName(name);
+		auto parent = Path<SPathSemantics>::GetDirectoryName(name);
 		if (!parent.IsEmpty())
 		{
 			int err = Create(parent.sz());
@@ -267,7 +267,7 @@ public:
 	}
 
 
-	static int Iterate(const char* directory, const char* pattern, IterateFlags flags, CDirectoryIterator<SPathSemantics>& iter)
+	static int Iterate(const char* directory, const char* pattern, IterateFlags flags, DirectoryIterator<SPathSemantics>& iter)
 	{
 		return iter.Init(directory, pattern, flags);
 	}

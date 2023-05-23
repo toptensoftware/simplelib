@@ -7,7 +7,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "vector.h"
+#include "list.h"
 #include "stringbuilder.h"
 
 namespace SimpleLib
@@ -17,43 +17,43 @@ namespace SimpleLib
 	*/
 
 	template <typename T>
-	class CCoreString
+	class CoreString
 	{
 	public:
 		// Constructor
-		CCoreString()
+		CoreString()
 		{
 			m_pData = nullptr;
 		}
 
 		// Copy Constructor
-		CCoreString(const CCoreString<T>& other)
+		CoreString(const CoreString<T>& other)
 		{
 			m_pData = nullptr;
 			Assign(other);
 		}
 
 		// Move Constructor
-		CCoreString(CCoreString<T>&& other)
+		CoreString(CoreString<T>&& other)
 		{
 			m_pData = other.m_pData;
 			other.m_pData = nullptr;
 		}
 
 		// Constructor
-		CCoreString(const T* psz, int iLen)
+		CoreString(const T* psz, int iLen)
 		{
 			m_pData = AllocCoreStringData(psz, iLen);
 		}
 
 		// Constructor
-		CCoreString(const T* psz)
+		CoreString(const T* psz)
 		{
 			m_pData = AllocCoreStringData(psz, -1);
 		}
 
 		// Constructor
-		CCoreString(const CCoreStringBuilder<T>& builder)
+		CoreString(const CoreStringBuilder<T>& builder)
 		{
 			int length;
 			const T* psz = builder.ToString(&length);
@@ -61,23 +61,23 @@ namespace SimpleLib
 		}
 
 		// Destructor
-		~CCoreString()
+		~CoreString()
 		{
 			Clear();
 		}
 
 		// Types
-		typedef CCoreString<T> _CCoreString;
+		typedef CoreString<T> _CCoreString;
 
 		// Assignment
-		CCoreString<T>& operator=(const CCoreString<T>& Other)
+		CoreString<T>& operator=(const CoreString<T>& Other)
 		{
 			Assign(Other);
 			return *this;
 		}
 
 		// Move Assignment
-		CCoreString<T>& operator=(CCoreString<T>&& Other)
+		CoreString<T>& operator=(CoreString<T>&& Other)
 		{
 			m_pData = Other.m_pData;
 			Other.m_pData = nullptr;
@@ -85,7 +85,7 @@ namespace SimpleLib
 		}
 
 		// Assignment
-		CCoreString<T>& operator=(const T* psz) 
+		CoreString<T>& operator=(const T* psz) 
 		{
 			Assign(psz, -1);
 			return *this;
@@ -105,7 +105,7 @@ namespace SimpleLib
 			return sz();
 		}
 
-		bool operator ==(const CCoreString<T>& b) const
+		bool operator ==(const CoreString<T>& b) const
 		{
 			return this->IsEqualTo(b.sz());
 		}
@@ -135,7 +135,7 @@ namespace SimpleLib
 			return GetLength() == 0;
 		}
 
-		bool Assign(const CCoreString<T>& Other)
+		bool Assign(const CoreString<T>& Other)
 		{
 			Clear();
 			m_pData = Other.m_pData;
@@ -158,10 +158,10 @@ namespace SimpleLib
 			return m_pData ? m_pData->m_iLength : 0;
 		}
 
-		CCoreString<T> ToUpper()
+		CoreString<T> ToUpper()
 		{
 			if (m_pData == nullptr)
-				return CCoreString<T>();
+				return CoreString<T>();
 
 			// Allocate new string buffer
 			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
@@ -178,13 +178,13 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return CCoreString<T>(pNew);
+			return CoreString<T>(pNew);
 		}
 
-		CCoreString<T> ToLower()
+		CoreString<T> ToLower()
 		{
 			if (m_pData == nullptr)
-				return CCoreString<T>();
+				return CoreString<T>();
 
 			// Allocate new string buffer
 			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
@@ -201,10 +201,10 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return CCoreString<T>(pNew);
+			return CoreString<T>(pNew);
 		}
 
-		CCoreString<T> SubString(int iStart, int iLength = -1)
+		CoreString<T> SubString(int iStart, int iLength = -1)
 		{
 			int thisLength = GetLength();
 
@@ -217,7 +217,7 @@ namespace SimpleLib
 			assert(iStart >= 0);
 			assert(iStart + iLength <= thisLength);
 
-			return CCoreString<T>(m_pData->m_sz + iStart, iLength);
+			return CoreString<T>(m_pData->m_sz + iStart, iLength);
 		}
 
 		template <typename S = SCase>
@@ -312,13 +312,13 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		CCoreString<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		CoreString<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			// Start offset past end of string?
 			assert(startOffset <= GetLength());
 
 			// Setup builder and copy the bit before start index
-			CCoreStringBuilder<T> builder;
+			CoreStringBuilder<T> builder;
 			if (startOffset > 0)
 				builder.Append(sz(), startOffset);
 
@@ -361,9 +361,9 @@ namespace SimpleLib
 			return S::Compare(m_pData->m_sz + startPos, find, findLen) == 0;
 		}
 
-		static CCoreString<T> Join(CVector<CCoreString<T>>& parts, T separator)
+		static CoreString<T> Join(List<CoreString<T>>& parts, T separator)
 		{
-			CCoreStringBuilder<T> sb;
+			CoreStringBuilder<T> sb;
 			for (int i=0; i<parts.GetCount(); i++)
 			{
 				if (i > 0)
@@ -374,7 +374,7 @@ namespace SimpleLib
 		}
 
 		template <typename S = SCase>
-		int Split(const T* separators, bool includeEmpty, CVector<CCoreString<T>>& parts) const
+		int Split(const T* separators, bool includeEmpty, List<CoreString<T>>& parts) const
 		{
 			// Clear buffer
 			parts.Clear();
@@ -394,7 +394,7 @@ namespace SimpleLib
 				if (IsOneOf<S>(separators, *p))
 				{
 					if (includeEmpty || p > pPart)
-						parts.Add(CCoreString<T>(pPart, (int)(p - pPart)));
+						parts.Add(CoreString<T>(pPart, (int)(p - pPart)));
 
 					pPart = p + 1;
 					p = pPart;
@@ -406,24 +406,24 @@ namespace SimpleLib
 			}
 
 			if (includeEmpty || p > pPart)
-				parts.Add(CCoreString<T>(pPart, (int)(p - pPart)));
+				parts.Add(CoreString<T>(pPart, (int)(p - pPart)));
 
 			return parts.GetCount();
 		}
 
 
-		static CCoreString<T> Format(const T* pFormat, ...)
+		static CoreString<T> Format(const T* pFormat, ...)
 		{
 			va_list args;
 			va_start(args, pFormat);
-			CCoreString<T> result = FormatV(pFormat, args);
+			CoreString<T> result = FormatV(pFormat, args);
 			va_end(args);
 			return result;
 		}
 
-		static CCoreString<T> FormatV(const T* pFormat, va_list args)
+		static CoreString<T> FormatV(const T* pFormat, va_list args)
 		{
-			CCoreStringBuilder<T> buf;
+			CoreStringBuilder<T> buf;
 			buf.FormatV(pFormat, args);
 			return buf.ToString();
 		}
@@ -486,13 +486,13 @@ namespace SimpleLib
 		StringData* m_pData;
 
 	private:
-		CCoreString(StringData* pData)
+		CoreString(StringData* pData)
 		{
 			m_pData = pData;
 		}
 	};
 
-	typedef CCoreString<char> CString;
+	typedef CoreString<char> CString;
 
 }	// namespace
 

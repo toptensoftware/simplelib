@@ -15,11 +15,11 @@ namespace SimpleLib
 	// If only the (Try)Enqueue and (Try)Dequeue methods are used then this class is safe
 	// for single reader / single writer multi threaded use
 	template <typename T>
-	class CRingBuffer
+	class RingBuffer
 	{
 	public:
 		// Constructor
-		CRingBuffer(int iCapacity)
+		RingBuffer(int iCapacity)
 		{
 			m_iCapacityPlusOne = iCapacity + 1;
 			m_pMem = (T*)malloc(sizeof(T) * m_iCapacityPlusOne);
@@ -29,7 +29,7 @@ namespace SimpleLib
 		}
 
 		// Destructor
-		virtual ~CRingBuffer()
+		virtual ~RingBuffer()
 		{
 			RemoveAll();
 			free(m_pMem);
@@ -329,8 +329,8 @@ namespace SimpleLib
 
 	private:
 		// Unsupported
-		CRingBuffer(const CRingBuffer& Other);
-		CRingBuffer& operator=(const CRingBuffer& Other);
+		RingBuffer(const RingBuffer& Other);
+		RingBuffer& operator=(const RingBuffer& Other);
 	};
 
 

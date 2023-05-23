@@ -22,19 +22,19 @@ Supports:
 eg:
 
 	// map of ints to int
-	CMap<int, int>			mapInts;
+	Dictionary<int, int>			mapInts;
 
 	// map of ints to object
-	CMap<int, CMyObject>	mapObjects;
+	Dictionary<int, CMyObject>	mapObjects;
 
 	// map of ints to object ptrs
-	CMap<CMyObject*>	mapPtrObjects;
+	Dictionary<int, CMyObject*>	mapPtrObjects;
 
 	// a map of ints to pointers where pointers deleted on removal
-	CMap<int, CMyObject*, SValue, SOwnedPtr> mapPtrObjects;
+	Dictionary<int, SharedPtr<CMyObject>> mapPtrObjects;
 
 	// a map of strings to integers, with case insensitivity on the keys
-	CMap< CCoreString<char>, int, SCaseInsensitive>	map;
+	Dictionary< CCoreString<char>, int, SCaseInsensitive>	map;
 	map.Add("Apples", 10);
 	map.Add("Pears", 20);
 	map.Add("Bananas", 30);
@@ -49,11 +49,11 @@ eg:
 namespace SimpleLib
 {
     template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
-    class CMap
+    class Dictionary
     {
     public: 
         // Constructor
-        CMap() :
+        Dictionary() :
             m_pRoot(&m_Leaf),
             m_iSize(0)
         {
@@ -66,21 +66,21 @@ namespace SimpleLib
         }
 
         // Destructor
-        virtual ~CMap()
+        virtual ~Dictionary()
         {
             FreeNode(m_pRoot);
         }
 
     // Type used as return value from operator[]
-        class CKeyPair
+        class KeyPair
         {
         public:
-            CKeyPair(const TKey& Key, TValue& Value) :
+            KeyPair(const TKey& Key, TValue& Value) :
                 Key(Key),
                 Value(Value)
             {
             }
-            CKeyPair(const CKeyPair& Other) :
+            KeyPair(const KeyPair& Other) :
                 Key(Other.Key),
                 Value(Other.Value)
             {
@@ -94,7 +94,7 @@ namespace SimpleLib
             // "Occassionally" MSVC compiler gives warning about inability
             // to generate assignment operator that it never even uses.
             // This seems to fix warning and will give link error if actually needed
-            CKeyPair& operator=(const CKeyPair& Other);
+            KeyPair& operator=(const KeyPair& Other);
     #endif
         };
 
@@ -112,7 +112,7 @@ namespace SimpleLib
         }
 
         // Index based iteration
-        CKeyPair GetAt(int iIndex) const
+        KeyPair GetAt(int iIndex) const
         {
             assert(iIndex>=0 && iIndex<m_iSize);
         #ifdef _DEBUG_CHECKS
@@ -123,33 +123,33 @@ namespace SimpleLib
             {
                 m_iIterPos=0;
                 m_pIterNode=m_pFirst;
-                return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+                return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
             }
 
             if (iIndex==m_iSize-1)
             {
                 m_iIterPos=m_iSize-1;
                 m_pIterNode=m_pLast;
-                return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+                return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
             }
 
             if (iIndex==m_iIterPos)
             {
-                return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+                return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
             }
 
             if (iIndex==m_iIterPos+1)
             {
                 m_iIterPos=iIndex;
                 m_pIterNode=m_pIterNode->m_pNext;
-                return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+                return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
             }
 
             if (iIndex==m_iIterPos-1)
             {
                 m_iIterPos=iIndex;
                 m_pIterNode=m_pIterNode->m_pPrev;
-                return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+                return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
             }
 
             int iDistanceFromIterPos=m_iIterPos-iIndex;
@@ -194,7 +194,7 @@ namespace SimpleLib
         #ifdef _DEBUG_CHECKS
             CheckAll();
         #endif
-            return CKeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
+            return KeyPair(m_pIterNode->m_KeyPair.m_Key, m_pIterNode->m_KeyPair.m_Value);
         }
 
         void Add(const TKey& Key, const TValue& Value)
@@ -826,7 +826,7 @@ namespace SimpleLib
 
 
         // Attributes
-        CPlex<CNode>	m_NodePlex;
+        Plex<CNode>	m_NodePlex;
         CNode* m_pRoot;
         CNode* m_pFirst;
         CNode* m_pLast;
@@ -837,8 +837,8 @@ namespace SimpleLib
 
     private:
         // Unsupported
-        CMap(const CMap& Other);
-        CMap& operator=(const CMap& Other);
+        Dictionary(const Dictionary& Other);
+        Dictionary& operator=(const Dictionary& Other);
     };
 
 }   // namespace

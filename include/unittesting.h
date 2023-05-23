@@ -48,7 +48,7 @@ Failed 1 of 4 tests!
 
 
 #define run(x) \
-	SimpleLib::CUnitTesting::EnterTest(#x); \
+	SimpleLib::UnitTesting::EnterTest(#x); \
 	x; \
 	SimpleLib::CUnitTesting::LeaveTest()
 
@@ -81,12 +81,12 @@ Failed 1 of 4 tests!
 namespace SimpleLib
 {
 
-class CUnitTesting
+class UnitTesting
 {
 public:
 	static void EnterTest(const char* name)
 	{
-		ActiveTest() = new CTest(ActiveTest(), name);
+		ActiveTest() = new Test(ActiveTest(), name);
 	}
 
 	static void LeaveTest()
@@ -121,7 +121,7 @@ public:
 
 	static const char* vsprintf(const char* format, va_list args)
 	{
-		CCoreStringBuilder<char> buf;
+		CoreStringBuilder<char> buf;
 		buf.FormatV(format, args);
 		return StringPool().Alloc(buf);
 	}
@@ -131,7 +131,7 @@ public:
 		if (value == nullptr)
 			return "nullptr";
 
-		CCoreStringBuilder<char> buf;
+		CoreStringBuilder<char> buf;
 		buf.Append(chDelim);
 
 		const char* p = value;
@@ -174,18 +174,18 @@ public:
 		return strcmp(a, b);
 	}
 
-	static CCoreStringPool<char>& StringPool() { static CCoreStringPool<char> val; return val; }
+	static CoreStringPool<char>& StringPool() { static CoreStringPool<char> val; return val; }
 
 private:
-	class CTest;
+	class Test;
 	static int& TotalTests() { static int val = 0; return val; }
 	static int& FailedTests() { static int val = 0; return val; }
-	static CTest*& ActiveTest() { static CTest* val = nullptr; return val; }
+	static Test*& ActiveTest() { static Test* val = nullptr; return val; }
 
-	class CTest
+	class Test
 	{
 	public:
-		CTest(CTest* pParent, const char* name)
+		Test(Test* pParent, const char* name)
 		{
 			TotalTests()++;
 
@@ -273,9 +273,9 @@ private:
 			CloseHeader();
 		}
 
-		CTest* GetParent() { return m_pParent; }
+		Test* GetParent() { return m_pParent; }
 
-		CTest* m_pParent;
+		Test* m_pParent;
 		int m_iDepth;
 		bool m_bHeaderClosed;
 	};
@@ -292,7 +292,7 @@ inline const char* test_sprintf(const char* format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	const char* result = SimpleLib::CUnitTesting::vsprintf(format, args);
+	const char* result = SimpleLib::UnitTesting::vsprintf(format, args);
 	va_end(args);
 	return result;
 }
@@ -342,7 +342,7 @@ inline const char* test_format(char value)
 {
 	char sz[2] = "x";
 	sz[0] = value;
-	return SimpleLib::CUnitTesting::FormatString(sz, '\'');
+	return SimpleLib::UnitTesting::FormatString(sz, '\'');
 }
 
 inline const char* test_format(double value)
@@ -352,7 +352,7 @@ inline const char* test_format(double value)
 
 inline const char* test_format(const char* value)
 {
-	return SimpleLib::CUnitTesting::FormatString(value);
+	return SimpleLib::UnitTesting::FormatString(value);
 }
 
 

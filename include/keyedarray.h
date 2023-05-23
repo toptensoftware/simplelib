@@ -5,22 +5,22 @@
 #include <stdlib.h>
 
 #include "compare.h"
-#include "vector.h"
+#include "list.h"
 
 namespace SimpleLib
 {
     template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
-	class CKeyedArray
+	class KeyedArray
 	{
 	public:
 
 		// Constructor
-		CKeyedArray()
+		KeyedArray()
 		{
 		}
 
 		// Destructor
-		virtual ~CKeyedArray()
+		virtual ~KeyedArray()
 		{
 		}
 
@@ -119,10 +119,10 @@ namespace SimpleLib
 		}
 
 		// Get key and value at index
-		class CKeyPair;
-		CKeyPair GetAt(int index) const
+		class KeyPair;
+		KeyPair GetAt(int index) const
 		{
-			return CKeyPair(m_Keys[index], m_Values[index]);
+			return KeyPair(m_Keys[index], m_Values[index]);
 		}
 
 		// Get by key, assert if unknown key
@@ -173,15 +173,15 @@ namespace SimpleLib
 		}
 
 		// Type used as return value from GetAt
-		class CKeyPair
+		class KeyPair
 		{
 		public:
-			CKeyPair(TKey& key, TValue& value) :
+			KeyPair(TKey& key, TValue& value) :
 				Key(key),
 				Value(value)
 			{
 			}
-			CKeyPair(const CKeyPair& Other) :
+			KeyPair(const KeyPair& Other) :
 				Key(Other.Key),
 				Value(Other.Value)
 			{
@@ -191,18 +191,18 @@ namespace SimpleLib
 			TValue& Value;
 
 		private:
-			CKeyPair& operator=(const CKeyPair& Other);
+			KeyPair& operator=(const KeyPair& Other);
 		};
 
 
 	protected:
-		CVector<TKey>		m_Keys;
-		CVector<TValue>		m_Values;
+		List<TKey>		m_Keys;
+		List<TValue>		m_Values;
 
 	private:
 		// Unsupported
-		CKeyedArray(const CKeyedArray& Other);
-		CKeyedArray& operator=(const CKeyedArray& Other);
+		KeyedArray(const KeyedArray& Other);
+		KeyedArray& operator=(const KeyedArray& Other);
 	};
 
 
