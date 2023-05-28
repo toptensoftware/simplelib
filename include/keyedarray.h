@@ -169,7 +169,7 @@ namespace SimpleLib
 		// Find index of key
 		int IndexOf(const TKey& Key) const
 		{
-			return m_Keys.IndexOf<TKeyCompare>(Key);
+			return m_Keys.template IndexOf<TKeyCompare>(Key);
 		}
 
 		// Type used as return value from GetAt

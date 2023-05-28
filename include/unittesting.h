@@ -1,5 +1,5 @@
-#ifndef _test_core_h_
-#define _test_core_h_
+#ifndef __simplelib_unittesting_h__
+#define __simplelib_unittesting_h__
 
 #include <stdio.h>
 #include <string.h>
@@ -50,19 +50,19 @@ Failed 1 of 4 tests!
 #define run(x) \
 	SimpleLib::UnitTesting::EnterTest(#x); \
 	x; \
-	SimpleLib::CUnitTesting::LeaveTest()
+	SimpleLib::UnitTesting::LeaveTest()
 
 #undef assert
 
-#define assert_condition(a, compare, msg) { auto _a = a; if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " " msg, #a, test_format(_a)); return; } }
-#define assert_compare(a, b, compare, msg) { auto _a = a; auto _b = b;  if (!(compare)) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " " msg " " #b, #a, test_format(_a), #b, test_format(_b) ); return; } }
+#define assert_condition(a, compare, msg) { auto _a = a; if (!(compare)) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " " msg, #a, test_format(_a)); return; } }
+#define assert_compare(a, b, compare, msg) { auto _a = a; auto _b = b;  if (!(compare)) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " " msg " " #b, #a, test_format(_a), #b, test_format(_b) ); return; } }
 
 #define assert_true(a) assert_condition(a, !!_a, "should be true")
 #define assert_false(a) assert_condition(a, !_a, "should be false")
 #define assert_null(a) assert_condition(a, _a == nullptr, "should be null")
 #define assert_not_null(a) assert_condition(a, _a != nullptr, "should not be null")
 #define assert_error(a) assert_condition(a, _a != 0, "should have failed with error")
-#define assert_not_error(a) { auto _a = a; if (_a) { SimpleLib::CUnitTesting::FailTest(__FILE__, __LINE__, #a " should not have failed with error", #a, test_format(_a), "errno", test_format(errno)); return; } }
+#define assert_not_error(a) { auto _a = a; if (_a) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " should not have failed with error", #a, test_format(_a), "errno", test_format(errno)); return; } }
 
 #define assert_equal(a, b) assert_compare(a, b, _a == _b, "should equal")
 #define assert_not_equal(a, b) assert_compare(a, b, _a != _b, "should not equal")
@@ -72,10 +72,10 @@ Failed 1 of 4 tests!
 #define assert_le(a, b) assert_compare(a, b, _a <= _b, "should be less than or equal to")
 
 
-#define assert_string_equal(a, b) assert_compare(a, b, SimpleLib::CUnitTesting::StringCompare(_a,_b)==0, "should equal")
-#define assert_string_not_equal(a, b) assert_compare(a, b, SimpleLib::CUnitTesting::StringCompare(_a,_b)!=0, "should not equal")
+#define assert_string_equal(a, b) assert_compare(a, b, SimpleLib::UnitTesting::StringCompare(_a,_b)==0, "should equal")
+#define assert_string_not_equal(a, b) assert_compare(a, b, SimpleLib::UnitTesting::StringCompare(_a,_b)!=0, "should not equal")
 
-#define test_summary() SimpleLib::CUnitTesting::WriteSummary()
+#define test_summary() SimpleLib::UnitTesting::WriteSummary()
 
 
 namespace SimpleLib
@@ -355,6 +355,4 @@ inline const char* test_format(const char* value)
 	return SimpleLib::UnitTesting::FormatString(value);
 }
 
-
-
-#endif // _test_core_h_
+#endif // __simplelib_unittesting_h__

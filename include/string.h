@@ -110,6 +110,37 @@ namespace SimpleLib
 			return this->IsEqualTo(b.sz());
 		}
 
+		CoreString<T> operator+(const CoreString<T>& other) const
+		{
+			CoreStringBuilder<T> builder;
+			builder.Append(sz(), GetLength());
+			builder.Append(other.sz(), other.GetLength());
+			return builder;
+		}
+
+		CoreString<T> operator+=(const T* psz)
+		{
+			CoreStringBuilder<T> builder;
+			builder.Append(sz(), GetLength());
+			builder.Append(psz);
+			return builder;
+		}
+
+		CoreString<T> operator+=(const CoreString<T>& other)
+		{
+			*this = *this + other;
+			return *this;
+		}
+
+/*
+		CoreString& operator+=(const T* psz)
+		{
+			*this = *this + psz;
+			return *this;
+		}
+*/
+
+
 		// Get null terminated string
 		const T* sz() const
 		{
@@ -221,6 +252,23 @@ namespace SimpleLib
 		}
 
 		template <typename S = SCase>
+		int IndexOf(T find, int startOffset = 0) const
+		{
+			// Check bounds
+			if (m_pData == nullptr || m_pData->m_iLength == 0)
+				return -1;
+
+			// Find it
+			for (size_t i = startOffset; i <= m_pData->m_iLength; i++)
+			{
+				if (S::Compare(m_pData->m_sz[i], find) == 0)
+					return i;
+			}
+
+			return -1;
+		}
+
+		template <typename S = SCase>
 		int IndexOf(const T* find, int startOffset = 0) const
 		{
 			// Check bounds
@@ -247,7 +295,7 @@ namespace SimpleLib
 			if (m_pData == nullptr)
 				return -1;
 
-			for (int i=startOffset; i<m_pData->m_iLength; i++)
+			for (size_t i=startOffset; i<m_pData->m_iLength; i++)
 			{
 				if (IsOneOf<S>(chars, m_pData->m_sz[i]))
 					return i;
@@ -484,15 +532,7 @@ namespace SimpleLib
 		}
 
 		StringData* m_pData;
-
-	private:
-		CoreString(StringData* pData)
-		{
-			m_pData = pData;
-		}
 	};
-
-	typedef CoreString<char> CString;
 
 }	// namespace
 

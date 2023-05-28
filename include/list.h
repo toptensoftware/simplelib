@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include "compare.h"
 
 #include "placed_constructor.h"
 

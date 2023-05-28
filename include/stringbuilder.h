@@ -72,6 +72,18 @@ public:
 		memcpy(dest, psz, sizeof(T) * length);
 	}
 
+	CoreStringBuilder& operator += (T ch)
+	{
+		Append(&ch, 1);
+		return *this;
+	}
+
+	CoreStringBuilder& operator += (const T* psz)
+	{
+		Append(psz);
+		return *this;
+	}
+
 	// Make sure the buffer is big enough for a specifed number
 	// of characters and return pointer to uninitialized buffer
 	// NB: This reserves space at the end of anything already
@@ -211,8 +223,6 @@ private:
 	size_t m_iCapacity;
 	T m_shortBuffer[128];
 };
-
-typedef CoreStringBuilder<char> CStringBuilder;
 
 }
 
