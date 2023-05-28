@@ -31,7 +31,7 @@ class File
 {
 public:
 
-	// Reads a UTF-8 encoding text file into a CCoreString
+	// Reads a UTF-8 encoding text file into a CString
 	static int ReadAllText(const char* filename, CString& text)
 	{
 		// Clear text

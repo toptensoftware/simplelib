@@ -34,7 +34,7 @@ eg:
 	Dictionary<int, SharedPtr<CMyObject>> mapPtrObjects;
 
 	// a map of strings to integers, with case insensitivity on the keys
-	Dictionary< CCoreString<char>, int, SCaseI>	map;
+	Dictionary< CString<char>, int, SCaseI>	map;
 	map.Add("Apples", 10);
 	map.Add("Pears", 20);
 	map.Add("Bananas", 30);

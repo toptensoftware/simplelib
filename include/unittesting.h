@@ -93,7 +93,7 @@ public:
 	{
 		ActiveTest()->Finish();
 		ActiveTest() = ActiveTest()->GetParent();
-		StringPool().FreeAll();
+		Pool().FreeAll();
 	}
 
 	static void FailTest(const char* file, int lineNumber,
@@ -121,9 +121,9 @@ public:
 
 	static const char* vsprintf(const char* format, va_list args)
 	{
-		CoreStringBuilder<char> buf;
+		StringBuilder<char> buf;
 		buf.FormatV(format, args);
-		return StringPool().Alloc(buf);
+		return Pool().Alloc(buf);
 	}
 
 	static const char* FormatString(const char* value, char chDelim = '\"')
@@ -131,7 +131,7 @@ public:
 		if (value == nullptr)
 			return "nullptr";
 
-		CoreStringBuilder<char> buf;
+		StringBuilder<char> buf;
 		buf.Append(chDelim);
 
 		const char* p = value;
@@ -160,7 +160,7 @@ public:
 		}
 
 		buf.Append(chDelim);
-		return StringPool().Alloc(buf);
+		return Pool().Alloc(buf);
 	}
 
 	static int StringCompare(const char* a, const char* b)
@@ -174,7 +174,7 @@ public:
 		return strcmp(a, b);
 	}
 
-	static CoreStringPool<char>& StringPool() { static CoreStringPool<char> val; return val; }
+	static StringPool<char>& Pool() { static StringPool<char> val; return val; }
 
 private:
 	class Test;

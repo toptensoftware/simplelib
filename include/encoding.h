@@ -231,12 +231,12 @@ struct Encoding<wchar_t, char>
 };
 
 template <typename TTo, typename TFrom>
-CoreString<TTo> Encode(const TFrom* in)
+String<TTo> Encode(const TFrom* in)
 {
 	if (!in)
 		return (TTo*)nullptr;
 		
-	CoreStringBuilder<TTo> out;
+	StringBuilder<TTo> out;
 	Encoding<TFrom, TTo> enc;
 	while (*in)
 	{

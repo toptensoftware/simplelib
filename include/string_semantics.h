@@ -6,7 +6,6 @@
 #include <wchar.h>
 #include <string.h>
 
-
 namespace SimpleLib
 {
 

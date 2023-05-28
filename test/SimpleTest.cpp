@@ -9,8 +9,8 @@ using namespace SimpleLib;
 bool g_bAnyFailed=false;
 bool g_bFailed=false;
 
-typedef CoreString<char> CAnsiString;
-typedef CoreString<wchar_t> CUniString;
+typedef String<char> CAnsiString;
+typedef String<wchar_t> CUniString;
 
 void Failed(int iLine, const char* psz)
 {
@@ -109,7 +109,7 @@ void TestRectangle()
 void TestStrings()
 {
 	g_bFailed=false;
-	printf("Testing CoreString...");
+	printf("Testing String...");
 
 
 	// Basic constructor
@@ -326,7 +326,7 @@ void TestList()
 	vecPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==0);
 
-	List<CoreString<wchar_t>> strs;
+	List<String<wchar_t>> strs;
 	strs.Add(L"Apples");
 	strs.Add(L"Pears");
 	strs.Add(L"Bananas");

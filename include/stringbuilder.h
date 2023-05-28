@@ -14,11 +14,11 @@ namespace SimpleLib
 // Simple StringBuilder class that uses embedded short buffer but switches
 // to dynamic allocations for longer strings
 template <typename T>
-class CoreStringBuilder : public IStringWriter<T>
+class StringBuilder : public IStringWriter<T>
 {
 public:
 	// Constructor
-	CoreStringBuilder()
+	StringBuilder()
 	{
 		m_iUsed = 0;
 		m_pMem = m_shortBuffer;
@@ -26,7 +26,7 @@ public:
 	}
 
 	// Destructor
-	virtual ~CoreStringBuilder()
+	virtual ~StringBuilder()
 	{
 		Reset();
 	}
@@ -66,19 +66,19 @@ public:
 	}
 
 	// Append a string of specified length
-	void Append(const T* psz, size_t length)
+	void Append(const T* psz, int length)
 	{
 		T* dest = Reserve(length);
 		memcpy(dest, psz, sizeof(T) * length);
 	}
 
-	CoreStringBuilder& operator += (T ch)
+	StringBuilder& operator += (T ch)
 	{
 		Append(&ch, 1);
 		return *this;
 	}
 
-	CoreStringBuilder& operator += (const T* psz)
+	StringBuilder& operator += (const T* psz)
 	{
 		Append(psz);
 		return *this;
@@ -88,12 +88,12 @@ public:
 	// of characters and return pointer to uninitialized buffer
 	// NB: This reserves space at the end of anything already
 	//     allocated
-	T* Reserve(size_t length)
+	T* Reserve(int length)
 	{
 		if (m_iUsed + length > m_iCapacity)
 		{
 			// Work out new capacity
-			size_t newCap = m_iCapacity;
+			int newCap = m_iCapacity;
 			while (newCap < m_iUsed + length)
 				newCap *= 2;
 
@@ -123,16 +123,16 @@ public:
 	// Finish building and return the current string (doesn't reset the builder)
 	T* ToString() const
 	{
-		size_t unused;
+		int unused;
 		return ToString(&unused);
 	}
 
 	// Finish building and return the current string and its length
-	T* ToString(size_t* piLength) const
+	T* ToString(int* piLength) const
 	{
 		if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
 		{
-			const_cast<CoreStringBuilder*>(this)->Append((T)'\0');
+			const_cast<StringBuilder*>(this)->Append((T)'\0');
 		}
 		*piLength = m_iUsed - 1;
 		return m_pMem;
@@ -207,7 +207,7 @@ public:
 
 	static void write_callback(void* arg, T ch)
 	{
-		((CoreStringBuilder*)arg)->Append(ch);
+		((StringBuilder*)arg)->Append(ch);
 	}
 
 	void FormatV(const T* pFormat, va_list args)
@@ -219,8 +219,8 @@ public:
 
 private:
 	T* m_pMem;
-	size_t m_iUsed;
-	size_t m_iCapacity;
+	int m_iUsed;
+	int m_iCapacity;
 	T m_shortBuffer[128];
 };
 

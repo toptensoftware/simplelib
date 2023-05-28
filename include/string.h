@@ -10,6 +10,7 @@
 #include "list.h"
 #include "stringbuilder.h"
 
+
 namespace SimpleLib
 {
 	/*
@@ -17,67 +18,67 @@ namespace SimpleLib
 	*/
 
 	template <typename T>
-	class CoreString
+	class String
 	{
 	public:
 		// Constructor
-		CoreString()
+		String()
 		{
 			m_pData = nullptr;
 		}
 
 		// Copy Constructor
-		CoreString(const CoreString<T>& other)
+		String(const String<T>& other)
 		{
 			m_pData = nullptr;
 			Assign(other);
 		}
 
 		// Move Constructor
-		CoreString(CoreString<T>&& other)
+		String(String<T>&& other)
 		{
 			m_pData = other.m_pData;
 			other.m_pData = nullptr;
 		}
 
 		// Constructor
-		CoreString(const T* psz, int iLen)
+		String(const T* psz, int iLen)
 		{
-			m_pData = AllocCoreStringData(psz, iLen);
+			m_pData = AllocStringData(psz, iLen);
 		}
 
 		// Constructor
-		CoreString(const T* psz)
+		String(const T* psz)
 		{
-			m_pData = AllocCoreStringData(psz, -1);
+			m_pData = AllocStringData(psz, -1);
 		}
 
 		// Constructor
-		CoreString(const CoreStringBuilder<T>& builder)
+		String(const StringBuilder<T>& builder)
 		{
-			size_t length;
+			int length;
 			const T* psz = builder.ToString(&length);
-			m_pData = AllocCoreStringData(psz, length);
+			m_pData = AllocStringData(psz, length);
 		}
 
 		// Destructor
-		~CoreString()
+		~String()
 		{
 			Clear();
 		}
 
 		// Types
-		typedef CoreString<T> _CCoreString;
+		typedef String<T> _CString;
 
 		// Assignment
-		CoreString<T>& operator=(const CoreString<T>& Other)
+		String<T>& operator=(const String<T>& Other)
 		{
 			Assign(Other);
 			return *this;
 		}
 
 		// Move Assignment
-		CoreString<T>& operator=(CoreString<T>&& Other)
+		String<T>& operator=(String<T>&& Other)
 		{
 			m_pData = Other.m_pData;
 			Other.m_pData = nullptr;
@@ -85,7 +86,7 @@ namespace SimpleLib
 		}
 
 		// Assignment
-		CoreString<T>& operator=(const T* psz) 
+		String<T>& operator=(const T* psz) 
 		{
 			Assign(psz, -1);
 			return *this;
@@ -105,35 +106,36 @@ namespace SimpleLib
 			return sz();
 		}
 
-		bool operator ==(const CoreString<T>& b) const
+		bool operator ==(const String<T>& b) const
 		{
 			return this->IsEqualTo(b.sz());
 		}
 
-		CoreString<T> operator+(const CoreString<T>& other) const
+		String<T> operator+(const String<T>& other) const
 		{
-			CoreStringBuilder<T> builder;
+			StringBuilder<T> builder;
 			builder.Append(sz(), GetLength());
 			builder.Append(other.sz(), other.GetLength());
 			return builder;
 		}
 
-		CoreString<T> operator+=(const T* psz)
+		String<T> operator+=(const T* psz)
 		{
-			CoreStringBuilder<T> builder;
+			StringBuilder<T> builder;
 			builder.Append(sz(), GetLength());
 			builder.Append(psz);
-			return builder;
+			*this = String<T>(builder);
+			return *this;
 		}
 
-		CoreString<T> operator+=(const CoreString<T>& other)
+		String<T> operator+=(const String<T>& other)
 		{
 			*this = *this + other;
 			return *this;
 		}
 
 /*
-		CoreString& operator+=(const T* psz)
+		String& operator+=(const T* psz)
 		{
 			*this = *this + psz;
 			return *this;
@@ -166,7 +168,7 @@ namespace SimpleLib
 			return GetLength() == 0;
 		}
 
-		bool Assign(const CoreString<T>& Other)
+		bool Assign(const String<T>& Other)
 		{
 			Clear();
 			m_pData = Other.m_pData;
@@ -181,7 +183,7 @@ namespace SimpleLib
 			Clear();
 
 			// Store new
-			m_pData = AllocCoreStringData(psz, iLen);
+			m_pData = AllocStringData(psz, iLen);
 		}
 
 		int GetLength() const
@@ -189,13 +191,13 @@ namespace SimpleLib
 			return m_pData ? m_pData->m_iLength : 0;
 		}
 
-		CoreString<T> ToUpper()
+		String<T> ToUpper()
 		{
 			if (m_pData == nullptr)
-				return CoreString<T>();
+				return String<T>();
 
 			// Allocate new string buffer
-			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
+			StringData* pNew = AllocStringData(nullptr, GetLength());
 
 			// Get source/dest
 			const T* pSrc = sz();
@@ -209,16 +211,16 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return CoreString<T>(pNew);
+			return String<T>(pNew);
 		}
 
-		CoreString<T> ToLower()
+		String<T> ToLower()
 		{
 			if (m_pData == nullptr)
-				return CoreString<T>();
+				return String<T>();
 
 			// Allocate new string buffer
-			StringData* pNew = AllocCoreStringData(nullptr, GetLength());
+			StringData* pNew = AllocStringData(nullptr, GetLength());
 
 			// Get source/dest
 			const T* pSrc = sz();
@@ -232,10 +234,10 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return CoreString<T>(pNew);
+			return String<T>(pNew);
 		}
 
-		CoreString<T> SubString(int iStart, int iLength = -1)
+		String<T> SubString(int iStart, int iLength = -1)
 		{
 			int thisLength = GetLength();
 
@@ -248,7 +250,7 @@ namespace SimpleLib
 			assert(iStart >= 0);
 			assert(iStart + iLength <= thisLength);
 
-			return CoreString<T>(m_pData->m_sz + iStart, iLength);
+			return String<T>(m_pData->m_sz + iStart, iLength);
 		}
 
 		template <typename S = SCase>
@@ -259,7 +261,7 @@ namespace SimpleLib
 				return -1;
 
 			// Find it
-			for (size_t i = startOffset; i <= m_pData->m_iLength; i++)
+			for (int i = startOffset; i <= m_pData->m_iLength; i++)
 			{
 				if (S::Compare(m_pData->m_sz[i], find) == 0)
 					return i;
@@ -295,7 +297,7 @@ namespace SimpleLib
 			if (m_pData == nullptr)
 				return -1;
 
-			for (size_t i=startOffset; i<m_pData->m_iLength; i++)
+			for (int i=startOffset; i<m_pData->m_iLength; i++)
 			{
 				if (IsOneOf<S>(chars, m_pData->m_sz[i]))
 					return i;
@@ -360,13 +362,13 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		CoreString<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		String<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			// Start offset past end of string?
 			assert(startOffset <= GetLength());
 
 			// Setup builder and copy the bit before start index
-			CoreStringBuilder<T> builder;
+			StringBuilder<T> builder;
 			if (startOffset > 0)
 				builder.Append(sz(), startOffset);
 
@@ -409,9 +411,9 @@ namespace SimpleLib
 			return S::Compare(m_pData->m_sz + startPos, find, findLen) == 0;
 		}
 
-		static CoreString<T> Join(List<CoreString<T>>& parts, T separator)
+		static String<T> Join(List<String<T>>& parts, T separator)
 		{
-			CoreStringBuilder<T> sb;
+			StringBuilder<T> sb;
 			for (int i=0; i<parts.GetCount(); i++)
 			{
 				if (i > 0)
@@ -422,7 +424,7 @@ namespace SimpleLib
 		}
 
 		template <typename S = SCase>
-		int Split(const T* separators, bool includeEmpty, List<CoreString<T>>& parts) const
+		int Split(const T* separators, bool includeEmpty, List<String<T>>& parts) const
 		{
 			// Clear buffer
 			parts.Clear();
@@ -442,7 +444,7 @@ namespace SimpleLib
 				if (IsOneOf<S>(separators, *p))
 				{
 					if (includeEmpty || p > pPart)
-						parts.Add(CoreString<T>(pPart, (int)(p - pPart)));
+						parts.Add(String<T>(pPart, (int)(p - pPart)));
 
 					pPart = p + 1;
 					p = pPart;
@@ -454,24 +456,24 @@ namespace SimpleLib
 			}
 
 			if (includeEmpty || p > pPart)
-				parts.Add(CoreString<T>(pPart, (int)(p - pPart)));
+				parts.Add(String<T>(pPart, (int)(p - pPart)));
 
 			return parts.GetCount();
 		}
 
 
-		static CoreString<T> Format(const T* pFormat, ...)
+		static String<T> Format(const T* pFormat, ...)
 		{
 			va_list args;
 			va_start(args, pFormat);
-			CoreString<T> result = FormatV(pFormat, args);
+			String<T> result = FormatV(pFormat, args);
 			va_end(args);
 			return result;
 		}
 
-		static CoreString<T> FormatV(const T* pFormat, va_list args)
+		static String<T> FormatV(const T* pFormat, va_list args)
 		{
-			CoreStringBuilder<T> buf;
+			StringBuilder<T> buf;
 			buf.FormatV(pFormat, args);
 			return buf.ToString();
 		}
@@ -512,11 +514,11 @@ namespace SimpleLib
 		struct StringData
 		{
 			int m_iRef;
-			size_t m_iLength;
+			int m_iLength;
 			T	m_sz[1];
 		};
 
-		static StringData* AllocCoreStringData(const T* psz, size_t length)
+		static StringData* AllocStringData(const T* psz, int length)
 		{
 			if (psz == nullptr && length <= 0)
 				return nullptr;
