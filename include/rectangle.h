@@ -1,6 +1,9 @@
 #ifndef __simplelib_rectangle_h__
 #define __simplelib_rectangle_h__
 
+#include "vector.h"
+#include "math.h"
+
 namespace SimpleLib
 {
 	template <typename T>
