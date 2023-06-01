@@ -6,6 +6,13 @@ namespace SimpleLib
     class Matrix4
     {
     public:
+        Matrix4()
+        {
+            M11 = 1; M12 = 0; M13 = 0; M14 = 0;
+            M21 = 0; M22 = 1; M23 = 0; M24 = 0;
+            M31 = 0; M32 = 0; M33 = 1; M34 = 0;
+            M41 = 0; M42 = 0; M43 = 0; M44 = 1;
+        }
         Matrix4(
             T m11, T m12, T m13, T m14,
             T m21, T m22, T m23, T m24,
@@ -17,6 +24,11 @@ namespace SimpleLib
             M21 = m21; M22 = m22; M23 = m23; M24 = m24;
             M31 = m31; M32 = m32; M33 = m33; M34 = m34;
             M41 = m41; M42 = m42; M43 = m43; M44 = m44;
+        }
+
+        Matrix4(const Matrix4<T>& other)
+        {
+            memcpy(this, &other, sizeof(Matrix4<T>));
         }
 
         Matrix4<T> Inverse() const

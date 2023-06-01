@@ -41,7 +41,13 @@ namespace SimpleLib
 			return _pControl->_ptr;
 		}
 
-		bool operator!() const
+		T& operator*() const
+		{
+			assert(_pControl != nullptr);
+			return *_pControl->_ptr;
+		}
+
+		operator bool() const
 		{
 			return _pControl != nullptr;
 		}
