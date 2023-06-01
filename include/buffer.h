@@ -1,5 +1,4 @@
-#ifndef __simplelib_buffer_h__
-#define __simplelib_buffer_h__
+#pragma once
 
 namespace SimpleLib
 {
@@ -50,7 +49,4 @@ namespace SimpleLib
 		Buffer(const Buffer& other);
 		Buffer& operator=(const Buffer& other);
 	};
-} // namespace
-
-#endif  // __simplelib_buffer_h__
-
+}

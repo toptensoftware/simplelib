@@ -1,5 +1,4 @@
-#ifndef __simplelib_string_h__
-#define __simplelib_string_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -536,6 +535,4 @@ namespace SimpleLib
 		StringData* m_pData;
 	};
 
-}	// namespace
-
-#endif  // __simplelib_string_h__
+}

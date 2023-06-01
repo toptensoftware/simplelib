@@ -1,5 +1,4 @@
-#ifndef __simplelib_vector_h__
-#define __simplelib_vector_h__
+#pragma once
 
 namespace SimpleLib
 {
@@ -17,6 +16,11 @@ namespace SimpleLib
 		{
 			X = x;
 			Y = y;
+		}
+
+		Vector<T> operator-() const
+		{
+			return Vector(-X, -Y);
 		}
 		
 		Vector<T> operator+(const Vector<T>& other) const
@@ -120,7 +124,4 @@ namespace SimpleLib
 	typedef Vector<double> VectorD;
 	typedef Vector<float> VectorF;
 
-} // namespace
-
-#endif  // __simplelib_vector_h__
-
+}

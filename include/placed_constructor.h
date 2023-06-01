@@ -1,5 +1,4 @@
-#ifndef __simplelib_placed_constructor_h__
-#define __simplelib_placed_constructor_h__
+#pragma once
 
 #ifdef _MSC_VER
 
@@ -48,7 +47,3 @@ namespace SimpleLib
 	}
 
 } // namespace
-
-#endif  // __simplelib_placed_constructor_h__
-
-

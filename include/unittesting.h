@@ -1,5 +1,4 @@
-#ifndef __simplelib_unittesting_h__
-#define __simplelib_unittesting_h__
+#pragma once
 
 #include <stdio.h>
 #include <string.h>
@@ -354,5 +353,3 @@ inline const char* test_format(const char* value)
 {
 	return SimpleLib::UnitTesting::FormatString(value);
 }
-
-#endif // __simplelib_unittesting_h__

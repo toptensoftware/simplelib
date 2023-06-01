@@ -1,9 +1,4 @@
-#ifndef __simplelib_path_h__
-#define __simplelib_path_h__
-
-#ifndef _WIN32
-#define SIMPLELIB_POSIX_PATHS
-#endif
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>

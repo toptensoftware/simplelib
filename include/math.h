@@ -1,5 +1,4 @@
-#ifndef __simplelib_math_h__
-#define __simplelib_math_h__
+#pragma once
 
 #include <math.h>
 
@@ -29,7 +28,4 @@ namespace SimpleLib
 	const double Math::PI = 3.141592653589793238463;
 	const float  Math::PI_F = 3.14159265358979f;
 
-} // namespace
-
-#endif  // __simplelib_math_h__
-
+}

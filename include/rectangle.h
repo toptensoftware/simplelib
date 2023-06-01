@@ -1,5 +1,4 @@
-#ifndef __simplelib_rectangle_h__
-#define __simplelib_rectangle_h__
+#pragma once
 
 #include "vector.h"
 #include "math.h"
@@ -186,7 +185,4 @@ namespace SimpleLib
 	typedef Rectangle<double> RectangleD;
 	typedef Rectangle<float> RectangleF;
 
-} // namespace
-
-#endif  // __simplelib_rectangle_h__
-
+}

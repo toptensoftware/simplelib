@@ -1,5 +1,4 @@
-#ifndef __simplelib_list_h__
-#define __simplelib_list_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -414,6 +413,4 @@ namespace SimpleLib
 		List& operator=(const List& Other);
 	};
 
-}	// namespace
-
-#endif  // __simplelib_list_h__
+}

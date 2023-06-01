@@ -1,5 +1,4 @@
-#ifndef __SIMPLELIB_H
-#define __SIMPLELIB_H
+#pragma once
 
 // Utils
 #include "include/math.h"
@@ -7,6 +6,9 @@
 // Geometry
 #include "include/vector.h"
 #include "include/rectangle.h"
+#include "include/affine.h"
+#include "include/matrix4.h"
+#include "include/colorf.h"
 
 // Strings
 #include "include/string.h"
@@ -29,5 +31,3 @@
 #include "include/directory.h"
 #include "include/file.h"
 #include "include/path.h"
-
-#endif // __SIMPLELIB_H

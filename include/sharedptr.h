@@ -1,117 +1,111 @@
-#ifndef __simplelib_sharedptr_h__
-#define __simplelib_sharedptr_h__
+#pragma once
 
 #include <assert.h>
 
 namespace SimpleLib
 {
-
-template <typename T>
-class SharedPtr
-{
-public:
-	SharedPtr(T* ptr = nullptr)
+	template <typename T>
+	class SharedPtr
 	{
-		if (ptr == nullptr)
-			_pControl = nullptr;
-		else
-			_pControl = new CONTROL(ptr);
-	}
-
-	SharedPtr(const SharedPtr& other)
-	{
-		_pControl = other._pControl;
-		if (_pControl)
-			_pControl->AddRef();
-	}
-
-	SharedPtr(SharedPtr&& other)
-	{
-		_pControl = other._pControl;
-		other._pControl = nullptr;
-	}
-
-	~SharedPtr()
-	{
-		if (_pControl)
-			_pControl->Release();
-	}
-
-	T* operator->() const
-	{
-		assert(_pControl != nullptr);
-		return _pControl->_ptr;
-	}
-
-	bool operator!() const
-	{
-		return _pControl != nullptr;
-	}
-
-	T* operator=(T* pNew)
-	{
-		if (_pControl)
-			_pControl->Release();
-		if (pNew)
-			_pControl = new CONTROL(pNew);
-		else
-			_pControl = nullptr;
-		return pNew;
-	}
-
-	const SharedPtr<T>& operator=(const SharedPtr<T>& other)
-	{
-		if (_pControl)
-			_pControl->Release();
-
-		_pControl = other._pControl;
-
-		if (_pControl)
-			_pControl->AddRef();
-		return *this;
-	}
-
-	SharedPtr<T>& operator=(SharedPtr<T>&& Other)
-	{
-		_pControl = Other._pControl;
-		Other._pControl = nullptr;
-	}
-	
-private:
-	struct CONTROL
-	{
-		int _nRef;
-		T* _ptr;
-
-		CONTROL(T* ptr)
+	public:
+		SharedPtr(T* ptr = nullptr)
 		{
-			_ptr = ptr;
-			_nRef = 1;
+			if (ptr == nullptr)
+				_pControl = nullptr;
+			else
+				_pControl = new CONTROL(ptr);
 		}
 
-		~CONTROL()
+		SharedPtr(const SharedPtr& other)
 		{
-			if (_ptr)
-				delete _ptr;
+			_pControl = other._pControl;
+			if (_pControl)
+				_pControl->AddRef();
 		}
 
-		void AddRef()
+		SharedPtr(SharedPtr&& other)
 		{
-			_nRef++;
+			_pControl = other._pControl;
+			other._pControl = nullptr;
 		}
 
-		void Release()
+		~SharedPtr()
 		{
-			_nRef--;
-			if (_nRef == 0)
-				delete this;
+			if (_pControl)
+				_pControl->Release();
 		}
+
+		T* operator->() const
+		{
+			assert(_pControl != nullptr);
+			return _pControl->_ptr;
+		}
+
+		bool operator!() const
+		{
+			return _pControl != nullptr;
+		}
+
+		T* operator=(T* pNew)
+		{
+			if (_pControl)
+				_pControl->Release();
+			if (pNew)
+				_pControl = new CONTROL(pNew);
+			else
+				_pControl = nullptr;
+			return pNew;
+		}
+
+		const SharedPtr<T>& operator=(const SharedPtr<T>& other)
+		{
+			if (_pControl)
+				_pControl->Release();
+
+			_pControl = other._pControl;
+
+			if (_pControl)
+				_pControl->AddRef();
+			return *this;
+		}
+
+		SharedPtr<T>& operator=(SharedPtr<T>&& Other)
+		{
+			_pControl = Other._pControl;
+			Other._pControl = nullptr;
+		}
+		
+	private:
+		struct CONTROL
+		{
+			int _nRef;
+			T* _ptr;
+
+			CONTROL(T* ptr)
+			{
+				_ptr = ptr;
+				_nRef = 1;
+			}
+
+			~CONTROL()
+			{
+				if (_ptr)
+					delete _ptr;
+			}
+
+			void AddRef()
+			{
+				_nRef++;
+			}
+
+			void Release()
+			{
+				_nRef--;
+				if (_nRef == 0)
+					delete this;
+			}
+		};
+
+		CONTROL* _pControl;
 	};
-
-	CONTROL* _pControl;
-};
-
-
-}	// namespace
-
-#endif // __simplelib_sharedptr_h__
+}

@@ -1,5 +1,4 @@
-#ifndef __simplelib_map_h__
-#define __simplelib_map_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -841,6 +840,4 @@ namespace SimpleLib
         Dictionary& operator=(const Dictionary& Other);
     };
 
-}   // namespace
-
-#endif  // __simplelib_map_h__
+}

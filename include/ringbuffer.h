@@ -1,5 +1,4 @@
-#ifndef __simplelib_ringbuffer_h__
-#define __simplelib_ringbuffer_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -334,6 +333,4 @@ namespace SimpleLib
 	};
 
 
-} // namespace
-
-#endif  // __simplelib_ringbuffer_h__
+}

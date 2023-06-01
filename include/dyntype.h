@@ -1,6 +1,4 @@
-#ifndef __simplelib_dyntype_h__
-#define __simplelib_dyntype_h__
-
+#pragma once
 
 #include <assert.h>
 #include <string.h>
@@ -180,6 +178,4 @@ namespace SimpleLib
 	template <typename TSelf, typename TBase, int iID>
 	DynType DynamicCreatable<TSelf, TBase, iID>::dyntype(iID ? iID : TSelf::GenerateTypeID(), TSelf::CreateInstance, TSelf::GetTypeName());
 
-} // namespace
-
-#endif  // __simplelib_dyntype_h__
+}

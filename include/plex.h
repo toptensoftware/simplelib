@@ -1,5 +1,4 @@
-#ifndef __simplelib_plex_h__
-#define __simplelib_plex_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -162,6 +161,4 @@ namespace SimpleLib
         int			m_iBlockSize;
     };
 
-} // namespace
-
-#endif  // __simplelib_plex_h__
+}

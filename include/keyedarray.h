@@ -1,5 +1,4 @@
-#ifndef __simplelib_keyedarray_h__
-#define __simplelib_keyedarray_h__
+#pragma once
 
 #include <assert.h>
 #include <stdlib.h>
@@ -206,6 +205,4 @@ namespace SimpleLib
 	};
 
 
-}	// namespace
-
-#endif  // __simplelib_keyedarray_h__
+}

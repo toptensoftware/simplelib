@@ -1,5 +1,4 @@
-#ifndef __simplelib_string_semantics_h__
-#define __simplelib_string_semantics_h__
+#pragma once
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -345,7 +344,5 @@ namespace SimpleLib
 	};
 
 
-} // namespace
-
-#endif  // __simplelib_string_semantics_h__
+}
 

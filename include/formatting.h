@@ -1,5 +1,4 @@
-#ifndef __simplelib_formatting_h__
-#define __simplelib_formatting_h__
+#pragma once
 
 #include <math.h>
 #include <stdarg.h>
@@ -517,6 +516,4 @@ namespace SimpleLib
 		}
 	};
 
-}	// namespace
-
-#endif		// __simplelib_formatting_h__
+}
