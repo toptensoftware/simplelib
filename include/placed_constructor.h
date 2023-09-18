@@ -1,5 +1,7 @@
 #pragma once
 
+#ifndef _SIMPLELIB_NO_PLACED_CONSTRUCTOR
+
 #ifdef _MSC_VER
 
 #ifndef __PLACEMENT_NEW_INLINE
@@ -15,7 +17,7 @@
 	}
 #endif
 #endif
-#endif
+#endif // _MSC_VER
 
 #ifdef __GNUC__
 
@@ -28,7 +30,9 @@
 	{
 	}
 
-#endif
+#endif	// __GNUC__
+
+#endif	// _SIMPLELIB_NO_PLACED_CONSTRUCTOR
 
 namespace SimpleLib
 {
