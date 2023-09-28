@@ -26,8 +26,3 @@
 #include "include/plex.h"
 #include "include/ringbuffer.h"
 
-// IO
-#include "include/stream.h"
-#include "include/directory.h"
-#include "include/file.h"
-#include "include/path.h"

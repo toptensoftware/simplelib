@@ -460,7 +460,6 @@ namespace SimpleLib
 			return parts.GetCount();
 		}
 
-
 		static String<T> Format(const T* pFormat, ...)
 		{
 			va_list args;

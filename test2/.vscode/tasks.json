@@ -1,0 +1,39 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Build",
+			"command": "make",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher":  {
+                "base": "$gcc",
+                "fileLocation": ["autoDetect", "${workspaceFolder}" ]
+            },
+            "presentation": {
+                "clear": true
+            },
+			"group": {
+				"kind": "build",
+			}
+		},
+		{
+			"type": "shell",
+			"label": "Clean",
+			"command": "make clean",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher":  {
+                "base": "$gcc",
+                "fileLocation": ["autoDetect", "${workspaceFolder}" ]
+            },
+            "presentation": {
+                "clear": true
+            },
+            "group": "build",
+		}
+	]
+}

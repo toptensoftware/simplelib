@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stream.h"
+#include "string.h"
 #include "stringbuilder.h"
 #include "encoding.h"
 

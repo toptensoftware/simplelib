@@ -8,7 +8,7 @@
             "type": "shell",
             "command": "make",
             "options": {
-                "cwd": "${workspaceFolder}/test"
+                "cwd": "${workspaceFolder}/test2"
             },
             "problemMatcher": ["$msCompile", "$gcc"],
             /*

@@ -8,10 +8,10 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test/bin/debug/test",
+            "program": "${workspaceFolder}/test2/bin/debug/test2",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/test",
+            "cwd": "${workspaceFolder}/test2",
             "environment": [],
             "console": "externalTerminal",
             "MIMode": "gdb",
@@ -30,11 +30,11 @@
             "request": "launch",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/test",
+            "cwd": "${workspaceFolder}/test2",
             "environment": [],
             "console": "externalTerminal",
             "preLaunchTask": "Build Test Cases",
-            "program": "${workspaceFolder}/test/bin/debug/test.exe"
+            "program": "${workspaceFolder}/test2/bin/debug/test2.exe"
         }
     ]
 }
