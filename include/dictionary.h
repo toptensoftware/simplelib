@@ -544,7 +544,7 @@ namespace SimpleLib
         }
 
         // Remove all items from the map
-        void RemoveAll()
+        void Clear()
         {
             FreeNode(m_pRoot);
             m_pRoot = &m_Leaf;
