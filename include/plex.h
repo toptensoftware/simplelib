@@ -140,6 +140,9 @@ namespace SimpleLib
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4200)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #endif
         struct BLOCK
         {
@@ -148,6 +151,8 @@ namespace SimpleLib
         };
 #ifdef _MSC_VER
 #pragma warning(default: 4200)
+#else
+#pragma GCC diagnostic pop
 #endif
 
         struct FREEITEM
