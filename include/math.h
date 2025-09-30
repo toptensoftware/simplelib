@@ -15,8 +15,8 @@ namespace SimpleLib
 		template <typename T>
 		static T Max(const T& a, const T& b) { return a > b ? a : b; }
 
-		static const double PI;
-		static const float  PI_F;
+		inline static constexpr double PI = 3.141592653589793238463;
+		inline static constexpr double PI_F = 3.14159265358979f;
 
 		static double DegreesToRadian(double degrees)
 		{
@@ -24,8 +24,4 @@ namespace SimpleLib
 		}
 
 	};
-
-	const double Math::PI = 3.141592653589793238463;
-	const float  Math::PI_F = 3.14159265358979f;
-
 }
