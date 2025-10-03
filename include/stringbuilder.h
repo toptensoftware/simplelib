@@ -44,6 +44,18 @@ namespace SimpleLib
 			m_iUsed = 0;
 		}
 
+		int GetLength()
+		{
+			return m_iUsed;
+		}
+
+		void Truncate(int newLength)
+		{
+			assert(newLength >= 0);
+			assert(newLength <= m_iUsed);
+			m_iUsed = newLength;
+		}
+
 		// IStringWriter
 		virtual void Write(T ch) override
 		{
