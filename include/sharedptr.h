@@ -35,6 +35,12 @@ namespace SimpleLib
 				_pControl->Release();
 		}
 
+		operator T*() const
+		{
+			assert(_pControl != nullptr);
+			return _pControl->_ptr;
+		}
+
 		T* operator->() const
 		{
 			assert(_pControl != nullptr);
@@ -61,6 +67,28 @@ namespace SimpleLib
 			else
 				_pControl = nullptr;
 			return pNew;
+		}
+
+		bool operator==(const T* other) const
+		{
+			return static_cast<const void*>(_pControl ? _pControl->_ptr : nullptr) == 
+					static_cast<const void*>(other);
+		}
+
+		bool operator!=(const T* other) const 
+		{
+			return !(*this == other);
+		}
+
+		bool operator==(const SharedPtr<T>& other) const
+		{
+			return static_cast<const void*>(_pControl ? _pControl->_ptr : nullptr) == 
+					static_cast<const void*>(other._pControl ? other._pControl->_ptr : nullptr);
+		}
+
+		bool operator!=(const SharedPtr<T>& other) const 
+		{
+			return !(*this == other);
 		}
 
 		const SharedPtr<T>& operator=(const SharedPtr<T>& other)
