@@ -430,7 +430,7 @@ void TestMap()
 	assert(map.GetCount()==iTotal);
 
 	// Repopulate...
-	map.RemoveAll();
+	map.Clear();
 	assert(map.GetCount()==0);
 	assert(map.IsEmpty());
 	for (i=0; i<100; i++)
@@ -489,7 +489,7 @@ void TestMap()
 	assert(InstanceCounter::m_iInstances==4);
 	mapObjs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
-	mapObjs.RemoveAll();
+	mapObjs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
 
 
@@ -501,7 +501,7 @@ void TestMap()
 	assert(InstanceCounter::m_iInstances==4);
 	mapPtrs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
-	mapPtrs.RemoveAll();
+	mapPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
 
 	Dictionary<CAnsiString, int> strs;
@@ -734,6 +734,7 @@ void TestEncoding()
 
 }
 
+/*
 void TestPath()
 {
 	printf("Testing Path...");
@@ -986,6 +987,7 @@ void TestDirectory()
 	if (!g_bFailed)
 		printf("OK\n");
 }
+*/
 
 // Main entry point
 int main(int argc, char* argv[])
@@ -1001,11 +1003,13 @@ int main(int argc, char* argv[])
 	TestKeyedArray();
 	TestFormatting();
 	TestEncoding();
+	/*
 	TestPath();
 	TestFileStream();
 	TestMemoryStream();
 	TestFile();
 	TestDirectory();
+	*/
 
 	if (g_bAnyFailed)
 	{

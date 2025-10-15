@@ -498,7 +498,7 @@ namespace SimpleLib
 			if (positiveSign != '\0')
 			{
 				char szFormat[10] = "%+.*f";
-				szFormat[1] = positiveSign;
+				szFormat[1] = (char)positiveSign;
 				sprintf(szTemp, szFormat, precision, value);
 			}
 			else

@@ -531,6 +531,12 @@ namespace SimpleLib
 			return p;
 		}
 
+		String(StringData* pData)
+		{
+			m_pData = pData;
+		}
+	
+
 		StringData* m_pData;
 	};
 
