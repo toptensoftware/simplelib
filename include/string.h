@@ -218,7 +218,7 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return String<T>(pNew);
+			return String<T>::WithData(pNew);
 		}
 
 		String<T> ToLower()
@@ -241,7 +241,7 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return String<T>(pNew);
+			return String<T>::WithData(pNew);
 		}
 
 		String<T> SubString(int iStart, int iLength = -1)
@@ -539,11 +539,12 @@ namespace SimpleLib
 			return p;
 		}
 
-		String(StringData* pData)
+		static String<T> WithData(StringData* pData)
 		{
-			m_pData = pData;
+			String<T> s;
+			s.m_pData = pData;
+			return s;
 		}
-	
 
 		StringData* m_pData;
 	};
