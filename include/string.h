@@ -49,7 +49,10 @@ namespace SimpleLib
 		// Constructor
 		String(const T* psz)
 		{
-			m_pData = AllocStringData(psz, -1);
+			if (psz == nullptr)
+				m_pData = nullptr;
+			else
+				m_pData = AllocStringData(psz, -1);
 		}
 
 		// Constructor
@@ -160,6 +163,11 @@ namespace SimpleLib
 				}
 				m_pData = nullptr;
 			}
+		}
+
+		bool IsNull() const
+		{
+			return m_pData == nullptr;
 		}
 
 		bool IsEmpty() const

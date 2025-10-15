@@ -379,7 +379,16 @@ namespace SimpleLib
 					{
 						// Floating point
 						double val = va_arg(args, double);
-						output->Append(szTemp, FormatDouble<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
+						output->Append(szTemp, FormatDoubleF<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
+						p++;
+						break;
+					}
+
+					case 'g':
+					{
+						// Floating point
+						double val = va_arg(args, double);
+						output->Append(szTemp, FormatDoubleG<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
 						p++;
 						break;
 					}
@@ -492,7 +501,7 @@ namespace SimpleLib
 
 		// This floating point number formatter
 		template <typename T>
-		static int FormatDouble(T* buf, double value, int precision, T positiveSign)
+		static int FormatDoubleF(T* buf, double value, int precision, T positiveSign)
 		{
 			char szTemp[512];
 			if (positiveSign != '\0')
@@ -504,6 +513,30 @@ namespace SimpleLib
 			else
 			{
 				sprintf(szTemp, "%.*f", precision, value);
+			}
+			char* p = szTemp;
+			while (*p)
+			{
+				*buf++ = *p++;
+			}
+			*buf++ = '\0';
+			return (int)(p - szTemp);
+		}
+
+		// This floating point number formatter
+		template <typename T>
+		static int FormatDoubleG(T* buf, double value, int precision, T positiveSign)
+		{
+			char szTemp[512];
+			if (positiveSign != '\0')
+			{
+				char szFormat[10] = "%+.*g";
+				szFormat[1] = (char)positiveSign;
+				sprintf(szTemp, szFormat, precision, value);
+			}
+			else
+			{
+				sprintf(szTemp, "%.*g", precision, value);
 			}
 			char* p = szTemp;
 			while (*p)

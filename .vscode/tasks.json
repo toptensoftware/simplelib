@@ -6,9 +6,9 @@
         {
             "label": "Build Test Cases",
             "type": "shell",
-            "command": "make",
+            "command": "mk",
             "options": {
-                "cwd": "${workspaceFolder}/test2"
+                "cwd": "${workspaceFolder}/test"
             },
             "problemMatcher": ["$msCompile", "$gcc"],
             /*

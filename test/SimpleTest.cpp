@@ -734,6 +734,34 @@ void TestEncoding()
 
 }
 
+void TestJson()
+{
+	printf("Testing JSON...");
+	g_bFailed=false;
+
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonNull()), 0).IsEqualTo("null"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(false)), 0).IsEqualTo("false"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(true)), 0).IsEqualTo("true"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello World")), 0).IsEqualTo("\"Hello World\""));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello \n World")), 0).IsEqualTo("\"Hello \\n World\""));
+
+	SharedPtr<JsonArray> arr = new JsonArray();
+	arr->Add(new JsonNumber(10));
+	arr->Add(new JsonNumber(20));
+	arr->Add(new JsonNumber(30));
+	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
+
+	arr = new JsonArray();
+	arr->Add(new JsonNumber(10.123));
+	arr->Add(new JsonNumber(20.234));
+	arr->Add(new JsonNumber(30.345));
+	assert(JSON::Stringify(arr, 0).IsEqualTo("[10.123,20.234,30.345]"));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+
 /*
 void TestPath()
 {
@@ -1003,6 +1031,7 @@ int main(int argc, char* argv[])
 	TestKeyedArray();
 	TestFormatting();
 	TestEncoding();
+	TestJson();
 	/*
 	TestPath();
 	TestFileStream();

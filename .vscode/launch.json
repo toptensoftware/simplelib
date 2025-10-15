@@ -30,11 +30,11 @@
             "request": "launch",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/test2",
+            "cwd": "${workspaceFolder}/test",
             "environment": [],
             "console": "externalTerminal",
             "preLaunchTask": "Build Test Cases",
-            "program": "${workspaceFolder}/test2/bin/debug/test2.exe"
+            "program": "${workspaceFolder}/test/build/x64/debug/bin/test.exe"
         }
     ]
 }

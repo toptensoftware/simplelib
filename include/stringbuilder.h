@@ -68,6 +68,16 @@ namespace SimpleLib
 			*Reserve(1) = ch;
 		}
 
+		// Append a character multiple times
+		void Append(T ch, int count)
+		{
+			T* p = Reserve(count);
+			for (int i=0; i<count; i++)
+			{
+				*p++ = ch;
+			}
+		}
+
 		// Append a null terminated string
 		void Append(const T* psz)
 		{
@@ -223,6 +233,14 @@ namespace SimpleLib
 		{
 			FormatStringWriter<T> fw(this);
 			Formatting::FormatV(&fw, pFormat, args);
+		}
+
+		void Format(const T* pFormat, ...)
+		{
+			va_list args;
+			va_start(args, pFormat);
+			FormatV(pFormat, args);
+			va_end(args);
 		}
 
 
