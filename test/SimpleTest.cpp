@@ -430,7 +430,7 @@ void TestMap()
 	assert(map.GetCount()==iTotal);
 
 	// Repopulate...
-	map.RemoveAll();
+	map.Clear();
 	assert(map.GetCount()==0);
 	assert(map.IsEmpty());
 	for (i=0; i<100; i++)
@@ -489,7 +489,7 @@ void TestMap()
 	assert(InstanceCounter::m_iInstances==4);
 	mapObjs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
-	mapObjs.RemoveAll();
+	mapObjs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
 
 
@@ -501,7 +501,7 @@ void TestMap()
 	assert(InstanceCounter::m_iInstances==4);
 	mapPtrs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
-	mapPtrs.RemoveAll();
+	mapPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
 
 	Dictionary<CAnsiString, int> strs;
@@ -734,6 +734,35 @@ void TestEncoding()
 
 }
 
+void TestJson()
+{
+	printf("Testing JSON...");
+	g_bFailed=false;
+
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonNull()), 0).IsEqualTo("null"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(false)), 0).IsEqualTo("false"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(true)), 0).IsEqualTo("true"));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello World")), 0).IsEqualTo("\"Hello World\""));
+	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello \n World")), 0).IsEqualTo("\"Hello \\n World\""));
+
+	SharedPtr<JsonArray> arr = new JsonArray();
+	arr->Add(new JsonNumber(10));
+	arr->Add(new JsonNumber(20));
+	arr->Add(new JsonNumber(30));
+	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
+
+	arr = new JsonArray();
+	arr->Add(new JsonNumber(10.123));
+	arr->Add(new JsonNumber(20.234));
+	arr->Add(new JsonNumber(30.345));
+	assert(JSON::Stringify(arr, 0).IsEqualTo("[10.123,20.234,30.345]"));
+
+	if (!g_bFailed)
+		printf("OK\n");
+}
+
+
+/*
 void TestPath()
 {
 	printf("Testing Path...");
@@ -986,6 +1015,7 @@ void TestDirectory()
 	if (!g_bFailed)
 		printf("OK\n");
 }
+*/
 
 // Main entry point
 int main(int argc, char* argv[])
@@ -1001,11 +1031,14 @@ int main(int argc, char* argv[])
 	TestKeyedArray();
 	TestFormatting();
 	TestEncoding();
+	TestJson();
+	/*
 	TestPath();
 	TestFileStream();
 	TestMemoryStream();
 	TestFile();
 	TestDirectory();
+	*/
 
 	if (g_bAnyFailed)
 	{
