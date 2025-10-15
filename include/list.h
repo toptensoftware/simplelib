@@ -261,6 +261,52 @@ namespace SimpleLib
 			return m_iSize;
 		}
 
+		struct sort_ctx_s
+		{
+			int (*callback)(const T& a, const T& b, void* user);
+			void* user;
+		};
+
+#ifdef _MSC_VER
+		static int sort_function_s(void* pvctx, const void* a, const void* b)
+#else
+		static int sort_function_s(const void* a, const void* b, void* pvctx)
+#endif
+		{
+			sort_ctx_s& ctx = *(sort_ctx*)pvctx;
+			return ctx.callback(*(T*)a, *(T*)b, ctx.user);
+		}
+
+		void Sort(int (*callback)(const T& a, const T& b, void* user), void* user)
+		{
+			sort_ctx_s ctx;
+			ctx.callback = callback;
+			ctx.user = user;
+			qsort_s(m_pData, m_iSize, sizeof(T), sort_function_s, &ctx);
+		}
+
+		struct sort_ctx
+		{
+			int (*callback)(const T& a, const T& b);
+		};
+
+#ifdef _MSC_VER
+		static int sort_function(void* pvctx, const void* a, const void* b)
+#else
+		static int sort_function(const void* a, const void* b, void* pvctx)
+#endif
+		{
+			sort_ctx& ctx = *(sort_ctx*)pvctx;
+			return ctx.callback(*(T*)a, *(T*)b);
+		}
+
+		void Sort(int (*callback)(const T& a, const T& b))
+		{
+			sort_ctx ctx;
+			ctx.callback = callback;
+			qsort_s(m_pData, m_iSize, sizeof(T), sort_function, &ctx);
+		}
+
 		// Find index of an item(linear)
 		template <typename TCompare = SDefaultCompare>
 		int IndexOf(const T& val, int iStartAfter = -1) const
