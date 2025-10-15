@@ -282,7 +282,11 @@ namespace SimpleLib
 			sort_ctx_s ctx;
 			ctx.callback = callback;
 			ctx.user = user;
+			#ifdef _MSC_VER
 			qsort_s(m_pData, m_iSize, sizeof(T), sort_function_s, &ctx);
+			#else
+			qsort_r(m_pData, m_iSize, sizeof(T), sort_function_s, &ctx);
+			#endif
 		}
 
 		struct sort_ctx
@@ -304,7 +308,11 @@ namespace SimpleLib
 		{
 			sort_ctx ctx;
 			ctx.callback = callback;
+			#ifdef _MSC_VER
 			qsort_s(m_pData, m_iSize, sizeof(T), sort_function, &ctx);
+			#else
+			qsort_r(m_pData, m_iSize, sizeof(T), sort_function, &ctx);
+			#endif
 		}
 
 		// Find index of an item(linear)
