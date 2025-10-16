@@ -786,6 +786,7 @@ void TestJson()
 	arr->Add(20);
 	arr->Add(30);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
+	delete arr;
 
 	arr = new JSONArray();
 	arr->Add(10E123);
@@ -793,6 +794,7 @@ void TestJson()
 	arr->Add(30.345);
 	arr->Add(0.00045);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
+	delete arr;
 
 	if (!g_bFailed)
 		printf("OK\n");
