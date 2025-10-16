@@ -104,23 +104,23 @@ namespace SimpleLib
             return *this;
         }
 
-        double AsNumber()
+        double AsNumber() const
         {
             assert(kind == JsonKind::Number);
             return value.number;
         }
-        bool AsBool()
+        bool AsBool() const
         {
             assert(kind == JsonKind::Boolean);
             return value.boolean;
         }
-        const char* AsString()
+        const char* AsString() const
         {
             assert(kind == JsonKind::String);
             return value.string;
         }
-        List<JSONValue>& AsArray();
-        Dictionary<String<char>, JSONValue>& AsObject();
+        JSONArray& AsArray() const;
+        JSONObject& AsObject() const;
 
         JsonKind kind;
         union _value
@@ -163,6 +163,8 @@ namespace SimpleLib
         kind = other.kind;
         switch (kind)
         {
+            case JsonKind::Null:
+                break;
             case JsonKind::Number:
                 value.number = other.value.number;
                 break;
@@ -209,98 +211,23 @@ namespace SimpleLib
             case JsonKind::Object:
                 value.object->Release();
                 break;
+            default:
+                break;
         }
         kind = JsonKind::Null;
     }
 
 
-    inline List<JSONValue>& JSONValue::AsArray()
+    inline JSONArray& JSONValue::AsArray() const
     {
         assert(kind == JsonKind::Array);
         return *value.array;
     }
-    inline Dictionary<String<char>, JSONValue>& JSONValue::AsObject()
+    inline JSONObject& JSONValue::AsObject() const
     {
         assert(kind == JsonKind::Object);
         return *value.object;
     }
-
-
-    class JsonArray;
-    class JsonObject;
-
-    class JsonValue
-    {
-    public:
-        virtual JsonKind GetKind() = 0;
-        virtual void* GetNull() { assert(false); return nullptr; }
-        virtual double GetNumber() { assert(false); return 0.0; }
-        virtual String<char> GetString() { assert(false); return ""; }
-        virtual bool GetBool() { assert(false); return false; }
-        virtual JsonArray* GetArray() { assert(false); return nullptr; }
-        virtual JsonObject* GetObject() { assert(false); return nullptr; }
-
-        /*
-        static JsonValue* FromNull() { return new JsonNull(); }
-        static JsonValue* From(double value) { return new JsonNumber(value); }
-        static JsonValue* From(const char* value) { return value == nullptr ? (JsonValue*)new JsonNull() : (JsonValue*)new JsonString(value); }
-        static JsonValue* From(const String<char> value) { return value.IsNull() ? (JsonValue*)new JsonNull() : (JsonValue*)new JsonString(value); }
-        static JsonValue* From(bool value) { return new JsonBoolean(value); }
-        */
-    };
-
-    class JsonNull : public JsonValue
-    {
-        virtual JsonKind GetKind() override { return JsonKind::Null; }
-        virtual void* GetNull() override { return nullptr; }
-    };
-
-    class JsonNumber : public JsonValue
-    {
-    public:
-        JsonNumber(double value) { m_dblValue = value; }
-        virtual JsonKind GetKind() override { return JsonKind::Number; }
-        virtual double GetNumber() override { return m_dblValue; }
-        double m_dblValue;
-    };
-
-    class JsonString : public JsonValue
-    {
-    public:
-        JsonString(const char* value) { m_strValue = value; }
-        JsonString(const String<char>& value) { m_strValue = value; }
-        virtual JsonKind GetKind() override { return JsonKind::String; }
-        virtual String<char> GetString() { return m_strValue; }
-        String<char> m_strValue;
-    };
-
-    class JsonBoolean : public JsonValue
-    {
-    public:
-        JsonBoolean(bool value) { m_bValue = value; }
-        virtual JsonKind GetKind() override { return JsonKind::Boolean; }
-        virtual bool GetBool() { return m_bValue; }
-        bool m_bValue;
-    };
-
-    class JsonArray : 
-        public JsonValue,
-        public List<SharedPtr<JsonValue>>
-    {
-    public:
-        virtual JsonKind GetKind() override { return JsonKind::Array; }
-        virtual JsonArray* GetArray() override { return this; }
-    };
-    
-    class JsonObject : 
-        public JsonValue,
-        public Dictionary<String<char>, SharedPtr<JsonValue>>
-    {
-    public:
-        virtual JsonKind GetKind() override { return JsonKind::Object; }
-        virtual JsonObject* GetObject() override { return this; }
-    };
-
 
     struct JSON
     {
@@ -320,7 +247,7 @@ namespace SimpleLib
                     case '\r': buf.Append("\\r"); break;
                     case '\t': buf.Append("\\t"); break;
                     default:
-                        if (ch <= 0x1f || ch > 0x7f)
+                        if (ch <= 0x1f)
                             buf.Format("\\u%4X", ch);
                         else
                             buf.Append(ch);
@@ -330,46 +257,46 @@ namespace SimpleLib
             buf.Append("\"");
         }
 
-        static void Stringify(StringBuilder<char>& buf, JsonValue* value, int indentSize, int indent)
+        static void Stringify(StringBuilder<char>& buf, const JSONValue& value, int indentSize, int indent)
         {
-            switch (value->GetKind())
+            switch (value.kind)
             {
                 case JsonKind::Null:
                     buf.Append("null");
                     break;
 
                 case JsonKind::Boolean:
-                    buf.Append(value->GetBool() ? "true" : "false");
+                    buf.Append(value.AsBool() ? "true" : "false");
                     break;
 
                 case JsonKind::Number:
 #ifdef _SIMPLELIB_USE_RYU
                     char szTemp[128];
-                    d2s_buffered(value->GetNumber(), szTemp);
+                    d2s_buffered(value.AsNumber(), szTemp);
                     remove_exponent_if_shorter(szTemp);
                     buf.Append(szTemp);
 #else
-                    buf.Format("%.17g", value->GetNumber());
+                    buf.Format("%.17g", value.AsNumber());
 #endif
                     break;
 
                 case JsonKind::String:
-                    EscapeString(buf, value->GetString());
+                    EscapeString(buf, value.AsString());
                     break;
 
                 case JsonKind::Array:
                 {
-                    JsonArray* arr = value->GetArray();
+                    JSONArray& arr = value.AsArray();
                     buf.Append('[');
                     if (indentSize)
                     {
                         buf.Append("\n");
                         indent += indentSize;
-                        for (int i=0; i<arr->GetCount(); i++)
+                        for (int i=0; i<arr.GetCount(); i++)
                         {
                             buf.Append(' ', indent);
-                            Stringify(buf, arr->GetAt(i), indentSize, indent);
-                            if (i != arr->GetCount() - 1)
+                            Stringify(buf, arr.GetAt(i), indentSize, indent);
+                            if (i != arr.GetCount() - 1)
                                 buf.Append(',');
                             buf.Append("\n");
                         }
@@ -378,10 +305,10 @@ namespace SimpleLib
                     }
                     else
                     {
-                        for (int i=0; i<arr->GetCount(); i++)
+                        for (int i=0; i<arr.GetCount(); i++)
                         {
-                            Stringify(buf, arr->GetAt(i), indentSize, indent);
-                            if (i != arr->GetCount() - 1)
+                            Stringify(buf, arr.GetAt(i), indentSize, indent);
+                            if (i != arr.GetCount() - 1)
                                 buf.Append(',');
                         }
                     }
@@ -391,19 +318,19 @@ namespace SimpleLib
 
                 case JsonKind::Object:
                 {
-                    JsonObject* obj = value->GetObject();
+                    JSONObject& obj = value.AsObject();
                     buf.Append('{');
                     if (indentSize)
                     {
                         buf.Append("\n");
                         indent += indentSize;
-                        for (int i=0; i<obj->GetCount(); i++)
+                        for (int i=0; i<obj.GetCount(); i++)
                         {
                             buf.Append(' ', indent);
-                            EscapeString(buf, obj->GetAt(i).Key);
+                            EscapeString(buf, obj.GetAt(i).Key);
                             buf.Append(": ");
-                            Stringify(buf, obj->GetAt(i).Value, indentSize, indent);
-                            if (i != obj->GetCount() - 1)
+                            Stringify(buf, obj.GetAt(i).Value, indentSize, indent);
+                            if (i != obj.GetCount() - 1)
                                 buf.Append(',');
                             buf.Append("\n");
                         }
@@ -412,12 +339,12 @@ namespace SimpleLib
                     }
                     else
                     {
-                        for (int i=0; i<obj->GetCount(); i++)
+                        for (int i=0; i<obj.GetCount(); i++)
                         {
-                            EscapeString(buf, obj->GetAt(i).Key);
+                            EscapeString(buf, obj.GetAt(i).Key);
                             buf.Append(":");
-                            Stringify(buf, obj->GetAt(i).Value, indentSize, indent);
-                            if (i != obj->GetCount() - 1)
+                            Stringify(buf, obj.GetAt(i).Value, indentSize, indent);
+                            if (i != obj.GetCount() - 1)
                                 buf.Append(',');
                         }
                     }
@@ -427,16 +354,18 @@ namespace SimpleLib
             }
         }
 
-        static String<char> Stringify(JsonValue* value, int indentSize)
+        static String<char> Stringify(const JSONValue& value, int indentSize)
         {
             StringBuilder<char> buf;
             Stringify(buf, value, indentSize, 0);
             return buf;
         }
 
+        /*
         static SharedPtr<JsonValue> Parse(const char* psz)
         {
         }
+        */
 
         static void remove_exponent_if_shorter(char* psz)
         {

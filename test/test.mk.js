@@ -11,5 +11,8 @@ export default async function ()
         includePath: [
             "../../ryu/ryu",
         ],
+        gcc_cpp_args: [
+            "-Wno-unused-variable"
+        ],
     });
 };

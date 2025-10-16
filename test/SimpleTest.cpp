@@ -41,6 +41,13 @@ public:
 		m_iInstances--;
 	}
 
+	InstanceCounter& operator=(const InstanceCounter& Other)
+	{
+		m_iInstances = Other.m_iInstances;
+		return *this;
+	}
+
+
 	static int m_iInstances;
 };
 
@@ -768,23 +775,23 @@ void TestJson()
 
 
 
-	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonNull()), 0).IsEqualTo("null"));
-	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(false)), 0).IsEqualTo("false"));
-	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(true)), 0).IsEqualTo("true"));
-	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello World")), 0).IsEqualTo("\"Hello World\""));
-	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonString("Hello \n World")), 0).IsEqualTo("\"Hello \\n World\""));
+	assert(JSON::Stringify(JSONValue(), 0).IsEqualTo("null"));
+	assert(JSON::Stringify(false, 0).IsEqualTo("false"));
+	assert(JSON::Stringify(true, 0).IsEqualTo("true"));
+	assert(JSON::Stringify("Hello World", 0).IsEqualTo("\"Hello World\""));
+	assert(JSON::Stringify("Hello \n World", 0).IsEqualTo("\"Hello \\n World\""));
 
-	SharedPtr<JsonArray> arr = new JsonArray();
-	arr->Add(new JsonNumber(10));
-	arr->Add(new JsonNumber(20));
-	arr->Add(new JsonNumber(30));
+	auto arr = new JSONArray();
+	arr->Add(10);
+	arr->Add(20);
+	arr->Add(30);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
 
-	arr = new JsonArray();
-	arr->Add(new JsonNumber(10E123));
-	arr->Add(new JsonNumber(20.234));
-	arr->Add(new JsonNumber(30.345));
-	arr->Add(new JsonNumber(0.00045));
+	arr = new JSONArray();
+	arr->Add(10E123);
+	arr->Add(20.234);
+	arr->Add(30.345);
+	arr->Add(0.00045);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
 
 	if (!g_bFailed)
