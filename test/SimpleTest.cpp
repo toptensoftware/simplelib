@@ -739,6 +739,35 @@ void TestJson()
 	printf("Testing JSON...");
 	g_bFailed=false;
 
+	JSONValue v;
+	v = 22;
+	assert(v.AsNumber() == 22.0);
+	v = "Hello World";
+	assert(strcmp(v.AsString(), "Hello World") == 0);
+	v = true;
+	assert(v.AsBool() == true);
+	v.Reset();
+	assert(v.kind == JsonKind::Null);
+
+	v = new JSONArray();
+	v.AsArray().Add(20);
+	v.AsArray().Add(30);
+	v.AsArray().Add(40);
+	assert(v.kind == JsonKind::Array);
+	assert(v.AsArray().GetCount() == 3);
+
+	JSONValue v2 = v;
+	assert(v.kind == JsonKind::Array);
+	assert(v.AsArray().GetCount() == 3);
+
+	v = new JSONObject();
+	v.AsObject().Add("apples", "red");
+	v.AsObject().Add("pears", "green");
+	v.AsObject().Add("bananas", "yellow");
+	assert(v.AsObject().GetCount() == 3);
+
+
+
 	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonNull()), 0).IsEqualTo("null"));
 	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(false)), 0).IsEqualTo("false"));
 	assert(JSON::Stringify(SharedPtr<JsonValue>(new JsonBoolean(true)), 0).IsEqualTo("true"));
@@ -752,10 +781,11 @@ void TestJson()
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
 
 	arr = new JsonArray();
-	arr->Add(new JsonNumber(10.123));
+	arr->Add(new JsonNumber(10E123));
 	arr->Add(new JsonNumber(20.234));
 	arr->Add(new JsonNumber(30.345));
-	assert(JSON::Stringify(arr, 0).IsEqualTo("[10.123,20.234,30.345]"));
+	arr->Add(new JsonNumber(0.00045));
+	assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
 
 	if (!g_bFailed)
 		printf("OK\n");

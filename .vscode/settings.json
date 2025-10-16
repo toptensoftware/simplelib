@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "type_traits": "cpp",
-        "xtr1common": "cpp"
+        "xtr1common": "cpp",
+        "xutility": "cpp"
     },
     "C_Cpp.dimInactiveRegions": false
 }
