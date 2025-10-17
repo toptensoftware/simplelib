@@ -5,15 +5,20 @@
 #include <string.h>
 #include "compare.h"
 
+#include "semantics.h"
 #include "placed_constructor.h"
+
 
 namespace SimpleLib
 {
 	// List
-	template <typename T>
+	template <typename TSpec>
 	class List
 	{
-	public:
+		typedef typename get_semantics<TSpec>::TSemantics TSemantics;
+		typedef typename TSemantics::TArg T;
+
+		public:
 		// Constructor
 		List()
 		{
@@ -117,8 +122,10 @@ namespace SimpleLib
 		{
 			assert(iPosition >= 0 && iPosition < GetCount());
 
+			TSemantics::Release(*(m_pData + iPosition));
 			Destructor(m_pData + iPosition);
 			Constructor(m_pData + iPosition, val);
+			TSemantics::Retain(*(m_pData + iPosition));
 		}
 
 		// Swap two elements in the collection
@@ -170,6 +177,7 @@ namespace SimpleLib
 				GrowTo(m_iSize + 1);
 
 			Constructor(m_pData + m_iSize, val);
+			TSemantics::Retain(*(m_pData + m_iSize));
 			m_iSize++;
 			return m_iSize - 1;
 		}
@@ -189,6 +197,7 @@ namespace SimpleLib
 			assert(iPosition >= 0);
 			assert(iPosition < GetCount());
 
+			TSemantics::Release(*(m_pData + iPosition));
 			Destructor(m_pData + iPosition);
 
 			// Shuffle memory
@@ -213,6 +222,7 @@ namespace SimpleLib
 
 			for (int i = 0; i < iCount; i++)
 			{
+				TSemantics::Release(*(m_pData + iPosition + i));
 				Destructor(m_pData + iPosition + i);
 			}
 
@@ -368,6 +378,7 @@ namespace SimpleLib
 
 			val = m_pData[m_iSize];
 
+			TSemantics::Release(*(m_pData + m_iSize));
 			Destructor(m_pData + m_iSize);
 
 			return true;
@@ -455,6 +466,7 @@ namespace SimpleLib
 			for (int i = 0; i < iCount; i++)
 			{
 				Constructor(m_pData + iPosition + i, *(pVal + i));
+				TSemantics::Retain(*(m_pData + iPosition + i));
 			}
 
 			// Update size

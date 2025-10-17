@@ -322,16 +322,29 @@ void TestList()
 	assert(InstanceCounter::m_iInstances==0);
 
 
-	// Test construction/destruction when holding owned object pointers
-	List<SharedPtr<InstanceCounter>> vecPtrs;
-	vecPtrs.Add(new InstanceCounter());
-	vecPtrs.Add(new InstanceCounter());
-	vecPtrs.Add(new InstanceCounter());
+	// Test construction/destruction when holding shared object pointers
+	List<SharedPtr<InstanceCounter>> vecSharedPtrs;
+	vecSharedPtrs.Add(new InstanceCounter());
+	vecSharedPtrs.Add(new InstanceCounter());
+	vecSharedPtrs.Add(new InstanceCounter());
 	assert(InstanceCounter::m_iInstances==3);
-	vecPtrs.RemoveAt(0);
+	vecSharedPtrs.RemoveAt(0);
 	assert(InstanceCounter::m_iInstances==2);
-	vecPtrs.Clear();
+	vecSharedPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==0);
+
+
+	// Test construction/destruction when holding owned object pointers
+	List<SOwnedPtr<InstanceCounter>> vecOwnedPtrs;
+	vecOwnedPtrs.Add(new InstanceCounter());
+	vecOwnedPtrs.Add(new InstanceCounter());
+	vecOwnedPtrs.Add(new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==3);
+	vecOwnedPtrs.RemoveAt(0);
+	assert(InstanceCounter::m_iInstances==2);
+	vecOwnedPtrs.Clear();
+	assert(InstanceCounter::m_iInstances==0);
+
 
 	List<String<wchar_t>> strs;
 	strs.Add(L"Apples");
@@ -345,7 +358,7 @@ void TestList()
 		printf("OK\n");
 }
 
-void TestMap()
+void TestDictionary()
 {
 	printf("Testing Dictionary...");
 	g_bFailed=false;
@@ -501,15 +514,27 @@ void TestMap()
 
 
 	// Test construction/destruction when holding owned object pointers
-	Dictionary<int, SharedPtr<InstanceCounter>> mapPtrs;
-	mapPtrs.Add(10, new InstanceCounter());
-	mapPtrs.Add(20, new InstanceCounter());
-	mapPtrs.Add(30, new InstanceCounter());
+	Dictionary<int, SharedPtr<InstanceCounter>> mapSharedPtrs;
+	mapSharedPtrs.Add(10, new InstanceCounter());
+	mapSharedPtrs.Add(20, new InstanceCounter());
+	mapSharedPtrs.Add(30, new InstanceCounter());
 	assert(InstanceCounter::m_iInstances==4);
-	mapPtrs.Remove(10);
+	mapSharedPtrs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
-	mapPtrs.Clear();
+	mapSharedPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
+
+
+	Dictionary<int, SOwnedPtr<InstanceCounter>> mapOwnedPtrs;
+	mapOwnedPtrs.Add(10, new InstanceCounter());
+	mapOwnedPtrs.Add(20, new InstanceCounter());
+	mapOwnedPtrs.Add(30, new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==4);
+	mapOwnedPtrs.Remove(10);
+	assert(InstanceCounter::m_iInstances==3);
+	mapOwnedPtrs.Clear();
+	assert(InstanceCounter::m_iInstances==1);
+
 
 	Dictionary<CAnsiString, int> strs;
 	strs.Add("Apples", 1);
@@ -786,7 +811,6 @@ void TestJson()
 	arr->Add(20);
 	arr->Add(30);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[10,20,30]"));
-	delete arr;
 
 	arr = new JSONArray();
 	arr->Add(10E123);
@@ -794,7 +818,6 @@ void TestJson()
 	arr->Add(30.345);
 	arr->Add(0.00045);
 	assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
-	delete arr;
 
 	if (!g_bFailed)
 		printf("OK\n");
@@ -1066,7 +1089,7 @@ int main(int argc, char* argv[])
 	TestRectangle();
 	TestStrings();
 	TestList();
-	TestMap();
+	TestDictionary();
 	TestKeyedArray();
 	TestFormatting();
 	TestEncoding();

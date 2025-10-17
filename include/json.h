@@ -29,6 +29,9 @@ namespace SimpleLib
         {
             m_iRef = 0;
         }
+        virtual ~RefCounted()
+        {
+        }
 
         void AddRef()
         {
@@ -152,7 +155,6 @@ namespace SimpleLib
 
     class JSONArray : public RefCounted<List<JSONValue>>
     {
-
     };
     class JSONObject : public RefCounted<Dictionary<String<char>, JSONValue>>
     {

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "placed_constructor.h"
+#include "semantics.h"
 #include "compare.h"
 #include "plex.h"
 
@@ -47,9 +47,13 @@ eg:
 
 namespace SimpleLib
 {
-    template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
+    template <typename TKeySpec, typename TValueSpec, typename TKeyCompare = SDefaultCompare>
     class Dictionary
     {
+		typedef typename get_semantics<TKeySpec>::TSemantics TKeySemantics;
+		typedef typename TKeySemantics::TArg TKey;
+		typedef typename get_semantics<TValueSpec>::TSemantics TValueSemantics;
+		typedef typename TValueSemantics::TArg TValue;
     public: 
         // Constructor
         Dictionary() :
@@ -212,6 +216,9 @@ namespace SimpleLib
             CNode* pNode = m_pRoot;
             CNode* pParent = nullptr;
 
+            TKeySemantics::Retain(Key);
+            TValueSemantics::Retain(Value);
+
             int iCompare=0;
             while (pNode != &m_Leaf)
             {
@@ -228,6 +235,8 @@ namespace SimpleLib
 
                     // Found a duplicate, replace it. We replace the key too, since
                     // equivalence is not always exact (e.g. case insensitive strings)
+                    TKeySemantics::Release(pNode->m_KeyPair.m_Key);
+                    TValueSemantics::Release(pNode->m_KeyPair.m_Value);
                     pNode->m_KeyPair.m_Value = Value;
                     pNode->m_KeyPair.m_Key = Key;
                     #ifdef _DEBUG_CHECKS
@@ -414,6 +423,9 @@ namespace SimpleLib
                     m_pIterNode = m_pIterNode->m_pNext;
                 }
             }
+
+            TKeySemantics::Release(z->m_KeyPair.m_Key);
+            TValueSemantics::Release(z->m_KeyPair.m_Value);
 
             if (y != z)
             {
@@ -710,6 +722,8 @@ namespace SimpleLib
             {
                 FreeNode(pNode->m_pLeft);
                 FreeNode(pNode->m_pRight);
+                TKeySemantics::Release(pNode->m_KeyPair.m_Key);
+                TValueSemantics::Release(pNode->m_KeyPair.m_Value);
                 m_NodePlex.Free(pNode);
             }
         }
