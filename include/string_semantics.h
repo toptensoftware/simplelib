@@ -39,6 +39,8 @@ namespace SimpleLib
 
 		static int Length(const char* a)
 		{
+			if (a == nullptr)
+				return 0;
 			return (int)strlen(a);
 		}
 
