@@ -4,8 +4,8 @@
 #include <string.h>
 #include <errno.h>
 
-#include "stringpool.h"
-#include "stringbuilder.h"
+#include "StringPool.h"
+#include "StringBuilder.h"
 
 /*
 eg:

@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "formatting.h"
-#include "string_semantics.h"
+#include "Formatting.h"
+#include "StringSemantics.h"
 
 namespace SimpleLib
 {

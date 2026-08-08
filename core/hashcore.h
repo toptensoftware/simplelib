@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "hashutils.h"
+#include "HashUtils.h"
 
 namespace SimpleLib
 {

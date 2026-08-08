@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <wchar.h>
 #include <string.h>
-#include "hashutils.h"
+#include "HashUtils.h"
 
 namespace SimpleLib
 {

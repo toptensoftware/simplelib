@@ -1,7 +1,7 @@
 #pragma once
 
-#include "vector.h"
-#include "math.h"
+#include "Vector.h"
+#include "Math.h"
 
 namespace SimpleLib
 {

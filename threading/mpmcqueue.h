@@ -5,23 +5,23 @@
 namespace SimpleLib
 {
 
-// MPMCQueue Class
+// MpmcQueue Class
 // Stores a FIFO queue of items as a bounded ring buffer.
 // Supports multiple concurrent reader and writer threads (MPMC).
 // Based on Dmitry Vyukov's bounded MPMC queue algorithm:
 //		https://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 template <class T>
-class alignas(kCacheLineSize) MPMCQueue
+class alignas(kCacheLineSize) MpmcQueue
 {
 public:
 	// Construction
-	MPMCQueue(int iSize)
+	MpmcQueue(int iSize)
 	{
 		m_pCells = nullptr;
 		Reset(iSize);
 	}
 
-	virtual ~MPMCQueue()
+	virtual ~MpmcQueue()
 	{
 		if (m_pCells)
 			free(m_pCells);

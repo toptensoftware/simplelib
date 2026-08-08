@@ -2,10 +2,10 @@
 
 
 #define SIMPLELIB_POSIX_PATHS
-#include "../geo.h"
-#include "../core.h"
-#include "../json.h"
-#include "../threading.h"
+#include "../Geo.h"
+#include "../Core.h"
+#include "../Json.h"
+#include "../Threading.h"
 
 using namespace SimpleLib;
 
@@ -998,7 +998,7 @@ int main(int argc, char* argv[])
 	int x;
 	rb.Read(x);
 
-	MPMCQueue<int> q(10);
+	MpmcQueue<int> q(10);
 	q.MustWrite(10);
 	q.Read(x);
 
@@ -1018,8 +1018,16 @@ int main(int argc, char* argv[])
 	X xx;
 	AtomicStruct<X> ax(xx);
 
-	Tls<X> tls;
+	ThreadLocal<X> tls;
+	X* xptr = tls.Get();
 
+	CowList<int> cowList;
+	auto& snap = cowList.GetSnapshot();
+
+	Crc32::Calculate("blah", 4);;
+
+	Guid guid;
+	Guid::Parse("asd", guid);
 
 	return 0;
 }

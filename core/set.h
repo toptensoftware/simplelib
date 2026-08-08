@@ -1,9 +1,9 @@
 #pragma once
 
-#include "semantics.h"
-#include "compare.h"
-#include "hashcore.h"
-#include "placed_constructor.h"
+#include "Semantics.h"
+#include "Compare.h"
+#include "HashCore.h"
+#include "PlacedConstructor.h"
 
 namespace SimpleLib
 {

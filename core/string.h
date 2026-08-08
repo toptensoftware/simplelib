@@ -6,8 +6,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-#include "list.h"
-#include "stringbuilder.h"
+#include "List.h"
+#include "StringBuilder.h"
 
 
 namespace SimpleLib

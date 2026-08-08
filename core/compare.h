@@ -1,7 +1,7 @@
 #pragma once
 
 #include <type_traits>
-#include "hashutils.h"
+#include "HashUtils.h"
 
 namespace SimpleLib
 {

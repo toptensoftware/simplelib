@@ -3,10 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compare.h"
 
-#include "semantics.h"
-#include "placed_constructor.h"
+#include "Compare.h"
+#include "Semantics.h"
+#include "PlacedConstructor.h"
 
 
 namespace SimpleLib

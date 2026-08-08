@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "string_semantics.h"
-#include "stringbuilder.h"
+#include "StringSemantics.h"
+#include "StringBuilder.h"
 
 namespace SimpleLib
 {

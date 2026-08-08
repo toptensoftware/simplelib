@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "atomic.h"
+#include "Atomic.h"
 
 
 namespace SimpleLib

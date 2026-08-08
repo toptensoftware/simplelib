@@ -1,7 +1,7 @@
 #pragma once
 
-#include "string_semantics.h"
-#include "string.h"
+#include "StringSemantics.h"
+#include "String.h"
 
 namespace SimpleLib
 {

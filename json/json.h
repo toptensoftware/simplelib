@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../core/string.h"
-#include "../core/sharedptr.h"
-#include "../core/list.h"
-#include "../core/map.h"
+#include "../Core/String.h"
+#include "../Core/Sharedptr.h"
+#include "../Core/List.h"
+#include "../Core/Map.h"
 
 #ifdef _SIMPLELIB_USE_RYU
 #include <ryu.h>

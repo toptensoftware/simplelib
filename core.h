@@ -1,18 +1,30 @@
 #pragma once
 
+
 // Strings
-#include "core/string.h"
-#include "core/stringbuilder.h"
-#include "core/stringpool.h"
-#include "core/encoding.h"
-#include "core/formatting.h"
+#include "Core/String.h"
+#include "Core/StringBuilder.h"
+#include "Core/StringPool.h"
+#include "Core/Encoding.h"
+#include "Core/Formatting.h"
 
 // Collections
-#include "core/buffer.h"
-#include "core/sharedptr.h"
-#include "core/ownedptr.h"
-#include "core/list.h"
-#include "core/map.h"
-#include "core/ringbuffer.h"
-#include "core/set.h"
+#include "Core/Delegate.h"
+#include "Core/Buffer.h"
+#include "Core/SharedPtr.h"
+#include "Core/OwnedPtr.h"
+#include "Core/List.h"
+#include "Core/Map.h"
+#include "Core/RingBuffer.h"
+#include "Core/Set.h"
 
+
+// Misc
+#include "Core/BitOps.h"
+#include "Core/Crc32.h"
+#include "Core/Guid.h"
+
+// guid_t
+// linked stack
+// fixed array
+// stream?

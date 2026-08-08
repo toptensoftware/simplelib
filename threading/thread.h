@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../core/encoding.h"
-#include "tls.h"
+#include "../Core/Encoding.h"
+#include "ThreadLocal.h"
 
 namespace SimpleLib
 {
@@ -81,7 +81,7 @@ public:
 	static DWORD WINAPI ThreadProcStub(void* param)
 	{
 		((Thread*)param)->ThreadProc();
-		Tls::FreeAll();
+		ThreadLocalBase::FreeAll();
 	}
 	
 	virtual void ThreadProc()=0;
