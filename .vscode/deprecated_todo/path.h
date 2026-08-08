@@ -260,7 +260,7 @@ namespace SimpleLib
             {
                 wchar_t base[512];
                 wchar_t drive[3] = { (wchar_t)path[0], ':', '\0' };
-                GetFullPathNameW(drive, 512, base, NULL);
+                GetFullPathNameW(drive, 512, base, nullptr);
                 return Combine(Encode<char>((char16_t*)base), path + 2);
             }
 #endif

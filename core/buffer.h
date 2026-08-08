@@ -8,7 +8,7 @@ namespace SimpleLib
 	public:
 		Buffer(int initialSize = 0)
 		{
-			_pData = NULL;
+			_pData = nullptr;
 			SetSize(initialSize);
 		}
 

@@ -168,7 +168,7 @@ namespace SimpleLib
 		int64_t len = stat.st_size;
 		while (len > 0)
 		{
-			ssize_t copied = copy_file_range(fd_in, NULL, fd_out, NULL, len, 0);
+			ssize_t copied = copy_file_range(fd_in, nullptr, fd_out, nullptr, len, 0);
 			if (copied < 0)
 			{
 				int err = errno;

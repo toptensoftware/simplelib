@@ -1,9 +1,9 @@
 #pragma once
 
-#include "string.h"
-#include "sharedptr.h"
-#include "list.h"
-#include "dictionary.h"
+#include "../core/string.h"
+#include "../core/sharedptr.h"
+#include "../core/list.h"
+#include "../core/map.h"
 
 #ifdef _SIMPLELIB_USE_RYU
 #include <ryu.h>
@@ -156,7 +156,7 @@ namespace SimpleLib
     class JSONArray : public RefCounted<List<JSONValue>>
     {
     };
-    class JSONObject : public RefCounted<Dictionary<String<char>, JSONValue>>
+    class JSONObject : public RefCounted<Map<String<char>, JSONValue>>
     {
     };
 
@@ -326,28 +326,37 @@ namespace SimpleLib
                     {
                         buf.Append("\n");
                         indent += indentSize;
-                        for (int i=0; i<obj.GetCount(); i++)
+                        auto kv = obj.Iterate();
+                        bool first = true;
+                        while (kv.Next())
                         {
+                            if (!first)
+                            {
+                                buf.Append(",\n");
+                            }
                             buf.Append(' ', indent);
-                            EscapeString(buf, obj.GetAt(i).Key);
+                            EscapeString(buf, kv.GetKey());
                             buf.Append(": ");
-                            Stringify(buf, obj.GetAt(i).Value, indentSize, indent);
-                            if (i != obj.GetCount() - 1)
-                                buf.Append(',');
+                            Stringify(buf, kv.GetValue(), indentSize, indent);
                             buf.Append("\n");
                         }
+                        buf.Append("\n");
                         indent -= indentSize;
                         buf.Append(indent);
                     }
                     else
                     {
-                        for (int i=0; i<obj.GetCount(); i++)
+                        auto kv = obj.Iterate();
+                        bool first = true;
+                        while (kv.Next())
                         {
-                            EscapeString(buf, obj.GetAt(i).Key);
+                            if (!first)
+                            {
+                                buf.Append(",");
+                            }
+                            EscapeString(buf, kv.GetKey());
                             buf.Append(":");
-                            Stringify(buf, obj.GetAt(i).Value, indentSize, indent);
-                            if (i != obj.GetCount() - 1)
-                                buf.Append(',');
+                            Stringify(buf, kv.GetValue(), indentSize, indent);
                         }
                     }
                     buf.Append('}');

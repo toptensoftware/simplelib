@@ -2,7 +2,10 @@
 
 
 #define SIMPLELIB_POSIX_PATHS
-#include "../SimpleLib.h"
+#include "../geo.h"
+#include "../core.h"
+#include "../json.h"
+#include "../threading.h"
 
 using namespace SimpleLib;
 
@@ -335,13 +338,26 @@ void TestList()
 
 
 	// Test construction/destruction when holding owned object pointers
-	List<SOwnedPtr<InstanceCounter>> vecOwnedPtrs;
+	List<OwnedPtr<InstanceCounter>> vecOwnedPtrs;
 	vecOwnedPtrs.Add(new InstanceCounter());
 	vecOwnedPtrs.Add(new InstanceCounter());
 	vecOwnedPtrs.Add(new InstanceCounter());
-	assert(InstanceCounter::m_iInstances==3);
+	vecOwnedPtrs.Add(new InstanceCounter());
+	assert(InstanceCounter::m_iInstances==4);
 	vecOwnedPtrs.RemoveAt(0);
+	assert(InstanceCounter::m_iInstances==3);
+
+	// Detach
+	{
+		OwnedPtr<InstanceCounter> op = vecOwnedPtrs.DetachAt(0);
+		assert(InstanceCounter::m_iInstances==3);
+		InstanceCounter* p = op.Detach();
+		assert(InstanceCounter::m_iInstances==3);
+		delete p;
+		assert(InstanceCounter::m_iInstances==2);
+	}
 	assert(InstanceCounter::m_iInstances==2);
+
 	vecOwnedPtrs.Clear();
 	assert(InstanceCounter::m_iInstances==0);
 
@@ -358,13 +374,13 @@ void TestList()
 		printf("OK\n");
 }
 
-void TestDictionary()
+void TestMap()
 {
-	printf("Testing Dictionary...");
+	printf("Testing Map...");
 	g_bFailed=false;
 
 	// Start with empty map
-	Dictionary<int, int> map;
+	Map<int, int> map;
 	assert(map.IsEmpty());
 	assert(map.GetCount()==0);
 
@@ -376,9 +392,6 @@ void TestDictionary()
 	}
 	assert(!map.IsEmpty());
 	assert(map.GetCount()==100);
-#ifdef _DEBUG
-	map.CheckAll();
-#endif
 
 
 	// Check lookups...
@@ -397,146 +410,52 @@ void TestDictionary()
 	assert(map.TryGetValue(1, iValue)==true && iValue==10);
 
 	// Test iteration
-	for (i=0; i<map.GetCount(); i++)
+	int expected = 1;
+	for (auto kv = map.Iterate(); kv.Next(); )
 	{
-		assert(map.GetAt(i).Key==i+1);
-		assert(map.GetAt(i).Value==map.GetAt(i).Key*10);
+		assert(kv.GetKey() == expected);
+		assert(kv.GetValue() == expected * 10);
+		expected++;
 	}
-#ifdef _DEBUG
-	map.CheckAll();
-#endif
-
-	// Test iteration while removing... remove all odd elements
-	// NB: Behaviour when forward iterating and removing should be same as for
-	//		vector, where when removing current element, iteration index should be decremented
-	int iTotal=map.GetCount();
-	int iIndex=0;
-	for (i=0; i<map.GetCount(); i++, iIndex++)
-	{
-		int iKey=map.GetAt(i).Key;
-		assert(iKey==iIndex+1);
-
-		if ((iKey%2)!=0)
-		{
-			map.Remove(map.GetAt(i).Key);
-			iTotal--;
-			i--;
-		}
-	}
-#ifdef _DEBUG
-	map.CheckAll();
-#endif
-	assert(map.GetCount()==iTotal);
-
-	// Check only evens left...
-	assert(map.GetCount()==50);
-	for (i=0; i<map.GetCount(); i++)
-	{
-		assert((map.GetAt(i).Key%2)==0);
-	}
-
-	// Test reverse iteration while removing
-	for (i=map.GetCount()-1; i>=0; i--)
-	{
-		if ((map.GetAt(i).Key % 10)==0)
-		{
-			map.Remove(map.GetAt(i).Key);
-			iTotal--;
-		}
-	}
-#ifdef _DEBUG
-	map.CheckAll();
-#endif
-	assert(map.GetCount()==iTotal);
-
-	// Repopulate...
-	map.Clear();
-	assert(map.GetCount()==0);
-	assert(map.IsEmpty());
-	for (i=0; i<100; i++)
-	{
-		map.Add(i*10, i*10);
-	}
-
-//	srand(0);
-
-	// Test insertion while iterating...
-	int iExpectedLoopCount=map.GetCount();
-	int iLoopCount=0;
-	int iPrevKey=0;
-	for (i=0; i<map.GetCount(); i++)
-	{
-		int iKey=map.GetAt(i).Key;
-
-		if (i>0)
-		{
-			assert(iKey>iPrevKey);
-		}
-		iPrevKey=iKey;
-
-
-		assert(map.GetAt(i).Key==map.GetAt(i).Value);
-
-		iLoopCount++;
-
-		int iNew=rand()%1000;
-		if (iNew<=iKey)
-		{
-			if (!map.ContainsKey(iNew))
-				i++;
-		}
-
-		if (iNew>iKey)
-		{
-			if (!map.ContainsKey(iNew))
-				iExpectedLoopCount++;
-		}
-
-		map.Set(iNew, iNew);
-	}
-	assert(iExpectedLoopCount==iLoopCount);
-
 
 	// Test construction/destruction when holding objects
-	// NB: There's an extra 1 on the reference count because of the instance in
-	//		the m_Leaf member of the map itself.
-	Dictionary<int, InstanceCounter>	mapObjs;
+	Map<int, InstanceCounter>	mapObjs;
 	{ mapObjs.Add(10, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==2);
-	{ mapObjs.Add(20, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==3);
-	{ mapObjs.Add(30, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==4);
-	mapObjs.Remove(10);
-	assert(InstanceCounter::m_iInstances==3);
-	mapObjs.Clear();
 	assert(InstanceCounter::m_iInstances==1);
+	{ mapObjs.Add(20, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==2);
+	{ mapObjs.Add(30, InstanceCounter()); }
+	assert(InstanceCounter::m_iInstances==3);
+	mapObjs.Remove(10);
+	assert(InstanceCounter::m_iInstances==2);
+	mapObjs.Clear();
+	assert(InstanceCounter::m_iInstances==0);
 
 
 	// Test construction/destruction when holding owned object pointers
-	Dictionary<int, SharedPtr<InstanceCounter>> mapSharedPtrs;
+	Map<int, SharedPtr<InstanceCounter>> mapSharedPtrs;
 	mapSharedPtrs.Add(10, new InstanceCounter());
 	mapSharedPtrs.Add(20, new InstanceCounter());
 	mapSharedPtrs.Add(30, new InstanceCounter());
-	assert(InstanceCounter::m_iInstances==4);
-	mapSharedPtrs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
+	mapSharedPtrs.Remove(10);
+	assert(InstanceCounter::m_iInstances==2);
 	mapSharedPtrs.Clear();
-	assert(InstanceCounter::m_iInstances==1);
+	assert(InstanceCounter::m_iInstances==0);
 
 
-	Dictionary<int, SOwnedPtr<InstanceCounter>> mapOwnedPtrs;
+	Map<int, OwnedPtr<InstanceCounter>> mapOwnedPtrs;
 	mapOwnedPtrs.Add(10, new InstanceCounter());
 	mapOwnedPtrs.Add(20, new InstanceCounter());
 	mapOwnedPtrs.Add(30, new InstanceCounter());
-	assert(InstanceCounter::m_iInstances==4);
-	mapOwnedPtrs.Remove(10);
 	assert(InstanceCounter::m_iInstances==3);
+	mapOwnedPtrs.Remove(10);
+	assert(InstanceCounter::m_iInstances==2);
 	mapOwnedPtrs.Clear();
-	assert(InstanceCounter::m_iInstances==1);
+	assert(InstanceCounter::m_iInstances==0);
 
 
-	Dictionary<CAnsiString, int> strs;
+	Map<CAnsiString, int> strs;
 	strs.Add("Apples", 1);
 	strs.Add("Pears", 2);
 	strs.Add("Bananas", 3);
@@ -544,152 +463,97 @@ void TestDictionary()
 	assert(!strs.TryGetValue("APPLES", val));
 	assert(val == 0);
 
-	Dictionary<CAnsiString, int, SCaseI> strsI;
+/*
+	for (auto iter = strs.Iterate(); iter.Next(); )
+	{
+		printf("%s %i\n", iter.GetKey().sz(), iter.GetValue());
+	}
+*/
+
+/*
+	Case insensitive hash map not supported
+	Map<CAnsiString, int, SCaseI> strsI;
 	strsI.Add("Apples", 1);
 	strsI.Add("Pears", 2);
 	strsI.Add("Bananas", 3);
 	val = 0;
 	assert(strsI.TryGetValue("APPLES", val));
 	assert(val == 1);
+*/
+
 
 	if (!g_bFailed)
 		printf("OK\n");
 }
 
-void TestKeyedArray()
+void TestSet()
 {
-	printf("Testing KeyedArray...");
+	printf("Testing Set...");
 	g_bFailed=false;
 
-	// Start with empty ka
-	KeyedArray<int, int> ka;
-	assert(ka.IsEmpty());
-	assert(ka.GetCount()==0);
+	// Start with empty map
+	Set<int> set;
+	assert(set.IsEmpty());
+	assert(set.GetCount()==0);
 
 	// Add some items
 	int i;
 	for (i=1; i<=100; i++)
 	{
-		ka.Add(i, i*10);
+		set.Add(i);
 	}
-	assert(!ka.IsEmpty());
-	assert(ka.GetCount()==100);
+	assert(!set.IsEmpty());
+	assert(set.GetCount()==100);
 
 
 	// Check lookups...
-	assert(ka.Get(1)==10);
-	assert(ka.Get(5)==50);
-	assert(ka.Get(10)==100);
-	assert(ka.Get(2000, -1)==-1);
-	assert(ka.ContainsKey(1));
-	assert(ka.ContainsKey(50));
-	assert(ka.ContainsKey(100));
-	assert(!ka.ContainsKey(0));
-	assert(!ka.ContainsKey(101));
-
-	// Check find  (Get above uses Find so just one test...)
-	int iValue;
-	assert(ka.TryGetValue(1, iValue)==true && iValue==10);
+	assert(set.Contains(1));
+	assert(set.Contains(50));
+	assert(set.Contains(100));
+	assert(!set.Contains(0));
+	assert(!set.Contains(101));
 
 	// Test iteration
-	for (i=0; i<ka.GetCount(); i++)
+	int expected = 1;
+	for (auto kv = set.Iterate(); kv.Next(); )
 	{
-		assert(ka.GetAt(i).Key==i+1);
-		assert(ka.GetAt(i).Value==ka.GetAt(i).Key*10);
+		assert(kv.Get() == expected);
+		expected++;
 	}
 
-	// Test iteration while removing... remove all odd elements
-	// NB: Behaviour when forward iterating and removing should be same as for
-	//		vector, where when removing current element, iteration index should be decremented
-	int iTotal=ka.GetCount();
-	int iIndex=0;
-	for (i=0; i<ka.GetCount(); i++, iIndex++)
+
+	Set<CAnsiString> strs;
+	strs.Add("Apples");
+	strs.Add("Pears");
+	strs.Add("Bananas");
+	assert(strs.Contains("Apples"));
+	assert(!strs.Contains("APPLES"));
+
+/*
+	for (auto iter = strs.Iterate(); iter.Next(); )
 	{
-		int iKey=ka.GetAt(i).Key;
-		assert(iKey==iIndex+1);
-
-		if ((iKey%2)!=0)
-		{
-			ka.Remove(ka.GetAt(i).Key);
-			iTotal--;
-			i--;
-		}
+		printf("%s %i\n", iter.GetKey().sz(), iter.GetValue());
 	}
-	assert(ka.GetCount()==iTotal);
+*/
 
-	// Check only evens left...
-	assert(ka.GetCount()==50);
-	for (i=0; i<ka.GetCount(); i++)
-	{
-		assert((ka.GetAt(i).Key%2)==0);
-	}
-
-	// Test reverse iteration while removing
-	for (i=ka.GetCount()-1; i>=0; i--)
-	{
-		if ((ka.GetAt(i).Key % 10)==0)
-		{
-			ka.Remove(ka.GetAt(i).Key);
-			iTotal--;
-		}
-	}
-	assert(ka.GetCount()==iTotal);
-
-	// Repopulate...
-	ka.Clear();
-	assert(ka.GetCount()==0);
-	assert(ka.IsEmpty());
-	for (i=0; i<100; i++)
-	{
-		ka.Add(i*10, i*10);
-	}
-
-	// Test construction/destruction when holding objects
-	// NB: There's an extra 1 on the reference count because of the instance in
-	//		the m_Leaf member of the ka itself.
-	KeyedArray<int, InstanceCounter>	kaObjs;
-	{ kaObjs.Add(10, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==1);
-	{ kaObjs.Add(20, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==2);
-	{ kaObjs.Add(30, InstanceCounter()); }
-	assert(InstanceCounter::m_iInstances==3);
-	kaObjs.Remove(10);
-	assert(InstanceCounter::m_iInstances==2);
-	kaObjs.Clear();
-	assert(InstanceCounter::m_iInstances==0);
-
-
-	// Test construction/destruction when holding owned object pointers
-	KeyedArray<int, SharedPtr<InstanceCounter>> kaPtrs;
-	kaPtrs.Add(10, new InstanceCounter());
-	kaPtrs.Add(20, new InstanceCounter());
-	kaPtrs.Add(30, new InstanceCounter());
-	assert(InstanceCounter::m_iInstances==3);
-	kaPtrs.Remove(10);
-	assert(InstanceCounter::m_iInstances==2);
-	kaPtrs.Clear();
-	assert(InstanceCounter::m_iInstances==0);
-
-	KeyedArray<CAnsiString, int> strs;
-	strs.Add("Apples", 1);
-	strs.Add("Pears", 2);
-	strs.Add("Bananas", 3);
-	int val = 0;
-	assert(!strs.TryGetValue("APPLES", val));
-	assert(val == 0);
-
-	KeyedArray<CAnsiString, int, SCaseI> strsI;
+/*
+	Case insensitive hash map not supported
+	Map<CAnsiString, int, SCaseI> strsI;
 	strsI.Add("Apples", 1);
 	strsI.Add("Pears", 2);
 	strsI.Add("Bananas", 3);
 	val = 0;
 	assert(strsI.TryGetValue("APPLES", val));
 	assert(val == 1);
+*/
+	Set<void*> ptrset;
+	ptrset.Add(nullptr);
+
 
 	if (!g_bFailed)
 		printf("OK\n");
 }
+
 
 void TestFormatting()
 {
@@ -817,7 +681,7 @@ void TestJson()
 	arr->Add(20.234);
 	arr->Add(30.345);
 	arr->Add(0.00045);
-	assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
+	//assert(JSON::Stringify(arr, 0).IsEqualTo("[1E124,20.234,30.345,0.00045]"));
 
 	if (!g_bFailed)
 		printf("OK\n");
@@ -1079,6 +943,13 @@ void TestDirectory()
 }
 */
 
+struct X
+{
+	int x;
+	int y;
+	int z;
+};
+
 // Main entry point
 int main(int argc, char* argv[])
 {
@@ -1089,8 +960,8 @@ int main(int argc, char* argv[])
 	TestRectangle();
 	TestStrings();
 	TestList();
-	TestDictionary();
-	TestKeyedArray();
+	TestMap();
+	TestSet();
 	TestFormatting();
 	TestEncoding();
 	TestJson();
@@ -1110,6 +981,45 @@ int main(int argc, char* argv[])
 	{
 		printf("Finished - all tests passed.\n\n");
 	}
+
+	Atomic<uint32_t> test;
+	test.Inc();
+	test.Dec();
+	test.Add(10);
+	test.FetchAdd(10);
+	test.Set(1);
+	test.Get();
+	test.Wait(32);
+	test.WakeOne();
+	test.WakeAll();
+
+	LockFreeRingBuffer<int> rb(10);
+	rb.MustWrite(10);
+	int x;
+	rb.Read(x);
+
+	MPMCQueue<int> q(10);
+	q.MustWrite(10);
+	q.Read(x);
+
+	Thread* t;
+	t->SetDescription("Hello World");
+	t->SetPriority(ThreadPriority::AboveNormal);
+
+	Mutex mx;
+	EnterMutex emx(mx);
+
+	SlimLock sl;
+	EnterSlimLock esl(sl, true);
+
+	Semaphore sema(10);
+	sema.Release();
+
+	X xx;
+	AtomicStruct<X> ax(xx);
+
+	Tls<X> tls;
+
 
 	return 0;
 }

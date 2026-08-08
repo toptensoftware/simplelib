@@ -516,6 +516,11 @@ namespace SimpleLib
 			}
 		}
 
+	static uint32_t Hash(const String& str)
+	{
+		return hash_buf(str.sz(), str.GetLength() * sizeof(T));
+	}
+
 	protected:
 		struct StringData
 		{

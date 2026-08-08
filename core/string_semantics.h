@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <wchar.h>
 #include <string.h>
+#include "hashutils.h"
 
 namespace SimpleLib
 {
@@ -111,6 +112,10 @@ namespace SimpleLib
 		{
 			return Compare(a, b) == 0;
 		}
+		static uint32_t Hash(const char* a)
+		{
+			return (int)hash_str(a);
+		}
 
 		// char16_t
 
@@ -161,6 +166,11 @@ namespace SimpleLib
 			return Compare(a, b) == 0;
 		}
 
+		static uint32_t Hash(const char16_t* a)
+		{
+			return hash_buf(a, SChar<char16_t>::Length(a));
+		}
+
 		// wchar_t
 
 		static int Compare(wchar_t a, wchar_t b)
@@ -194,6 +204,12 @@ namespace SimpleLib
 		{
 			return Compare(a, b) == 0;
 		}
+
+		static uint32_t Hash(const wchar_t* a)
+		{
+			return hash_buf(a, SChar<wchar_t>::Length(a));
+		}
+
 
 		// char32_t
 
@@ -244,6 +260,10 @@ namespace SimpleLib
 			return Compare(a, b) == 0;
 		}
 
+		static uint32_t Hash(const char32_t* a)
+		{
+			return hash_buf(a, SChar<char32_t>::Length(a));
+		}
 	};
 
 	class SCaseI
@@ -343,6 +363,7 @@ namespace SimpleLib
 		{
 			return Compare(a, b) == 0;
 		}
+
 	};
 
 

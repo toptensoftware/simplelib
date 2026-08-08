@@ -9,33 +9,7 @@ namespace SimpleLib
 	{
 	public:
 		typedef T TArg;
-		static void Retain(const TArg& val)
-		{
-		}
-		static void Release(const TArg& val)
-		{
-		}
 	};
-
-	// Owned pointer semantics
-	template <typename T>
-	class SOwnedPtr
-	{
-	public:
-		typedef SOwnedPtr<T> TSemantics;
-
-		typedef T* TArg;
-
-		static void Retain(const TArg& val)
-		{
-
-		}
-		static void Release(const TArg& val)
-		{
-			delete val;
-		}
-	};
-
 
 	template<typename... Ts>
 	using if_type_exists = void;
