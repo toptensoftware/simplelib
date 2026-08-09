@@ -128,6 +128,15 @@ private:
 		free(data);
 	}
 
+	// Intrusive link for the writer-reclaimed retirement stack (see
+	// CowList::m_retired) - GetSnapshot()'s own retire step isn't atomic
+	// (there's reconciliation work between consuming `pending` and actually
+	// retiring m_current), so an arbitrary number of writer mutating calls
+	// can complete in that window before the writer gets a chance to
+	// reclaim. m_retired must therefore be able to hold more than one
+	// outstanding retirement, not just the most recent.
+	CowListSnapshot<T>* next = nullptr;
+
 	T* GetItemBuffer()
 	{
 		return data;
@@ -217,17 +226,31 @@ public:
 		m_iSizeAllocated = 0;
 		m_iSize = 0;
 		delete m_pending.Set(nullptr);
-		delete m_retired.Set(nullptr);
+		ReclaimRetired();
 		delete m_current;
 		m_current = new CowListSnapshot<T>(0, 0, 0);
 	}
 
-	// Frees the snapshot (if any) that GetSnapshot() retired on the reader
-	// thread since our last mutating call. Must run on the writer thread,
-	// at the start of every mutating operation, before anything else.
+	// Frees whatever snapshot(s) GetSnapshot() retired on the reader thread
+	// since our last mutating call. Must run on the writer thread, at the
+	// start of every mutating operation, before anything else.
+	//
+	// m_retired is a lock-free stack (Treiber stack), not a single slot:
+	// GetSnapshot()'s retire step isn't atomic (there's reconciliation work
+	// between consuming `pending` and actually pushing the retired
+	// m_current), so an arbitrary number of writer mutating calls can run to
+	// completion in that window, each finding nothing here yet. Whichever
+	// writer call runs after the reader's retirement(s) finally land must be
+	// able to reclaim all of them, not just the most recent one.
 	void ReclaimRetired()
 	{
-		delete m_retired.Set(nullptr);
+		CowListSnapshot<T>* node = m_retired.Set(nullptr);
+		while (node)
+		{
+			CowListSnapshot<T>* next = node->next;
+			delete node;
+			node = next;
+		}
 	}
 
 	void RemoveAll()
@@ -273,23 +296,9 @@ public:
 		m_iSize++;
 
 		// Update snapshot
-		CowListSnapshot<T>* pending = m_pending.Load();
-		CowListSnapshot<T>* newSnapshot;
-		if (pending)
-		{
-			newSnapshot = new CowListSnapshot<T>(m_iSize, pending->GetInsertedCount() + 1, pending->GetDeletedCount());
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
-			memcpy(newSnapshot->GetInsertedBuffer(), pending->GetInsertedBuffer(), sizeof(T) * pending->GetInsertedCount());
-			memcpy(newSnapshot->GetDeletedBuffer(), pending->GetDeletedBuffer(), sizeof(T) * pending->GetDeletedCount());
-			newSnapshot->GetInsertedBuffer()[pending->GetInsertedCount()] = val;
-		}
-		else
-		{
-			newSnapshot = new CowListSnapshot<T>(m_iSize, 1, 0);
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
-			newSnapshot->GetInsertedBuffer()[0] = val;
-		}
-		StorePendingSnapshot(newSnapshot, pending);
+		CowListSnapshot<T>* pending = m_pending.Get();
+		CowListSnapshot<T>* newSnapshot = BuildSnapshot(pending, ChangeKind::Inserted, &val);
+		StorePendingSnapshot(newSnapshot, pending, ChangeKind::Inserted, &val);
 
 		return iPosition;
 	}
@@ -312,23 +321,9 @@ public:
 		m_iSize--;
 
 		// Update snapshot
-		CowListSnapshot<T>* pending = m_pending.Load();
-		CowListSnapshot<T>* newSnapshot;
-		if (pending)
-		{
-			newSnapshot = new CowListSnapshot<T>(m_iSize, pending->GetInsertedCount(), pending->GetDeletedCount() + 1);
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
-			memcpy(newSnapshot->GetInsertedBuffer(), pending->GetInsertedBuffer(), sizeof(T) * pending->GetInsertedCount());
-			memcpy(newSnapshot->GetDeletedBuffer(), pending->GetDeletedBuffer(), sizeof(T) * pending->GetDeletedCount());
-			newSnapshot->GetDeletedBuffer()[pending->GetDeletedCount()] = val;
-		}
-		else
-		{
-			newSnapshot = new CowListSnapshot<T>(m_iSize, 0, 1);
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
-			newSnapshot->GetDeletedBuffer()[0] = val;
-		}
-		StorePendingSnapshot(newSnapshot, pending);
+		CowListSnapshot<T>* pending = m_pending.Get();
+		CowListSnapshot<T>* newSnapshot = BuildSnapshot(pending, ChangeKind::Deleted, &val);
+		StorePendingSnapshot(newSnapshot, pending, ChangeKind::Deleted, &val);
 	}
 
 	void Move(int iFrom, int iTo)
@@ -354,36 +349,69 @@ public:
 		m_pData[iTo] = temp;
 
 		// Update snapshot
-		CowListSnapshot<T>* pending = m_pending.Load();
-		CowListSnapshot<T>* newSnapshot;
+		CowListSnapshot<T>* pending = m_pending.Get();
+		CowListSnapshot<T>* newSnapshot = BuildSnapshot(pending, ChangeKind::None, nullptr);
+		StorePendingSnapshot(newSnapshot, pending, ChangeKind::None, nullptr);
+	}
+
+	// What kind of change (if any) a mutating call itself contributes to the
+	// inserted/deleted lists, on top of whatever a still-pending snapshot
+	// already carries forward.
+	enum class ChangeKind { None, Inserted, Deleted };
+
+	// Builds a new snapshot of the current m_pData, carrying forward
+	// `pending`'s inserted/deleted lists (if any - pass nullptr for none)
+	// plus this call's own single contribution (kind/val).
+	CowListSnapshot<T>* BuildSnapshot(CowListSnapshot<T>* pending, ChangeKind kind, const T* val)
+	{
+		int insertedCount = (pending ? pending->GetInsertedCount() : 0) + (kind == ChangeKind::Inserted ? 1 : 0);
+		int deletedCount = (pending ? pending->GetDeletedCount() : 0) + (kind == ChangeKind::Deleted ? 1 : 0);
+
+		CowListSnapshot<T>* newSnapshot = new CowListSnapshot<T>(m_iSize, insertedCount, deletedCount);
+		memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
+
 		if (pending)
 		{
-			newSnapshot = new CowListSnapshot<T>(m_iSize, pending->GetInsertedCount(), pending->GetDeletedCount());
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
 			memcpy(newSnapshot->GetInsertedBuffer(), pending->GetInsertedBuffer(), sizeof(T) * pending->GetInsertedCount());
 			memcpy(newSnapshot->GetDeletedBuffer(), pending->GetDeletedBuffer(), sizeof(T) * pending->GetDeletedCount());
 		}
-		else
-		{
-			// Create a new snap shot with one delete operation
-			newSnapshot = new CowListSnapshot<T>(m_iSize, 0, 0);
-			memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
-		}
-		StorePendingSnapshot(newSnapshot, pending);
+
+		if (kind == ChangeKind::Inserted)
+			newSnapshot->GetInsertedBuffer()[insertedCount - 1] = *val;
+		else if (kind == ChangeKind::Deleted)
+			newSnapshot->GetDeletedBuffer()[deletedCount - 1] = *val;
+
+		return newSnapshot;
 	}
 
-	void StorePendingSnapshot(CowListSnapshot<T>* newSnapshot, CowListSnapshot<T>* oldSnapshot)
+	void StorePendingSnapshot(CowListSnapshot<T>* newSnapshot, CowListSnapshot<T>* oldSnapshot, ChangeKind kind, const T* val)
 	{
 		// Try to store it
-		CowListSnapshot<T>* replaced = m_pending.CompareExchange(newSnapshot, oldSnapshot);
+		CowListSnapshot<T>* replaced = m_pending.TrySet(newSnapshot, oldSnapshot);
 
 		if (replaced != oldSnapshot)
 		{
-			// The previous pending snapshot was replaced by another thread which now
-			// has this list of modifications.  Clear the modifications and store again
-			// which should always succeed.
-			newSnapshot->ClearModifications();
-			m_pending.Store(newSnapshot);
+			// Under the single-writer/single-reader contract, the only way
+			// this CAS can fail is the reader's GetSnapshot() concurrently
+			// swapping pending out via Set(nullptr) - and pulling out a
+			// non-null value (i.e. oldSnapshot) always makes GetSnapshot()
+			// retire m_current. So a CAS failure here means a retirement
+			// just happened that nobody has reclaimed yet, and that
+			// `newSnapshot` (built by merging with oldSnapshot's now-stale
+			// inserted/deleted lists) is wrong - the reader already folded
+			// all of that into its new baseline.
+			//
+			// Reclaim the unclaimed retirement, then rebuild containing only
+			// *this* call's own delta (as if pending were null) and publish
+			// that instead. Nothing else can be racing m_pending at this
+			// point (the reader won't touch it again until its next
+			// GetSnapshot(), and there's only one writer), so a plain Set()
+			// is safe here.
+			ReclaimRetired();
+
+			delete newSnapshot;
+			newSnapshot = BuildSnapshot(nullptr, kind, val);
+			m_pending.Set(newSnapshot);
 		}
 		else
 		{
@@ -412,8 +440,23 @@ public:
 			// Retire the current one and replace with the pending one. Must not
 			// delete m_current here - this runs on the audio thread. Hand it
 			// off for the writer thread to free instead (see ReclaimRetired).
-			assert(m_retired.Get() == nullptr);
-			m_retired.Set(m_current);
+			//
+			// Pushed onto the m_retired stack rather than stored in a single
+			// slot: this retire step isn't atomic with consuming `pending`
+			// above (the reconciliation loop runs in between), so by the time
+			// we get here an arbitrary number of writer calls may already
+			// have published and been retired again since we last checked -
+			// m_retired may already be non-empty, and that's fine.
+			CowListSnapshot<T>* oldCurrent = m_current;
+			CowListSnapshot<T>* head = m_retired.Get();
+			for (;;)
+			{
+				oldCurrent->next = head;
+				CowListSnapshot<T>* prevHead = m_retired.TrySet(oldCurrent, head);
+				if (prevHead == head)
+					break;
+				head = prevHead;
+			}
 			m_current = pending;
 		}
 		else
@@ -437,7 +480,9 @@ public:
 
 	void Remove(const T& arg)
 	{
-		RemoveAt(Find(arg));
+		int pos = Find(arg);
+		if (pos >= 0)
+			RemoveAt(pos);
 	}
 
 	int GetSize() const

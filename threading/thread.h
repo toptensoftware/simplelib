@@ -82,11 +82,12 @@ public:
 	{
 		((Thread*)param)->ThreadProc();
 		ThreadLocalBase::FreeAll();
+		return 0;
 	}
-	
+
 	virtual void ThreadProc()=0;
 
-	void* m_handle;
+	void* m_handle = nullptr;
 };
 
 }

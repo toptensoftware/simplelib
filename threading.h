@@ -3,7 +3,7 @@
 #include "Threading/Atomic.h"
 #include "Threading/AtomicSemaphore.h"
 #include "Threading/AtomicStruct.h"
-#include "Threading/LockFreeRingBuffer.h"
+#include "Threading/SpscQueue.h"
 #include "Threading/MpmcQueue.h"
 #include "Threading/Thread.h"
 #include "Threading/Mutex.h"

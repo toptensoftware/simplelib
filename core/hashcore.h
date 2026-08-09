@@ -129,7 +129,11 @@ public:
     // Add a key to the hash map, returning pointer to storage
     // of element value.   If replace is false and key already
     // exists, returns nullptr
-    bool Add(const void* key, bool replace, void*& pKey, void*& pValue)
+    // pExisted, if provided, is set to indicate whether the returned
+    // slot was already occupied by an equal key (its key/value are
+    // still live and must be destroyed by the caller before placing
+    // new ones there) or is newly allocated.
+    bool Add(const void* key, bool replace, void*& pKey, void*& pValue, bool* pExisted = nullptr)
     {
         // Make initialized
         if (m_capacity == 0)
@@ -152,7 +156,11 @@ public:
                 if (!replace)
                     return false;
                 m_version++;
-                return e->data + m_keySize;
+                pKey = e->data;
+                pValue = e->data + m_keySize;
+                if (pExisted)
+                    *pExisted = true;
+                return true;
             }
 
             // Move to next
@@ -178,6 +186,8 @@ public:
 
         pKey = e->data;
         pValue = e->data + m_keySize;
+        if (pExisted)
+            *pExisted = false;
         return true;
     }
 

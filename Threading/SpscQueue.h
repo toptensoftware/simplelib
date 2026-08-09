@@ -6,15 +6,15 @@ namespace SimpleLib
 {
 
 
-// LockFreeRingBuffer Class
+// SpscQueue Class
 // Stores a FIFO queue of items as a ring buffer
 // Supports single reader/single writer thread only.
 template <class T>
-class alignas(kCacheLineSize) LockFreeRingBuffer
+class alignas(kCacheLineSize) SpscQueue
 {
 public:
 // Construction
-	LockFreeRingBuffer(int iSize)
+	SpscQueue(int iSize)
 	{
 		m_iSize=iSize;
 		m_pMem=(T*)malloc(sizeof(T) * iSize);
@@ -23,7 +23,7 @@ public:
 		m_pReadPos.Set(m_pMem);
 	}
 
-	virtual ~LockFreeRingBuffer()
+	virtual ~SpscQueue()
 	{
 		free(m_pMem);
 	}
@@ -62,7 +62,7 @@ public:
 		if (IsEmpty())
 			return false;
 
-		T* readPos = m_pReadPos.Load();
+		T* readPos = m_pReadPos.Get();
 		Value = *readPos;
 
 		return true;
@@ -71,11 +71,11 @@ public:
 	bool Peek(int offset, T& Value)
 	{
 		// In range?
-		if (offset < 0 || offset >= GetSize())
+		if (offset < 0 || offset >= GetCount())
 			return false;
 
 		// Calculate wrapped position of this item
-		T* readPos = m_pReadPos.Load();
+		T* readPos = m_pReadPos.Get();
 		T* pPos = readPos + offset;
 		if (pPos >= m_pWrapPos)
 		{
@@ -142,11 +142,11 @@ public:
 		}
 
 		// Copy it
-		T* writePos = m_pWritePos.Load();
+		T* writePos = m_pWritePos.Get();
 		Constructor(writePos, t);
 
 		// Store next write pos
-		m_pWritePos.Store(AdvancePtr(writePos));
+		m_pWritePos.Set(AdvancePtr(writePos));
 
 		return true;
 	}

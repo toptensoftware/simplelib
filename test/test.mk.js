@@ -14,5 +14,8 @@ export default async function ()
         gcc_cpp_args: [
             "-Wno-unused-variable"
         ],
+        msvc_cl_args: [
+            "/EHsc"
+        ]
     });
 };

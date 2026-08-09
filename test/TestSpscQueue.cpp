@@ -1,0 +1,210 @@
+#include <thread>
+#include "../UnitTesting.h"
+#include "../Threading.h"
+using namespace SimpleLib;
+
+Fact("SpscQueue Basic Write Read")
+{
+	SpscQueue<int> q(8);
+	Assert(q.IsEmpty());
+
+	Assert(q.TryWrite(1));
+	Assert(q.TryWrite(2));
+	Assert(!q.IsEmpty());
+	Assert(q.GetCount() == 2);
+
+	int val;
+	Assert(q.Read(val));
+	Assert(val == 1);
+	Assert(q.Read(val));
+	Assert(val == 2);
+	Assert(q.IsEmpty());
+	Assert(!q.Read(val));
+}
+
+Fact("SpscQueue MustWrite")
+{
+	SpscQueue<int> q(8);
+	q.MustWrite(10);
+	q.MustWrite(20);
+
+	int val;
+	Assert(q.Read(val) && val == 10);
+	Assert(q.Read(val) && val == 20);
+}
+
+Fact("SpscQueue Fills Up To Capacity Minus One")
+{
+	// Note: one slot is always kept empty to distinguish full from empty,
+	// so a queue constructed with size N can only ever hold N-1 items even
+	// though GetCapacity() reports N.
+	SpscQueue<int> q(4);
+	Assert(q.GetCapacity() == 4);
+
+	int count = 0;
+	while (q.TryWrite(count))
+		count++;
+
+	Assert(count == q.GetCapacity() - 1);
+	Assert(q.IsFull());
+	Assert(!q.TryWrite(999));
+}
+
+Fact("SpscQueue TryWrite Succeeds Again After Read Frees A Slot")
+{
+	SpscQueue<int> q(4);
+	while (q.TryWrite(0)) {}
+	Assert(q.IsFull());
+
+	int val;
+	Assert(q.Read(val));
+	Assert(!q.IsFull());
+	Assert(q.TryWrite(999));
+	Assert(q.IsFull());
+}
+
+Fact("SpscQueue Peek Does Not Remove")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(42);
+
+	int val = -1;
+	Assert(q.Peek(val));
+	Assert(val == 42);
+	Assert(q.GetCount() == 1);		// still there
+
+	Assert(q.Read(val));
+	Assert(val == 42);
+	Assert(q.IsEmpty());
+}
+
+Fact("SpscQueue Peek On Empty Fails")
+{
+	SpscQueue<int> q(8);
+	int val;
+	Assert(!q.Peek(val));
+}
+
+Fact("SpscQueue Peek With Offset")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(10);
+	q.TryWrite(20);
+	q.TryWrite(30);
+
+	int val;
+	Assert(q.Peek(0, val) && val == 10);
+	Assert(q.Peek(1, val) && val == 20);
+	Assert(q.Peek(2, val) && val == 30);
+	Assert(!q.Peek(-1, val));
+	Assert(!q.Peek(3, val));		// out of range: only 3 items present
+}
+
+Fact("SpscQueue GetAt")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(10);
+	q.TryWrite(20);
+	q.TryWrite(30);
+
+	Assert(q.GetAt(0) == 10);
+	Assert(q.GetAt(1) == 20);
+	Assert(q.GetAt(2) == 30);
+}
+
+Fact("SpscQueue RemoveAll")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(1);
+	q.TryWrite(2);
+	q.TryWrite(3);
+
+	q.RemoveAll();
+	Assert(q.IsEmpty());
+	Assert(q.GetCount() == 0);
+
+	// Still usable afterwards
+	Assert(q.TryWrite(99));
+	Assert(q.GetCount() == 1);
+}
+
+Fact("SpscQueue Reset Same Size")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(1);
+	q.TryWrite(2);
+
+	q.Reset();
+	Assert(q.IsEmpty());
+	Assert(q.GetCapacity() == 8);
+
+	Assert(q.TryWrite(5));
+	Assert(q.GetCount() == 1);
+}
+
+Fact("SpscQueue Reset New Size")
+{
+	SpscQueue<int> q(8);
+	q.TryWrite(1);
+
+	q.Reset(16);
+	Assert(q.IsEmpty());
+	Assert(q.GetCapacity() == 16);
+}
+
+Fact("SpscQueue Wraparound Preserves FIFO Order")
+{
+	SpscQueue<int> q(4);	// small buffer forces frequent wraparound
+
+	int nextWrite = 0;
+	int nextRead = 0;
+	int val;
+
+	// Interleave writes and reads well past the buffer's physical size
+	while (nextRead < 1000)
+	{
+		if (nextWrite < 1000 && q.TryWrite(nextWrite))
+			nextWrite++;
+
+		if (q.Read(val))
+		{
+			Assert(val == nextRead);
+			nextRead++;
+		}
+	}
+
+	Assert(q.IsEmpty());
+}
+
+Fact("SpscQueue Producer Consumer Threads Preserve Order And Count")
+{
+	SpscQueue<int> q(64);
+	const int kItemCount = 200000;
+
+	std::thread producer([&]() {
+		int i = 0;
+		while (i < kItemCount)
+		{
+			if (q.TryWrite(i))
+				i++;
+		}
+	});
+
+	std::thread consumer([&]() {
+		int expected = 0;
+		int val;
+		while (expected < kItemCount)
+		{
+			if (q.Read(val))
+			{
+				Assert(val == expected);
+				expected++;
+			}
+		}
+	});
+
+	producer.join();
+	consumer.join();
+
+	Assert(q.IsEmpty());
+}

@@ -288,7 +288,7 @@ namespace SimpleLib
 			int srcLen = SChar<T>::Length(find);
 
 			// Find it
-			int stopPos = m_pData->m_iLen - srcLen;
+			int stopPos = m_pData->m_iLength - srcLen;
 			for (int i = startOffset; i <= stopPos; i++)
 			{
 				if (S::Compare(m_pData->m_sz + i, find, srcLen) == 0)

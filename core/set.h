@@ -59,8 +59,11 @@ public:
     {
         void* pValue;
         void* pKey;
-        if (core.Add(&Key, true, pKey, pValue))
+        bool bExisted;
+        if (core.Add(&Key, true, pKey, pValue, &bExisted))
         {
+            if (bExisted)
+                Destructor((T*)pKey);
             Constructor((T*)pKey, Key);
         }
     }
@@ -161,13 +164,26 @@ private:
     class Core : public HashCore
     {
     public:
-        Core() : 
+        Core() :
             HashCore(sizeof(T), 0)
         {
         };
-        virtual ~Core() 
+        virtual ~Core()
         {
         };
+
+        // The user-declared destructor above suppresses the implicitly
+        // generated move constructor/assignment, so provide them explicitly
+        // (forwarding to HashCore's) rather than falling back to the
+        // deleted copy constructor/assignment.
+        Core(Core&& other) : HashCore(SimpleLib::move(other))
+        {
+        }
+        Core& operator=(Core&& other)
+        {
+            HashCore::operator=(SimpleLib::move(other));
+            return *this;
+        }
         virtual uint32_t HashKey(const void* a) const override
         {
             return TCompare::Hash(*(const T*)a);

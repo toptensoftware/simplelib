@@ -15,7 +15,6 @@
 #include "Core/OwnedPtr.h"
 #include "Core/List.h"
 #include "Core/Map.h"
-#include "Core/RingBuffer.h"
 #include "Core/Set.h"
 
 
@@ -24,7 +23,6 @@
 #include "Core/Crc32.h"
 #include "Core/Guid.h"
 
-// guid_t
 // linked stack
 // fixed array
 // stream?

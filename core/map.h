@@ -169,7 +169,7 @@ public:
     // Shortcut to above
     const TValue& operator[](const TKeyArg& key) const
     {
-        return GetValue(key);
+        return Get(key);
     }
 
     // Get an item from the map, return default if doesn't exist
@@ -189,6 +189,7 @@ public:
         const TValue* val = (const TValue*)core.Find(&Key);
         if (val)
         {
+            Destructor(&Value);
             Constructor(&Value, *val);
             return true;
         }
@@ -206,13 +207,26 @@ private:
     class Core : public HashCore
     {
     public:
-        Core() : 
+        Core() :
             HashCore(sizeof(TKey), sizeof(TValue))
         {
         };
-        virtual ~Core() 
+        virtual ~Core()
         {
         };
+
+        // The user-declared destructor above suppresses the implicitly
+        // generated move constructor/assignment, so provide them explicitly
+        // (forwarding to HashCore's) rather than falling back to the
+        // deleted copy constructor/assignment.
+        Core(Core&& other) : HashCore(SimpleLib::move(other))
+        {
+        }
+        Core& operator=(Core&& other)
+        {
+            HashCore::operator=(SimpleLib::move(other));
+            return *this;
+        }
         virtual uint32_t HashKey(const void* a) const override
         {
             return TKeyCompare::Hash(*(const TKey*)a);
@@ -230,8 +244,14 @@ private:
     {
         void* pValue;
         void* pKey;
-        if (core.Add(&Key, replace, pKey, pValue))
+        bool bExisted;
+        if (core.Add(&Key, replace, pKey, pValue, &bExisted))
         {
+            if (bExisted)
+            {
+                Destructor((TKey*)pKey);
+                Destructor((TValue*)pValue);
+            }
             Constructor((TKey*)pKey, Key);
             Constructor((TValue*)pValue, Value);
         }

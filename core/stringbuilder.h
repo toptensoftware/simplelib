@@ -199,7 +199,7 @@ namespace SimpleLib
 				return 0;
 			}
 
-			const char* p = input;
+			const T* p = input;
 			int count = 0;
 			while (*p)
 			{

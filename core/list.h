@@ -327,7 +327,7 @@ class List
 	static int sort_function_s(const void* a, const void* b, void* pvctx)
 #endif
 	{
-		sort_ctx_s& ctx = *(sort_ctx*)pvctx;
+		sort_ctx_s& ctx = *(sort_ctx_s*)pvctx;
 		return ctx.callback(*(T*)a, *(T*)b, ctx.user);
 	}
 

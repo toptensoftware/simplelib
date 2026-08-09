@@ -1,355 +1,126 @@
 #pragma once
 
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-
-#include "StringPool.h"
-#include "StringBuilder.h"
-
-/*
-eg:
-
-void mytest_with(int a, int b, int c)
-{
-	assert_equal(a + b, c);
-}
-
-void mytest()
-{
-	run(mytest_with(5, 5, 10));
-	run(mytest_with(10, 10, 20));
-	run(mytest_with(100, 100, 0));
-}
-
-int main()
-{
-	run(mytest());
-	test_summary();
-}
-
--------- output --------
-
-Test mytest()
-  Test mytest_with(5, 5, 10) - PASS
-  Test mytest_with(10, 10, 20) - PASS
-  Test mytest_with(100, 100, 0)
-
-				  failed: a + b should equal c
-				   a + b: 200
-					   c: 0
-					  at: C:\Users\Brad\source\repos\simplelibsandbox\main.cpp(7)
-
-
-Failed 1 of 4 tests!
-
-*/
-
-
-#define run(x) \
-	SimpleLib::UnitTesting::EnterTest(#x); \
-	x; \
-	SimpleLib::UnitTesting::LeaveTest()
-
-#undef assert
-
-#define assert_condition(a, compare, msg) { auto _a = a; if (!(compare)) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " " msg, #a, test_format(_a)); return; } }
-#define assert_compare(a, b, compare, msg) { auto _a = a; auto _b = b;  if (!(compare)) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " " msg " " #b, #a, test_format(_a), #b, test_format(_b) ); return; } }
-
-#define assert_true(a) assert_condition(a, !!_a, "should be true")
-#define assert_false(a) assert_condition(a, !_a, "should be false")
-#define assert_null(a) assert_condition(a, _a == nullptr, "should be null")
-#define assert_not_null(a) assert_condition(a, _a != nullptr, "should not be null")
-#define assert_error(a) assert_condition(a, _a != 0, "should have failed with error")
-#define assert_not_error(a) { auto _a = a; if (_a) { SimpleLib::UnitTesting::FailTest(__FILE__, __LINE__, #a " should not have failed with error", #a, test_format(_a), "errno", test_format(errno)); return; } }
-
-#define assert_equal(a, b) assert_compare(a, b, _a == _b, "should equal")
-#define assert_not_equal(a, b) assert_compare(a, b, _a != _b, "should not equal")
-#define assert_gt(a, b) assert_compare(a, b, _a > _b, "should be greater than")
-#define assert_ge(a, b) assert_compare(a, b, _a >= _b, "should be greater or equal to")
-#define assert_lt(a, b) assert_compare(a, b, _a < _b, "should be less than")
-#define assert_le(a, b) assert_compare(a, b, _a <= _b, "should be less than or equal to")
-
-
-#define assert_string_equal(a, b) assert_compare(a, b, SimpleLib::UnitTesting::StringCompare(_a,_b)==0, "should equal")
-#define assert_string_not_equal(a, b) assert_compare(a, b, SimpleLib::UnitTesting::StringCompare(_a,_b)!=0, "should not equal")
-
-#define test_summary() SimpleLib::UnitTesting::WriteSummary()
-
+#include "../Core/String.h"
 
 namespace SimpleLib
 {
 
-class UnitTesting
+class FactEntry;
+
+class TestRunner
 {
 public:
-	static void EnterTest(const char* name)
+	static void Run();
+
+	static void Register(FactEntry* p)
 	{
-		ActiveTest() = new Test(ActiveTest(), name);
+		m_allFacts.Add(p);
 	}
-
-	static void LeaveTest()
-	{
-		ActiveTest()->Finish();
-		ActiveTest() = ActiveTest()->GetParent();
-		Pool().FreeAll();
-	}
-
-	static void FailTest(const char* file, int lineNumber,
-		const char* message,
-		const char* exprA = nullptr, const char* valA = nullptr,
-		const char* exprB = nullptr, const char* valB = nullptr
-	)
-	{
-		if (ActiveTest())
-			ActiveTest()->Fail(file, lineNumber, message, exprA, valA, exprB, valB);
-	}
-
-	static void WriteSummary()
-	{
-		if (FailedTests() == 0)
-		{
-			printf("\nPassed all %i tests!\n\n", TotalTests());
-		}
-		else
-		{
-			printf("\nFailed %i of %i tests!\n\n", FailedTests(), TotalTests());
-		}
-	}
-
-
-	static const char* vsprintf(const char* format, va_list args)
-	{
-		StringBuilder<char> buf;
-		buf.FormatV(format, args);
-		return Pool().Alloc(buf);
-	}
-
-	static const char* FormatString(const char* value, char chDelim = '\"')
-	{
-		if (value == nullptr)
-			return "nullptr";
-
-		StringBuilder<char> buf;
-		buf.Append(chDelim);
-
-		const char* p = value;
-		while (*p)
-		{
-			switch (*p)
-			{
-			case '\0': buf.Append("\\0", 2); break;
-			case '\a': buf.Append("\\a", 2); break;
-			case '\b': buf.Append("\\b", 2); break;
-			case '\f': buf.Append("\\f", 2); break;
-			case '\n': buf.Append("\\n", 2); break;
-			case '\r': buf.Append("\\r", 2); break;
-			case '\t': buf.Append("\\t", 2); break;
-			case '\v': buf.Append("\\v", 2); break;
-			case '\\': buf.Append("\\\\", 2); break;
-			case '\'': buf.Append("\\\'", 2); break;
-			case '\"': buf.Append("\\\"", 2); break;
-
-			default:
-				buf.Append(*p);
-				break;
-			}
-
-			p++;
-		}
-
-		buf.Append(chDelim);
-		return Pool().Alloc(buf);
-	}
-
-	static int StringCompare(const char* a, const char* b)
-	{
-		if (a == nullptr && b == nullptr)
-			return 0;
-		if (a == nullptr)
-			return -1;
-		if (b == nullptr)
-			return 1;
-		return strcmp(a, b);
-	}
-
-	static StringPool<char>& Pool() { static StringPool<char> val; return val; }
 
 private:
-	class Test;
-	static int& TotalTests() { static int val = 0; return val; }
-	static int& FailedTests() { static int val = 0; return val; }
-	static Test*& ActiveTest() { static Test* val = nullptr; return val; }
-
-	class Test
-	{
-	public:
-		Test(Test* pParent, const char* name)
-		{
-			TotalTests()++;
-
-			if (pParent)
-			{
-				pParent->CloseHeader();
-				m_iDepth = pParent->m_iDepth + 1;
-			}
-			else
-			{
-				m_iDepth = 0;
-			}
-			m_pParent = pParent;
-			m_bHeaderClosed = false;
-
-			WriteIndent();
-			printf("Test %s", name);
-
-		}
-
-		void WriteIndent()
-		{
-			for (int i = 0; i < 2 * m_iDepth; i++)
-			{
-				printf(" ");
-			}
-		}
-
-		void CloseHeader()
-		{
-			if (!m_bHeaderClosed)
-			{
-				printf("\n");
-				m_bHeaderClosed = true;
-			}
-		}
-
-		void Finish()
-		{
-			if (!m_bHeaderClosed)
-			{
-				printf(" - ");
-				printf("PASS");
-				CloseHeader();
-			}
-		}
-
-		void Fail(
-			const char* file, int lineNumber,
-			const char* message,
-			const char* exprA, const char* valA,
-			const char* exprB, const char* valB
-		)
-		{
-			if (m_pParent)
-				m_pParent->ChildFailed();
-
-			CloseHeader();
-
-
-			printf("\n");
-			m_iDepth++;
-			WriteIndent();
-			printf("%20s: %s\n", "failed", message);
-			if (exprA && strcmp(exprA, valA))
-			{
-				WriteIndent();
-				printf("%20s: %s\n", exprA, valA);
-			}
-			if (exprB && strcmp(exprB, valB))
-			{
-				WriteIndent();
-				printf("%20s: %s\n", exprB, valB);
-			}
-			WriteIndent();
-			printf("%20s: %s(%i)\n", "at", file, lineNumber);
-			m_iDepth--;
-			printf("\n");
-
-			FailedTests()++;
-		}
-
-		void ChildFailed()
-		{
-			CloseHeader();
-		}
-
-		Test* GetParent() { return m_pParent; }
-
-		Test* m_pParent;
-		int m_iDepth;
-		bool m_bHeaderClosed;
-	};
+	inline static List<FactEntry*> m_allFacts;
+	friend class FactEntry;
 };
 
-}	// namespace
-
-
-
-
-
-
-inline const char* test_sprintf(const char* format, ...)
+class FactEntry
 {
-	va_list args;
-	va_start(args, format);
-	const char* result = SimpleLib::UnitTesting::vsprintf(format, args);
-	va_end(args);
-	return result;
+public:
+	FactEntry(const char* name, const char* file, int line, void (*fn)())
+	{
+		m_strName = name;
+		m_strFile = file;
+		m_iLine = line;
+		m_fn = fn;
+		TestRunner::Register(this);
+	}
+
+	void SetFn(void (*fn)())
+	{
+		m_fn = fn;
+	}
+
+	String<char> m_strName;
+	String<char> m_strFile;
+	int m_iLine;
+	void (*m_fn)();
+
+};
+
+class AssertionFailed
+{
+public:
+	AssertionFailed(const char* expr, const char* file, int line)
+	{
+		Expression = expr;
+		File = file;
+		Line = line;
+	}
+
+	const char* Expression;
+	const char* File;
+	int Line;
+};
+
+
+inline void TestRunner::Run()
+{
+	int failed = 0;
+	int count = 0;
+	for (int i=0; i<m_allFacts.GetCount(); i++)
+	{
+		FactEntry* f = m_allFacts[i];
+		printf("%s: ", f->m_strName.sz());
+        try
+        {
+			count++;
+    		m_allFacts[i]->m_fn();
+			printf("ok\n");
+        }
+        catch (const AssertionFailed& e)
+        {
+            fprintf(stderr, "assertion failed: %s\n  at %s(%i)\n", e.Expression, e.File, e.Line);
+			failed++;
+        }
+	}
+
+	if (failed == 0)
+		printf("\nAll (%i) tests passed.\n", count);
+	else
+		printf("\n%i of %i tests failed.\n", failed, count);
 }
 
 
-inline const char* test_format(bool value)
+#ifndef STRINGIZE
+#define STRINGIZE_(x) #x
+#define STRINGIZE(x) STRINGIZE_(x)
+#endif
+
+#ifndef CONCAT
+#define CONCAT_(a, b) a##b
+#define CONCAT(a, b) CONCAT_(a, b)
+#endif
+
+// Deliberately not named UNIQUE_NAME: that name collides with a macro
+// pulled in by <Windows.h> (um/nb30.h), which silently clobbers ours
+// whenever a test file includes both this header and Windows.h (directly
+// or via Threading.h) - whichever is included last wins, breaking every
+// Fact() after that point in the translation unit.
+#define SIMPLELIB_UNIQUE_NAME(prefix) CONCAT(prefix, __LINE__)
+
+#define Fact(name) \
+static void SIMPLELIB_UNIQUE_NAME(fn)(); \
+static SimpleLib::FactEntry SIMPLELIB_UNIQUE_NAME(fe)(name, __FILE__, __LINE__, &SIMPLELIB_UNIQUE_NAME(fn)); \
+static void SIMPLELIB_UNIQUE_NAME(fn)() \
+
+inline void _Assert(bool value, const char* expr, const char* file, int line)
 {
-	return value ? "true" : "false";
+	if (!value)
+	{
+		throw AssertionFailed(expr, file, line);
+	}
 }
 
-inline const char* test_format(int value)
-{
-	return test_sprintf("%i", value);
-}
+#define Assert(x) \
+	_Assert(x, #x, __FILE__, __LINE__)
 
-inline const char* test_format(unsigned int value)
-{
-	return test_sprintf("%uu", value);
-}
-
-inline const char* test_format(long value)
-{
-	return test_sprintf("%lil", value);
-}
-
-inline const char* test_format(unsigned long value)
-{
-	return test_sprintf("%luul", value);
-}
-
-inline const char* test_format(long long value)
-{
-	return test_sprintf("%llill", value);
-}
-
-inline const char* test_format(unsigned long long value)
-{
-	return test_sprintf("%lluull", value);
-}
-
-inline const char* test_format(void* value)
-{
-	return test_sprintf("0x%p", value);
-}
-
-inline const char* test_format(char value)
-{
-	char sz[2] = "x";
-	sz[0] = value;
-	return SimpleLib::UnitTesting::FormatString(sz, '\'');
-}
-
-inline const char* test_format(double value)
-{
-	return test_sprintf("%f", value);
-}
-
-inline const char* test_format(const char* value)
-{
-	return SimpleLib::UnitTesting::FormatString(value);
 }

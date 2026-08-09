@@ -45,6 +45,12 @@ public:
 		m_pCells = (Cell*)malloc(sizeof(Cell) * iSize);
 		for (int i = 0; i < iSize; i++)
 			m_pCells[i].m_iSequence.Set(i);
+
+		// Cell sequence numbers above assume enqueue/dequeue start at position
+		// 0 - must reset these too, or a Reset() on an already-used queue
+		// leaves them stale and inconsistent with the fresh cells
+		m_iEnqueuePos.Set(0);
+		m_iDequeuePos.Set(0);
 	}
 
 	bool IsEmpty()

@@ -32,6 +32,23 @@ inline uint32_t atomicExchange(volatile uint32_t* pval, uint32_t val)
     return (uint32_t)InterlockedExchange((volatile LONG*)pval, (LONG)val);
 }
 
+// A plain read of a volatile, naturally-aligned size_t/uint32_t is already
+// atomic in hardware on x86/x64, and MSVC's default (non-ISO) volatile
+// semantics give it acquire ordering - matching the release semantics of
+// the Interlocked* stores above - so this is a real fenced load here, not
+// just a cache of a stale value. This relies on MSVC-specific behavior
+// (not in effect under /volatile:iso); see the Linux branch below for the
+// portable equivalent using __atomic_load_n.
+inline size_t atomicLoad(volatile size_t* pval)
+{
+    return *pval;
+}
+
+inline uint32_t atomicLoad(volatile uint32_t* pval)
+{
+    return *pval;
+}
+
 inline size_t atomicIncrement(volatile size_t* pval)
 {
 #if defined(_WIN64)
@@ -143,6 +160,16 @@ inline uint32_t atomicExchange(volatile uint32_t* pval, uint32_t val)
     return __atomic_exchange_n(pval, val, __ATOMIC_SEQ_CST);
 }
 
+inline size_t atomicLoad(volatile size_t* pval)
+{
+    return __atomic_load_n(pval, __ATOMIC_SEQ_CST);
+}
+
+inline uint32_t atomicLoad(volatile uint32_t* pval)
+{
+    return __atomic_load_n(pval, __ATOMIC_SEQ_CST);
+}
+
 inline size_t atomicIncrement(volatile size_t* pval)
 {
     return __atomic_add_fetch(pval, 1, __ATOMIC_SEQ_CST);
@@ -251,7 +278,10 @@ public:
 
     T Get() const
     {
-        return m_val;
+        if constexpr (sizeof(T) == sizeof(void*))
+            return (T)atomicLoad((size_t volatile*)&m_val);
+        else
+            return (T)atomicLoad((uint32_t volatile*)&m_val);
     }
     
     T Set(T val)
