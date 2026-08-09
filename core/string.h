@@ -113,6 +113,37 @@ namespace SimpleLib
 			return this->IsEqualTo(b.sz());
 		}
 
+		bool operator !=(const StringCore<T>& b) const
+		{
+			return !this->IsEqualTo(b.sz());
+		}
+
+		bool operator <(const StringCore<T>& b) const
+		{
+			return SCase::Compare(sz(), b.sz()) < 0;
+		}
+
+		bool operator >(const StringCore<T>& b) const
+		{
+			return SCase::Compare(sz(), b.sz()) > 0;
+		}
+
+		bool operator <=(const StringCore<T>& b) const
+		{
+			return SCase::Compare(sz(), b.sz()) <= 0;
+		}
+
+		bool operator >=(const StringCore<T>& b) const
+		{
+			return SCase::Compare(sz(), b.sz()) >= 0;
+		}
+
+		// True if the string is null or empty
+		bool operator !() const
+		{
+			return IsNullOrEmpty(sz());
+		}
+
 		StringCore<T> operator+(const StringCore<T>& other) const
 		{
 			StringBuilder<T> builder;

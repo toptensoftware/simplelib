@@ -427,6 +427,15 @@ class List
 		#endif
 	}
 
+	// Sort using the default comparer
+	template <typename TCompare = SDefaultCompare>
+	void Sort()
+	{
+		Sort([](const T& a, const T& b) {
+			return TCompare::Compare(a, b);
+		});
+	}
+
 	// Find index of an item(linear)
 	template <typename TCompare = SDefaultCompare>
 	int IndexOf(const TArg& val, int iStartAfter = -1) const

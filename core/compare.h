@@ -2,10 +2,13 @@
 
 #include <type_traits>
 #include "HashUtils.h"
+#include "StringSemantics.h"
 
 namespace SimpleLib
 {
 
+	template <typename T>
+	class StringCore;
 
 	// Detect if T has a static Hash(const T&) member
 	template <typename T, typename = void>
@@ -22,6 +25,15 @@ namespace SimpleLib
 		static int Compare(const T& a, const T& b)
 		{
 			return a > b ? 1 : a < b ? -1 : 0;
+		}
+
+		// Overload for StringCore<T> - compares string contents directly
+		// via SCase rather than the generic operator</> (which would
+		// otherwise need to be evaluated twice for a single comparison)
+		template <typename T>
+		static int Compare(const StringCore<T>& a, const StringCore<T>& b)
+		{
+			return SCase::Compare(a.sz(), b.sz());
 		}
 
 		template <typename T>

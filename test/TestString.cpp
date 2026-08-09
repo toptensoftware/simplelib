@@ -188,6 +188,56 @@ Fact("StringCore Equality Operator")
 	Assert(!(a == c));
 }
 
+Fact("StringCore Inequality Operator")
+{
+	String a("Hello");
+	String b("Hello");
+	String c("World");
+	Assert(a != c);
+	Assert(!(a != b));
+}
+
+Fact("StringCore Less Than / Greater Than Operators")
+{
+	String a("Apple");
+	String b("Banana");
+	String c("Apple");
+
+	Assert(a < b);
+	Assert(!(b < a));
+	Assert(!(a < c));
+
+	Assert(b > a);
+	Assert(!(a > b));
+	Assert(!(a > c));
+}
+
+Fact("StringCore Less Than Or Equal / Greater Than Or Equal Operators")
+{
+	String a("Apple");
+	String b("Banana");
+	String c("Apple");
+
+	Assert(a <= b);
+	Assert(a <= c);
+	Assert(!(b <= a));
+
+	Assert(b >= a);
+	Assert(a >= c);
+	Assert(!(a >= b));
+}
+
+Fact("StringCore Not Operator")
+{
+	String empty;
+	String emptyStr("");
+	String nonEmpty("Hello");
+
+	Assert(!empty);
+	Assert(!emptyStr);
+	Assert(!nonEmpty == false);
+}
+
 Fact("StringCore Concatenation Operator+")
 {
 	String a("Hello");

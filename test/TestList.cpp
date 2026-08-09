@@ -650,6 +650,34 @@ Fact("List Sort")
 	Assert(list[3] == 30);
 }
 
+Fact("List Sort Default Compare")
+{
+	List<int> list;
+	list.Add(30);
+	list.Add(10);
+	list.Add(20);
+	list.Add(5);
+
+	list.Sort();
+	Assert(list[0] == 5);
+	Assert(list[1] == 10);
+	Assert(list[2] == 20);
+	Assert(list[3] == 30);
+}
+
+Fact("List Sort Default Compare With Strings")
+{
+	List<String> list;
+	list.Add(String("banana"));
+	list.Add(String("apple"));
+	list.Add(String("cherry"));
+
+	list.Sort();
+	Assert(list[0].IsEqualTo("apple"));
+	Assert(list[1].IsEqualTo("banana"));
+	Assert(list[2].IsEqualTo("cherry"));
+}
+
 Fact("List Sort With Context")
 {
 	List<int> list;
