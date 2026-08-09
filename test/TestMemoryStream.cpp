@@ -273,7 +273,7 @@ Fact("MemoryStream ReadString At Buffer Boundary Does Not Overflow")
 		StringBuilder<char> sb;
 		for (int i = 0; i < 128; i++)
 			sb.Append((char)('A' + (i % 26)));
-		longStr = sb.ToString();
+		longStr = sb.Finish();
 	}
 	Assert(longStr.GetLength() == 128);
 

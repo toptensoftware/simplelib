@@ -8,6 +8,9 @@
 
 namespace SimpleLib
 {
+	template <typename T>
+	class StringCore;
+
 	// Simple StringBuilder class that uses embedded short buffer but switches
 	// to dynamic allocations for longer strings
 	template <typename T>
@@ -54,6 +57,18 @@ namespace SimpleLib
 			assert(newLength >= 0);
 			assert(newLength <= m_iUsed);
 			m_iUsed = newLength;
+		}
+
+		// Rescans the content for a NUL terminator and sets the builder's
+		// internally tracked length to match (eg: after writing through a
+		// buffer obtained via GetBuffer() using nul-terminated C APIs).
+		// Returns *this so it can be chained eg: sb.SyncLen().ToString()
+		StringBuilder& SyncLen()
+		{
+			int len = SChar<T>::Length(m_pMem);
+			assert(len <= m_iCapacity);
+			m_iUsed = len;
+			return *this;
 		}
 
 		// IStringWriter
@@ -139,15 +154,23 @@ namespace SimpleLib
 			return retv;
 		}
 
+		// Like Reserve(), but first clears the builder back to empty so the
+		// returned buffer starts at offset zero
+		T* GetBuffer(int length)
+		{
+			Clear();
+			return Reserve(length);
+		}
+
 		// Finish building and return the current string (doesn't reset the builder)
-		T* ToString() const
+		T* Finish() const
 		{
 			int unused;
-			return ToString(&unused);
+			return Finish(&unused);
 		}
 
 		// Finish building and return the current string and its length
-		T* ToString(int* piLength) const
+		T* Finish(int* piLength) const
 		{
 			if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
 			{
@@ -157,11 +180,17 @@ namespace SimpleLib
 			return m_pMem;
 		}
 
+		// Return the builder's content as a StringCore
+		StringCore<T> ToString() const
+		{
+			return StringCore<T>(*this);
+		}
+
 		T* Detach()
 		{
 			// Make sure null terminated
 			int length;
-			ToString(&length);		
+			Finish(&length);
 
 			// Can't just detach short buffer, so alloc
 			if (m_pMem == m_shortBuffer)
@@ -181,12 +210,12 @@ namespace SimpleLib
 
 		operator const T* () const
 		{
-			return ToString();
+			return Finish();
 		}
 
 		const T* sz() const
 		{
-			return ToString();
+			return Finish();
 		}
 
 		template <class S = SCase>

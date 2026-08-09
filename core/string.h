@@ -59,7 +59,7 @@ namespace SimpleLib
 		StringCore(const StringBuilder<T>& builder)
 		{
 			int length;
-			const T* psz = builder.ToString(&length);
+			const T* psz = builder.Finish(&length);
 			m_pData = AllocStringData(psz, length);
 		}
 
@@ -383,7 +383,7 @@ namespace SimpleLib
 			builder.template ReplaceAppend<S>(sz() + startOffset, find, replace, maxReplacements);
 
 			// Store in self
-			return builder.ToString();
+			return builder.Finish();
 		}
 
 
@@ -427,7 +427,7 @@ namespace SimpleLib
 					sb.Append(separator);
 				sb.Append(parts[i]);
 			}
-			return sb.ToString();
+			return sb.Finish();
 		}
 
 		template <typename S = SCase>
@@ -481,7 +481,7 @@ namespace SimpleLib
 		{
 			StringBuilder<T> buf;
 			buf.FormatV(pFormat, args);
-			return buf.ToString();
+			return buf.Finish();
 		}
 
 

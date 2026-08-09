@@ -240,7 +240,7 @@ namespace SimpleLib
 		{
 			enc.Process(*in++, out);
 		}
-		return out.ToString();
+		return out.Finish();
 	}
 
 }
