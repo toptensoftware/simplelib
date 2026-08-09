@@ -59,6 +59,48 @@ Fact("List Add And IndexOf")
 	Assert(!list.Contains(999));
 }
 
+Fact("List Iterate")
+{
+	List<int> list;
+	list.Add(10);
+	list.Add(20);
+	list.Add(30);
+
+	int iSeen = 0;
+	int iSum = 0;
+	auto it = list.Iterate();
+	while (it.Next())
+	{
+		iSeen++;
+		iSum += it.Get();
+	}
+	Assert(iSeen == 3);
+	Assert(iSum == 60);
+}
+
+Fact("List Iterate Visits In Order")
+{
+	List<int> list;
+	for (int i = 0; i < 10; i++)
+		list.Add(i);
+
+	int expected = 0;
+	auto it = list.Iterate();
+	while (it.Next())
+	{
+		Assert(it.Get() == expected);
+		expected++;
+	}
+	Assert(expected == 10);
+}
+
+Fact("List Iterate Empty List")
+{
+	List<int> list;
+	auto it = list.Iterate();
+	Assert(!it.Next());
+}
+
 Fact("List GrowTo Preserves Contents")
 {
 	List<int> list;
@@ -274,6 +316,308 @@ Fact("List InsertRangeAt")
 	Assert(a[2] == 20);
 	Assert(a[3] == 2);
 	Assert(a[4] == 3);
+}
+
+Fact("List AddMany From List")
+{
+	List<int> src;
+	src.Add(4);
+	src.Add(5);
+
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+	dest.Add(3);
+
+	dest.AddMany(src);
+	Assert(dest.GetCount() == 5);
+	Assert(dest[0] == 1);
+	Assert(dest[1] == 2);
+	Assert(dest[2] == 3);
+	Assert(dest[3] == 4);
+	Assert(dest[4] == 5);
+}
+
+Fact("List AddMany From Set")
+{
+	Set<int> src;
+	src.Add(10);
+	src.Add(20);
+	src.Add(30);
+
+	List<int> dest;
+	dest.Add(1);
+
+	dest.AddMany(src);
+	Assert(dest.GetCount() == 4);
+	Assert(dest[0] == 1);
+
+	// Set iteration order isn't insertion order - just check membership
+	Assert(dest.Contains(10));
+	Assert(dest.Contains(20));
+	Assert(dest.Contains(30));
+}
+
+Fact("List AddMany Empty Source")
+{
+	List<int> src;
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+
+	dest.AddMany(src);
+	Assert(dest.GetCount() == 2);
+	Assert(dest[0] == 1);
+	Assert(dest[1] == 2);
+}
+
+Fact("List InsertManyAt From List")
+{
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+	dest.Add(3);
+
+	List<int> src;
+	src.Add(100);
+	src.Add(101);
+
+	dest.InsertManyAt(1, src);
+	Assert(dest.GetCount() == 5);
+	Assert(dest[0] == 1);
+	Assert(dest[1] == 100);
+	Assert(dest[2] == 101);
+	Assert(dest[3] == 2);
+	Assert(dest[4] == 3);
+}
+
+Fact("List InsertManyAt At Beginning")
+{
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+
+	List<int> src;
+	src.Add(-1);
+	src.Add(-2);
+
+	dest.InsertManyAt(0, src);
+	Assert(dest.GetCount() == 4);
+	Assert(dest[0] == -1);
+	Assert(dest[1] == -2);
+	Assert(dest[2] == 1);
+	Assert(dest[3] == 2);
+}
+
+Fact("List InsertManyAt At End")
+{
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+
+	List<int> src;
+	src.Add(3);
+	src.Add(4);
+
+	dest.InsertManyAt(dest.GetCount(), src);
+	Assert(dest.GetCount() == 4);
+	Assert(dest[0] == 1);
+	Assert(dest[1] == 2);
+	Assert(dest[2] == 3);
+	Assert(dest[3] == 4);
+}
+
+Fact("List InsertManyAt From Set")
+{
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+
+	Set<int> src;
+	src.Add(50);
+	src.Add(60);
+
+	dest.InsertManyAt(1, src);
+	Assert(dest.GetCount() == 4);
+	Assert(dest[0] == 1);
+	Assert(dest[3] == 2);
+
+	// Set iteration order isn't insertion order - just check the two
+	// inserted items landed in the middle, in some order
+	Assert((dest[1] == 50 && dest[2] == 60) || (dest[1] == 60 && dest[2] == 50));
+}
+
+Fact("List InsertManyAt Empty Source")
+{
+	List<int> dest;
+	dest.Add(1);
+	dest.Add(2);
+
+	List<int> src;
+	dest.InsertManyAt(1, src);
+
+	Assert(dest.GetCount() == 2);
+	Assert(dest[0] == 1);
+	Assert(dest[1] == 2);
+}
+
+Fact("List Filter")
+{
+	List<int> list;
+	for (int i = 1; i <= 10; i++)
+		list.Add(i);
+
+	List<int> evens = list.Filter([](const int& v) { return v % 2 == 0; });
+	Assert(evens.GetCount() == 5);
+	Assert(evens[0] == 2);
+	Assert(evens[1] == 4);
+	Assert(evens[2] == 6);
+	Assert(evens[3] == 8);
+	Assert(evens[4] == 10);
+
+	// Source list unaffected
+	Assert(list.GetCount() == 10);
+}
+
+Fact("List Filter None Match")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<int> result = list.Filter([](const int& v) { return v > 100; });
+	Assert(result.GetCount() == 0);
+	Assert(result.IsEmpty());
+}
+
+Fact("List Filter All Match")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<int> result = list.Filter([](const int& v) { return true; });
+	Assert(result.GetCount() == 3);
+	Assert(result[0] == 1);
+	Assert(result[1] == 2);
+	Assert(result[2] == 3);
+}
+
+Fact("List Filter Empty List")
+{
+	List<int> list;
+	List<int> result = list.Filter([](const int& v) { return v > 0; });
+	Assert(result.GetCount() == 0);
+	Assert(result.IsEmpty());
+}
+
+Fact("List Filter With Captured State")
+{
+	List<int> list;
+	for (int i = 1; i <= 5; i++)
+		list.Add(i);
+
+	int threshold = 3;
+	List<int> result = list.Filter([threshold](const int& v) { return v > threshold; });
+	Assert(result.GetCount() == 2);
+	Assert(result[0] == 4);
+	Assert(result[1] == 5);
+}
+
+Fact("List Filter Of Strings")
+{
+	List<String<char>> list;
+	list.Add("Apples");
+	list.Add("Pears");
+	list.Add("Bananas");
+	list.Add("Apricots");
+
+	List<String<char>> result = list.Filter([](const String<char>& v) { return v.StartsWith("Ap"); });
+	Assert(result.GetCount() == 2);
+	Assert(result[0].IsEqualTo("Apples"));
+	Assert(result[1].IsEqualTo("Apricots"));
+}
+
+Fact("List Map Same Type")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<int> doubled = list.Map<int>([](const int& v) { return v * 2; });
+	Assert(doubled.GetCount() == 3);
+	Assert(doubled[0] == 2);
+	Assert(doubled[1] == 4);
+	Assert(doubled[2] == 6);
+
+	// Source list unaffected
+	Assert(list.GetCount() == 3);
+	Assert(list[0] == 1);
+}
+
+Fact("List Map To Different Type")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<String<char>> strs = list.Map<String<char>>([](const int& v) { return String<char>::Format("#%d", v); });
+	Assert(strs.GetCount() == 3);
+	Assert(strs[0].IsEqualTo("#1"));
+	Assert(strs[1].IsEqualTo("#2"));
+	Assert(strs[2].IsEqualTo("#3"));
+}
+
+Fact("List Map Extracts Struct Field")
+{
+	struct Item
+	{
+		int id;
+		const char* name;
+	};
+
+	List<Item> items;
+	items.Add({ 1, "Apples" });
+	items.Add({ 2, "Pears" });
+	items.Add({ 3, "Bananas" });
+
+	List<int> ids = items.Map<int>([](const Item& item) { return item.id; });
+	Assert(ids.GetCount() == 3);
+	Assert(ids[0] == 1);
+	Assert(ids[1] == 2);
+	Assert(ids[2] == 3);
+
+	List<String<char>> names = items.Map<String<char>>([](const Item& item) { return String<char>(item.name); });
+	Assert(names.GetCount() == 3);
+	Assert(names[0].IsEqualTo("Apples"));
+	Assert(names[2].IsEqualTo("Bananas"));
+}
+
+Fact("List Map Empty List")
+{
+	List<int> list;
+	List<String<char>> result = list.Map<String<char>>([](const int& v) { return String<char>::Format("%d", v); });
+	Assert(result.GetCount() == 0);
+	Assert(result.IsEmpty());
+}
+
+Fact("List Map With Captured State")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	int multiplier = 10;
+	List<int> result = list.Map<int>([multiplier](const int& v) { return v * multiplier; });
+	Assert(result.GetCount() == 3);
+	Assert(result[0] == 10);
+	Assert(result[1] == 20);
+	Assert(result[2] == 30);
 }
 
 Fact("List FreeExtra")

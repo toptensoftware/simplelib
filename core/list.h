@@ -7,6 +7,7 @@
 #include "Compare.h"
 #include "Semantics.h"
 #include "PlacedConstructor.h"
+#include "Delegate.h"
 
 
 namespace SimpleLib
@@ -147,6 +148,22 @@ class List
 	{
 		InsertAtInternal(iPosition, vec.GetBuffer(), vec.GetCount());
 	}
+
+	template <typename TColl>
+	void InsertManyAt(int iPosition, const TColl& coll)
+	{
+		for (auto iter = coll.Iterate(); iter.Next(); )
+		{
+			InsertAt(iPosition++, iter.Get());
+		}
+	}
+
+	template <typename TColl>
+	void AddMany(const TColl& coll)
+	{
+		InsertManyAt(GetCount(), coll);
+	}
+
 
 	// ReplaceAt
 	void ReplaceAt(int iPosition, const TArg& val)
@@ -315,6 +332,47 @@ class List
 		return m_iSize;
 	}
 
+    class Iter
+    {
+    public:
+        const T& Get() { return *_value; };
+
+        bool Next() { return _owner->GetNext(*this); }
+
+    private:
+        Iter(const List* owner)
+        {
+            _owner = owner;
+        }
+
+        Iter(const Iter& other)
+        {
+            _owner = other._owner;
+            _pos = other._pos;
+            _value = other._value;
+        }
+
+        const T* _value = nullptr;
+        const List* _owner;
+        int _pos = -1;
+        friend class List;
+    };
+
+    Iter Iterate() const
+    {
+        return Iter(this);
+    }
+
+	bool GetNext(Iter& iter) const
+    {
+        iter._pos++;
+		if (iter._pos >= m_iSize)
+			return false;
+
+		iter._value = m_pData + iter._pos;
+        return true;
+    }
+
 	struct sort_ctx_s
 	{
 		int (*callback)(const T& a, const T& b, void* user);
@@ -394,6 +452,32 @@ class List
 	bool IsEmpty() const
 	{
 		return GetCount() == 0;
+	}
+
+	List Filter(Delegate<bool(const T& val)> predicate)
+	{
+		List r;
+		for (int i=0; i<GetCount(); i++)
+		{
+			if (predicate(GetAt(i)))
+				r.Add(GetAt(i));
+		}
+		return r;
+	}
+
+	// Transforms each element to a (possibly different) type, producing a
+	// new list - like JavaScript's Array.prototype.map(). The result type
+	// isn't deducible from a lambda argument, so it must be specified
+	// explicitly at the call site, eg: list.Map<TResult>(fn)
+	template <typename TResult>
+	List<TResult> Map(Delegate<TResult(const T& val)> mapper)
+	{
+		List<TResult> r;
+		for (int i=0; i<GetCount(); i++)
+		{
+			r.Add(mapper(GetAt(i)));
+		}
+		return r;
 	}
 
 	// Push

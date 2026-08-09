@@ -150,6 +150,94 @@ Fact("Map Iterate")
 	Assert(iSum == 600);
 }
 
+Fact("Map GetKeys")
+{
+	Map<int, int> map;
+	map.Add(1, 100);
+	map.Add(2, 200);
+	map.Add(3, 300);
+
+	List<int> keys = map.GetKeys();
+	Assert(keys.GetCount() == 3);
+	Assert(keys.Contains(1));
+	Assert(keys.Contains(2));
+	Assert(keys.Contains(3));
+}
+
+Fact("Map GetValues")
+{
+	Map<int, int> map;
+	map.Add(1, 100);
+	map.Add(2, 200);
+	map.Add(3, 300);
+
+	List<int> values = map.GetValues();
+	Assert(values.GetCount() == 3);
+	Assert(values.Contains(100));
+	Assert(values.Contains(200));
+	Assert(values.Contains(300));
+}
+
+Fact("Map GetKeys And GetValues Correspond By Position")
+{
+	// GetKeys() and GetValues() each do their own independent traversal of
+	// the hash table, but as long as nothing mutates the map in between,
+	// both traversals visit entries in the same order - so index i of one
+	// must describe the same entry as index i of the other.
+	Map<int, int> map;
+	map.Add(1, 100);
+	map.Add(2, 200);
+	map.Add(3, 300);
+
+	List<int> keys = map.GetKeys();
+	List<int> values = map.GetValues();
+	Assert(keys.GetCount() == values.GetCount());
+	for (int i = 0; i < keys.GetCount(); i++)
+		Assert(map.Get(keys[i]) == values[i]);
+}
+
+Fact("Map GetKeys Empty Map")
+{
+	Map<int, int> map;
+	List<int> keys = map.GetKeys();
+	Assert(keys.GetCount() == 0);
+	Assert(keys.IsEmpty());
+}
+
+Fact("Map GetValues Empty Map")
+{
+	Map<int, int> map;
+	List<int> values = map.GetValues();
+	Assert(values.GetCount() == 0);
+	Assert(values.IsEmpty());
+}
+
+Fact("Map GetKeys And GetValues Do Not Modify Map")
+{
+	Map<int, int> map;
+	map.Add(1, 100);
+
+	map.GetKeys();
+	map.GetValues();
+
+	Assert(map.GetCount() == 1);
+	Assert(map.Get(1) == 100);
+}
+
+Fact("Map GetKeys Of String Keys")
+{
+	Map<String<char>, int> map;
+	map.Add("Apples", 1);
+	map.Add("Pears", 2);
+	map.Add("Bananas", 3);
+
+	List<String<char>> keys = map.GetKeys();
+	Assert(keys.GetCount() == 3);
+	Assert(keys.Contains("Apples"));
+	Assert(keys.Contains("Pears"));
+	Assert(keys.Contains("Bananas"));
+}
+
 Fact("Map Many Keys")
 {
 	Map<int, int> map;

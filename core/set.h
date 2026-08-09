@@ -68,6 +68,16 @@ public:
         }
     }
 
+    template <typename TColl>
+	void AddMany(const TColl& coll)
+	{
+		for (auto iter = coll.Iterate(); iter.Next(); )
+		{
+			Add(iter.Get());
+		}
+	}
+
+
     // Remove an item from the Set
     bool Remove(const TArg& Key)
     {
@@ -105,7 +115,7 @@ public:
         bool Next() { return _owner->GetNext(*this); }
 
     private:
-        Iter(Set* owner, int version)
+        Iter(const Set* owner, int version)
         {
             _owner = owner;
             _version = version;
@@ -120,18 +130,18 @@ public:
         }
 
         const T* _key = nullptr;
-        Set* _owner;
+        const Set* _owner;
         int _pos = -1;
         int _version = 0;
         friend class Set;
     };
 
-    Iter Iterate()
+    Iter Iterate() const
     {
         return Iter(this, core.get_table_version());
     }
 
-    bool GetNext(Iter& iter)
+    bool GetNext(Iter& iter) const
     {
         // Check not modified
         assert(core.get_table_version() == iter._version);
@@ -157,6 +167,37 @@ public:
     bool Contains(const TArg& Key) const
     {
         return core.Find(&Key) != nullptr;
+    }
+
+    static Set Union(const Set& a, const Set& b)
+    {
+        Set r;
+        r.AddMany(a);
+        r.AddMany(b);
+        return r;
+    }
+
+    static Set Intersection(const Set& a, const Set& b)
+    {
+        Set r;
+        for (auto iter = a.Iterate(); iter.Next(); )
+        {
+            if (b.Contains(iter.Get()))
+                r.Add(iter.Get());
+        }
+        return r;
+    }
+
+    // Items in `a` that are not in `b`
+    static Set Difference(const Set& a, const Set& b)
+    {
+        Set r;
+        for (auto iter = a.Iterate(); iter.Next(); )
+        {
+            if (!b.Contains(iter.Get()))
+                r.Add(iter.Get());
+        }
+        return r;
     }
 
     // Implementation

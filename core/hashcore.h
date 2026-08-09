@@ -354,7 +354,7 @@ public:
         return false;
     }
 
-    int get_table_version()
+    int get_table_version() const
     {
         return m_version;
     }

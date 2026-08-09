@@ -158,6 +158,28 @@ public:
         return false;
     }
 
+
+    List<TKey> GetKeys()
+    {
+        List<TKey> r;
+        for (auto iter = Iterate(); iter.Next(); )
+        {
+            r.Add(iter.GetKey());
+        }
+        return r;
+    }
+
+    List<TValue> GetValues()
+    {
+        List<TValue> r;
+        for (auto iter = Iterate(); iter.Next(); )
+        {
+            r.Add(iter.GetValue());
+        }
+        return r;
+    }
+
+
     // Get an item from the map, assert if not found
     const TValue& Get(const TKeyArg& Key) const
     {
