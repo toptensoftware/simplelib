@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Core/String.h"
 #include "../Core/Encoding.h"
 #include "ThreadLocal.h"
 
@@ -18,8 +19,10 @@ enum class ThreadPriority
 class Thread
 {
 public:
-	Thread()
+	Thread(ThreadPriority priority = ThreadPriority::Normal, const char* description = nullptr)
 	{
+		m_priority = priority;
+		m_description = description;
 	}
 
 	virtual ~Thread()
@@ -35,6 +38,10 @@ public:
 
         DWORD dwID;
         m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, 0, &dwID);
+
+		SetPriority(m_priority);
+		if (!m_description.IsEmpty())
+			SetDescription(m_description);
 	}
 
 	void Wait(uint32_t timeout = kWaitForever)
@@ -78,16 +85,26 @@ public:
 
 	}
 
+protected:
+	virtual void ThreadProc()=0;
+
+private:
+	void* m_handle = nullptr;
+	ThreadPriority m_priority;
+	String<char> m_description;
+
+	void ThreadProcEntry()
+	{
+		ThreadProc();
+		ThreadLocalBase::FreeAll();
+	}
+
 	static DWORD WINAPI ThreadProcStub(void* param)
 	{
-		((Thread*)param)->ThreadProc();
-		ThreadLocalBase::FreeAll();
+		((Thread*)param)->ThreadProcEntry();
 		return 0;
 	}
 
-	virtual void ThreadProc()=0;
-
-	void* m_handle = nullptr;
 };
 
 }
