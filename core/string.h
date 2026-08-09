@@ -16,7 +16,7 @@ namespace SimpleLib
 	Simple immutable string class stores a string.
 	*/
 
-	template <typename T>
+	template <typename T = char>
 	class String
 	{
 	public:
