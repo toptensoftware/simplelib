@@ -82,7 +82,7 @@ public:
         Write(psz, length);
     }
 
-    String<char> ReadString()
+    String ReadString()
     {
         // Read length
         uint32_t utf8Length = ReadUInt32();
@@ -97,7 +97,7 @@ public:
         Read(pBuf, utf8Length);
 
         // Return string
-        return String<char>(pBuf, utf8Length);
+        return String(pBuf, utf8Length);
     }
 
     static int Copy(Stream& dest, Stream& src)

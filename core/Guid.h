@@ -24,15 +24,15 @@ struct Guid
 		return memcmp(this, &other, sizeof(*this)) != 0;
 	}
 
-	String<char> ToString()
+	String ToString()
 	{
-		return String<char>::Format("%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x",
+		return String::Format("%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x",
 			Data1, Data2, Data3, Data4[0], Data4[1], Data4[2], Data4[3], Data4[4], Data4[5], Data4[6], Data4[7]);
 	}
 
-	String<char> ToStringCompact()
+	String ToStringCompact()
 	{
-		return String<char>::Format("%.8x%.4x%.4x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x",
+		return String::Format("%.8x%.4x%.4x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x",
 			Data1, Data2, Data3, Data4[0], Data4[1], Data4[2], Data4[3], Data4[4], Data4[5], Data4[6], Data4[7]);
 	}
 

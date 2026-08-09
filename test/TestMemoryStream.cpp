@@ -268,7 +268,7 @@ Fact("MemoryStream ReadString At Buffer Boundary Does Not Overflow")
 	// number of characters it reserved in the StringBuilder, which was only
 	// harmless by luck unless the length landed exactly on a capacity
 	// boundary (e.g. StringBuilder's 128 byte short buffer).
-	String<char> longStr;
+	String longStr;
 	{
 		StringBuilder<char> sb;
 		for (int i = 0; i < 128; i++)
@@ -282,7 +282,7 @@ Fact("MemoryStream ReadString At Buffer Boundary Does Not Overflow")
 	ms.WriteString(longStr.sz());
 
 	ms.Seek(0, SEEK_SET);
-	String<char> readBack = ms.ReadString();
+	String readBack = ms.ReadString();
 	Assert(readBack.GetLength() == 128);
 	Assert(readBack.IsEqualTo(longStr.sz()));
 }

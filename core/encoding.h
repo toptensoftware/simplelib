@@ -229,7 +229,7 @@ namespace SimpleLib
 	};
 
 	template <typename TTo, typename TFrom>
-	String<TTo> Encode(const TFrom* in)
+	StringCore<TTo> Encode(const TFrom* in)
 	{
 		if (!in)
 			return (TTo*)nullptr;

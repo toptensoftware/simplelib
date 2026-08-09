@@ -15,7 +15,7 @@ namespace SimpleLib
     {
         Null,
         Number,
-        String,
+        StringCore,
         Boolean,
         Object,
         Array,
@@ -119,7 +119,7 @@ namespace SimpleLib
         }
         const char* AsString() const
         {
-            assert(kind == JsonKind::String);
+            assert(kind == JsonKind::StringCore);
             return value.string;
         }
         JSONArray& AsArray() const;
@@ -146,7 +146,7 @@ namespace SimpleLib
                 size_t len = strlen(psz) + 1;
                 char* mem = (char*)malloc(len);
                 memcpy(mem, psz, len);
-                kind = JsonKind::String;
+                kind = JsonKind::StringCore;
                 value.string = mem;
             }
         }
@@ -156,7 +156,7 @@ namespace SimpleLib
     class JSONArray : public RefCounted<List<JSONValue>>
     {
     };
-    class JSONObject : public RefCounted<Map<String<char>, JSONValue>>
+    class JSONObject : public RefCounted<Map<String, JSONValue>>
     {
     };
 
@@ -173,7 +173,7 @@ namespace SimpleLib
             case JsonKind::Boolean:
                 value.boolean = other.value.boolean;
                 break;
-            case JsonKind::String:
+            case JsonKind::StringCore:
                 SetString(other.value.string);
                 break;
             case JsonKind::Array:
@@ -204,7 +204,7 @@ namespace SimpleLib
     {
         switch (kind)
         {
-            case JsonKind::String:
+            case JsonKind::StringCore:
                 free((char*)value.string);
                 break;
             case JsonKind::Array:
@@ -233,7 +233,7 @@ namespace SimpleLib
 
     struct JSON
     {
-        static void EscapeString(StringBuilder<char>& buf, String<char> value)
+        static void EscapeString(StringBuilder<char>& buf, String value)
         {
             buf.Append("\"");
             for (int i=0; i<value.GetLength(); i++)
@@ -282,7 +282,7 @@ namespace SimpleLib
 #endif
                     break;
 
-                case JsonKind::String:
+                case JsonKind::StringCore:
                     EscapeString(buf, value.AsString());
                     break;
 
@@ -365,7 +365,7 @@ namespace SimpleLib
             }
         }
 
-        static String<char> Stringify(const JSONValue& value, int indentSize)
+        static String Stringify(const JSONValue& value, int indentSize)
         {
             StringBuilder<char> buf;
             Stringify(buf, value, indentSize, 0);

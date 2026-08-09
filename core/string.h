@@ -16,38 +16,38 @@ namespace SimpleLib
 	Simple immutable string class stores a string.
 	*/
 
-	template <typename T = char>
-	class String
+	template <typename T>
+	class StringCore
 	{
 	public:
 		// Constructor
-		String()
+		StringCore()
 		{
 			m_pData = nullptr;
 		}
 
 		// Copy Constructor
-		String(const String<T>& other)
+		StringCore(const StringCore<T>& other)
 		{
 			m_pData = nullptr;
 			Assign(other);
 		}
 
 		// Move Constructor
-		String(String<T>&& other)
+		StringCore(StringCore<T>&& other)
 		{
 			m_pData = other.m_pData;
 			other.m_pData = nullptr;
 		}
 
 		// Constructor
-		String(const T* psz, int iLen)
+		StringCore(const T* psz, int iLen)
 		{
 			m_pData = AllocStringData(psz, iLen);
 		}
 
 		// Constructor
-		String(const T* psz)
+		StringCore(const T* psz)
 		{
 			if (psz == nullptr)
 				m_pData = nullptr;
@@ -56,7 +56,7 @@ namespace SimpleLib
 		}
 
 		// Constructor
-		String(const StringBuilder<T>& builder)
+		StringCore(const StringBuilder<T>& builder)
 		{
 			int length;
 			const T* psz = builder.ToString(&length);
@@ -64,23 +64,23 @@ namespace SimpleLib
 		}
 
 		// Destructor
-		~String()
+		~StringCore()
 		{
 			Clear();
 		}
 
 		// Types
-		typedef String<T> _CString;
+		typedef StringCore<T> _CString;
 
 		// Assignment
-		String<T>& operator=(const String<T>& Other)
+		StringCore<T>& operator=(const StringCore<T>& Other)
 		{
 			Assign(Other);
 			return *this;
 		}
 
 		// Move Assignment
-		String<T>& operator=(String<T>&& Other)
+		StringCore<T>& operator=(StringCore<T>&& Other)
 		{
 			m_pData = Other.m_pData;
 			Other.m_pData = nullptr;
@@ -88,7 +88,7 @@ namespace SimpleLib
 		}
 
 		// Assignment
-		String<T>& operator=(const T* psz) 
+		StringCore<T>& operator=(const T* psz) 
 		{
 			Assign(psz, -1);
 			return *this;
@@ -108,12 +108,12 @@ namespace SimpleLib
 			return sz();
 		}
 
-		bool operator ==(const String<T>& b) const
+		bool operator ==(const StringCore<T>& b) const
 		{
 			return this->IsEqualTo(b.sz());
 		}
 
-		String<T> operator+(const String<T>& other) const
+		StringCore<T> operator+(const StringCore<T>& other) const
 		{
 			StringBuilder<T> builder;
 			builder.Append(sz(), GetLength());
@@ -121,23 +121,23 @@ namespace SimpleLib
 			return builder;
 		}
 
-		String<T> operator+=(const T* psz)
+		StringCore<T> operator+=(const T* psz)
 		{
 			StringBuilder<T> builder;
 			builder.Append(sz(), GetLength());
 			builder.Append(psz);
-			*this = String<T>(builder);
+			*this = StringCore<T>(builder);
 			return *this;
 		}
 
-		String<T> operator+=(const String<T>& other)
+		StringCore<T> operator+=(const StringCore<T>& other)
 		{
 			*this = *this + other;
 			return *this;
 		}
 
 /*
-		String& operator+=(const T* psz)
+		StringCore& operator+=(const T* psz)
 		{
 			*this = *this + psz;
 			return *this;
@@ -175,7 +175,7 @@ namespace SimpleLib
 			return GetLength() == 0;
 		}
 
-		bool Assign(const String<T>& Other)
+		bool Assign(const StringCore<T>& Other)
 		{
 			Clear();
 			m_pData = Other.m_pData;
@@ -198,10 +198,10 @@ namespace SimpleLib
 			return m_pData ? m_pData->m_iLength : 0;
 		}
 
-		String<T> ToUpper()
+		StringCore<T> ToUpper()
 		{
 			if (m_pData == nullptr)
-				return String<T>();
+				return StringCore<T>();
 
 			// Allocate new string buffer
 			StringData* pNew = AllocStringData(nullptr, GetLength());
@@ -218,13 +218,13 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return String<T>::WithData(pNew);
+			return StringCore<T>::WithData(pNew);
 		}
 
-		String<T> ToLower()
+		StringCore<T> ToLower()
 		{
 			if (m_pData == nullptr)
-				return String<T>();
+				return StringCore<T>();
 
 			// Allocate new string buffer
 			StringData* pNew = AllocStringData(nullptr, GetLength());
@@ -241,10 +241,10 @@ namespace SimpleLib
 			}
 
 			// Return new string
-			return String<T>::WithData(pNew);
+			return StringCore<T>::WithData(pNew);
 		}
 
-		String<T> SubString(int iStart, int iLength = -1)
+		StringCore<T> SubString(int iStart, int iLength = -1)
 		{
 			int thisLength = GetLength();
 
@@ -257,7 +257,7 @@ namespace SimpleLib
 			assert(iStart >= 0);
 			assert(iStart + iLength <= thisLength);
 
-			return String<T>(m_pData->m_sz + iStart, iLength);
+			return StringCore<T>(m_pData->m_sz + iStart, iLength);
 		}
 
 		template <typename S = SCase>
@@ -369,7 +369,7 @@ namespace SimpleLib
 		}
 
 		template <class S = SCase>
-		String<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
+		StringCore<T> Replace(const T* find, const T* replace, int maxReplacements = -1, int startOffset = 0)
 		{
 			// Start offset past end of string?
 			assert(startOffset <= GetLength());
@@ -418,7 +418,7 @@ namespace SimpleLib
 			return S::Compare(m_pData->m_sz + startPos, find, findLen) == 0;
 		}
 
-		static String<T> Join(List<String<T>>& parts, T separator)
+		static StringCore<T> Join(List<StringCore<T>>& parts, T separator)
 		{
 			StringBuilder<T> sb;
 			for (int i=0; i<parts.GetCount(); i++)
@@ -431,7 +431,7 @@ namespace SimpleLib
 		}
 
 		template <typename S = SCase>
-		int Split(const T* separators, bool includeEmpty, List<String<T>>& parts) const
+		int Split(const T* separators, bool includeEmpty, List<StringCore<T>>& parts) const
 		{
 			// Clear buffer
 			parts.Clear();
@@ -451,7 +451,7 @@ namespace SimpleLib
 				if (IsOneOf<S>(separators, *p))
 				{
 					if (includeEmpty || p > pPart)
-						parts.Add(String<T>(pPart, (int)(p - pPart)));
+						parts.Add(StringCore<T>(pPart, (int)(p - pPart)));
 
 					pPart = p + 1;
 					p = pPart;
@@ -463,21 +463,21 @@ namespace SimpleLib
 			}
 
 			if (includeEmpty || p > pPart)
-				parts.Add(String<T>(pPart, (int)(p - pPart)));
+				parts.Add(StringCore<T>(pPart, (int)(p - pPart)));
 
 			return parts.GetCount();
 		}
 
-		static String<T> Format(const T* pFormat, ...)
+		static StringCore<T> Format(const T* pFormat, ...)
 		{
 			va_list args;
 			va_start(args, pFormat);
-			String<T> result = FormatV(pFormat, args);
+			StringCore<T> result = FormatV(pFormat, args);
 			va_end(args);
 			return result;
 		}
 
-		static String<T> FormatV(const T* pFormat, va_list args)
+		static StringCore<T> FormatV(const T* pFormat, va_list args)
 		{
 			StringBuilder<T> buf;
 			buf.FormatV(pFormat, args);
@@ -516,7 +516,7 @@ namespace SimpleLib
 			}
 		}
 
-	static uint32_t Hash(const String& str)
+	static uint32_t Hash(const StringCore& str)
 	{
 		return hash_buf(str.sz(), str.GetLength() * sizeof(T));
 	}
@@ -544,9 +544,9 @@ namespace SimpleLib
 			return p;
 		}
 
-		static String<T> WithData(StringData* pData)
+		static StringCore<T> WithData(StringData* pData)
 		{
-			String<T> s;
+			StringCore<T> s;
 			s.m_pData = pData;
 			return s;
 		}
@@ -554,4 +554,7 @@ namespace SimpleLib
 		StringData* m_pData;
 	};
 
+	typedef StringCore<char> String;
+	typedef StringCore<wchar_t> WString;
+	typedef StringCore<char32_t> String32;
 }

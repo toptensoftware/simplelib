@@ -91,7 +91,7 @@ protected:
 private:
 	void* m_handle = nullptr;
 	ThreadPriority m_priority;
-	String<char> m_description;
+	String m_description;
 
 	void ThreadProcEntry()
 	{

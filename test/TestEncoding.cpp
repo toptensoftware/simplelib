@@ -39,66 +39,66 @@ Fact("Encoding Empty Input")
 
 Fact("Encoding UTF8 To UTF32")
 {
-	String<char32_t> result = Encode<char32_t>(s_utf8);
+	StringCore<char32_t> result = Encode<char32_t>(s_utf8);
 	Assert(result.GetLength() == 4);
 	Assert(result.IsEqualTo(s_utf32));
 }
 
 Fact("Encoding UTF32 To UTF8")
 {
-	String<char> result = Encode<char>(s_utf32);
+	String result = Encode<char>(s_utf32);
 	Assert(result.IsEqualTo(s_utf8));
 }
 
 Fact("Encoding UTF32 To UTF16")
 {
-	String<char16_t> result = Encode<char16_t>(s_utf32);
+	StringCore<char16_t> result = Encode<char16_t>(s_utf32);
 	Assert(result.GetLength() == 5);	// 1+1+1+2 (surrogate pair for U+1F600)
 	Assert(result.IsEqualTo(s_utf16));
 }
 
 Fact("Encoding UTF16 To UTF32")
 {
-	String<char32_t> result = Encode<char32_t>(s_utf16);
+	StringCore<char32_t> result = Encode<char32_t>(s_utf16);
 	Assert(result.GetLength() == 4);
 	Assert(result.IsEqualTo(s_utf32));
 }
 
 Fact("Encoding UTF8 To UTF16")
 {
-	String<char16_t> result = Encode<char16_t>(s_utf8);
+	StringCore<char16_t> result = Encode<char16_t>(s_utf8);
 	Assert(result.IsEqualTo(s_utf16));
 }
 
 Fact("Encoding UTF16 To UTF8")
 {
-	String<char> result = Encode<char>(s_utf16);
+	String result = Encode<char>(s_utf16);
 	Assert(result.IsEqualTo(s_utf8));
 }
 
 Fact("Encoding UTF8 To WChar")
 {
-	String<wchar_t> result = Encode<wchar_t>(s_utf8);
+	WString result = Encode<wchar_t>(s_utf8);
 	Assert(result.IsEqualTo(s_wide));
 }
 
 Fact("Encoding WChar To UTF8")
 {
-	String<char> result = Encode<char>(s_wide);
+	String result = Encode<char>(s_wide);
 	Assert(result.IsEqualTo(s_utf8));
 }
 
 Fact("Encoding Round Trip UTF8 Via All Forms")
 {
 	// UTF-8 -> UTF-32 -> UTF-16 -> UTF-8
-	String<char32_t> asUtf32 = Encode<char32_t>(s_utf8);
-	String<char16_t> asUtf16 = Encode<char16_t>(asUtf32.sz());
-	String<char> backToUtf8 = Encode<char>(asUtf16.sz());
+	StringCore<char32_t> asUtf32 = Encode<char32_t>(s_utf8);
+	StringCore<char16_t> asUtf16 = Encode<char16_t>(asUtf32.sz());
+	String backToUtf8 = Encode<char>(asUtf16.sz());
 	Assert(backToUtf8.IsEqualTo(s_utf8));
 
 	// UTF-8 -> WChar -> UTF-8
-	String<wchar_t> asWide = Encode<wchar_t>(s_utf8);
-	String<char> backToUtf8b = Encode<char>(asWide.sz());
+	WString asWide = Encode<wchar_t>(s_utf8);
+	String backToUtf8b = Encode<char>(asWide.sz());
 	Assert(backToUtf8b.IsEqualTo(s_utf8));
 }
 

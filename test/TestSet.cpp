@@ -240,7 +240,7 @@ Fact("Set Add Duplicate Destroys Old Value")
 
 Fact("Set Of Strings")
 {
-	Set<String<char>> set;
+	Set<String> set;
 	set.Add("Apples");
 	set.Add("Pears");
 	set.Add("Bananas");

@@ -6,14 +6,14 @@
 using namespace SimpleLib;
 
 // Builds a scratch path in the system temp directory, distinct per test
-static String<char> TempPath(const char* name)
+static String TempPath(const char* name)
 {
 	const char* tempDir = getenv("TEMP");
 	if (!tempDir)
 		tempDir = getenv("TMP");
 	if (!tempDir)
 		tempDir = ".";
-	return String<char>::Format("%s\\simplelib_testfs_%s.tmp", tempDir, name);
+	return String::Format("%s\\simplelib_testfs_%s.tmp", tempDir, name);
 }
 
 // Creates a file with the given content using plain C stdio, independent of
@@ -25,7 +25,7 @@ static void WriteFile(const char* path, const char* content)
 	fclose(f);
 }
 
-static String<char> ReadFile(const char* path)
+static String ReadFile(const char* path)
 {
 	FILE* f = fopen(path, "rb");
 	Assert(f != nullptr);
@@ -36,12 +36,12 @@ static String<char> ReadFile(const char* path)
 	char* buf = sb.Reserve((int)len);
 	fread(buf, 1, len, f);
 	fclose(f);
-	return String<char>(buf, (int)len);
+	return String(buf, (int)len);
 }
 
 Fact("FileSystem Exists")
 {
-	String<char> path = TempPath("exists");
+	String path = TempPath("exists");
 	remove(path.sz());
 
 	Assert(!FileSystem::Exists(path.sz()));
@@ -55,15 +55,15 @@ Fact("FileSystem Exists")
 
 Fact("FileSystem GetTempDirectory")
 {
-	String<char> dir = FileSystem::GetTempDirectory();
+	String dir = FileSystem::GetTempDirectory();
 	Assert(!dir.IsEmpty());
 	Assert(FileSystem::Exists(dir.sz()));
 }
 
 Fact("FileSystem Rename")
 {
-	String<char> oldPath = TempPath("rename_old");
-	String<char> newPath = TempPath("rename_new");
+	String oldPath = TempPath("rename_old");
+	String newPath = TempPath("rename_new");
 	remove(oldPath.sz());
 	remove(newPath.sz());
 
@@ -79,7 +79,7 @@ Fact("FileSystem Rename")
 
 Fact("FileSystem Unlink")
 {
-	String<char> path = TempPath("unlink");
+	String path = TempPath("unlink");
 	WriteFile(path.sz(), "delete me");
 	Assert(FileSystem::Exists(path.sz()));
 
@@ -89,7 +89,7 @@ Fact("FileSystem Unlink")
 
 Fact("FileSystem Stat")
 {
-	String<char> path = TempPath("stat");
+	String path = TempPath("stat");
 	remove(path.sz());
 	WriteFile(path.sz(), "0123456789");	// 10 bytes
 
@@ -103,7 +103,7 @@ Fact("FileSystem Stat")
 
 Fact("FileSystem Stat Missing File Fails")
 {
-	String<char> path = TempPath("stat_missing");
+	String path = TempPath("stat_missing");
 	remove(path.sz());
 
 	Stat stat;
@@ -112,7 +112,7 @@ Fact("FileSystem Stat Missing File Fails")
 
 Fact("FileSystem MakeDirectory")
 {
-	String<char> dir = TempPath("mkdir_dir");
+	String dir = TempPath("mkdir_dir");
 	RemoveDirectoryW(Encode<wchar_t>(dir.sz()).sz());	// clean slate, ignore result
 
 	Assert(!FileSystem::Exists(dir.sz()));
@@ -124,7 +124,7 @@ Fact("FileSystem MakeDirectory")
 
 Fact("FileSystem MakeDirectory Already Exists Fails")
 {
-	String<char> dir = TempPath("mkdir_twice");
+	String dir = TempPath("mkdir_twice");
 	RemoveDirectoryW(Encode<wchar_t>(dir.sz()).sz());	// clean slate, ignore result
 
 	Assert(FileSystem::MakeDirectory(dir.sz()) == 0);

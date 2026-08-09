@@ -7,19 +7,19 @@
 using namespace SimpleLib;
 
 // Builds a scratch file path in the system temp directory, distinct per test
-static String<char> TempFilePath(const char* name)
+static String TempFilePath(const char* name)
 {
 	const char* tempDir = getenv("TEMP");
 	if (!tempDir)
 		tempDir = getenv("TMP");
 	if (!tempDir)
 		tempDir = ".";
-	return String<char>::Format("%s\\simplelib_teststream_%s.tmp", tempDir, name);
+	return String::Format("%s\\simplelib_teststream_%s.tmp", tempDir, name);
 }
 
 Fact("FileStream Create Write Read")
 {
-	String<char> path = TempFilePath("create_write_read");
+	String path = TempFilePath("create_write_read");
 
 	FileStream fs;
 	Assert(fs.Create(path.sz()) == 0);
@@ -40,7 +40,7 @@ Fact("FileStream Create Write Read")
 
 Fact("FileStream Open Existing For Read")
 {
-	String<char> path = TempFilePath("open_existing");
+	String path = TempFilePath("open_existing");
 
 	{
 		FileStream fs;
@@ -64,7 +64,7 @@ Fact("FileStream Open Existing For Read")
 
 Fact("FileStream Open Missing File Fails")
 {
-	String<char> path = TempFilePath("does_not_exist");
+	String path = TempFilePath("does_not_exist");
 	remove(path.sz());	// make sure it really doesn't exist
 
 	FileStream fs;
@@ -73,7 +73,7 @@ Fact("FileStream Open Missing File Fails")
 
 Fact("FileStream Seek Tell Length")
 {
-	String<char> path = TempFilePath("seek_tell_length");
+	String path = TempFilePath("seek_tell_length");
 
 	FileStream fs;
 	fs.Create(path.sz());
@@ -109,7 +109,7 @@ Fact("FileStream Seek Tell Length")
 
 Fact("FileStream SetLength Truncates")
 {
-	String<char> path = TempFilePath("setlength_truncate");
+	String path = TempFilePath("setlength_truncate");
 
 	FileStream fs;
 	fs.Create(path.sz());
@@ -130,7 +130,7 @@ Fact("FileStream SetLength Truncates")
 
 Fact("FileStream IsEof")
 {
-	String<char> path = TempFilePath("iseof");
+	String path = TempFilePath("iseof");
 
 	FileStream fs;
 	fs.Create(path.sz());
@@ -148,7 +148,7 @@ Fact("FileStream IsEof")
 
 Fact("FileStream WriteInt32 ReadInt32")
 {
-	String<char> path = TempFilePath("int32");
+	String path = TempFilePath("int32");
 
 	FileStream fs;
 	fs.Create(path.sz());
@@ -165,7 +165,7 @@ Fact("FileStream WriteInt32 ReadInt32")
 
 Fact("FileStream WriteString ReadString")
 {
-	String<char> path = TempFilePath("string");
+	String path = TempFilePath("string");
 
 	FileStream fs;
 	fs.Create(path.sz());
@@ -184,8 +184,8 @@ Fact("FileStream WriteString ReadString")
 
 Fact("FileStream Copy Whole Stream")
 {
-	String<char> srcPath = TempFilePath("copy_src");
-	String<char> destPath = TempFilePath("copy_dest");
+	String srcPath = TempFilePath("copy_src");
+	String destPath = TempFilePath("copy_dest");
 
 	FileStream src;
 	src.Create(srcPath.sz());
@@ -212,8 +212,8 @@ Fact("FileStream Copy With Length Smaller Than Chunk Size")
 {
 	// Regression test for the same Copy(dest,src,length) clamp bug covered
 	// in TestMemoryStream, exercised here through real file I/O too.
-	String<char> srcPath = TempFilePath("copy_len_src");
-	String<char> destPath = TempFilePath("copy_len_dest");
+	String srcPath = TempFilePath("copy_len_src");
+	String destPath = TempFilePath("copy_len_dest");
 
 	FileStream src;
 	src.Create(srcPath.sz());
@@ -241,7 +241,7 @@ Fact("FileStream Copy With Length Smaller Than Chunk Size")
 
 Fact("FileStream Reopen Preserves Content Across Close")
 {
-	String<char> path = TempFilePath("reopen");
+	String path = TempFilePath("reopen");
 
 	{
 		FileStream fs;

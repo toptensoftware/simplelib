@@ -528,13 +528,13 @@ Fact("List Filter With Captured State")
 
 Fact("List Filter Of Strings")
 {
-	List<String<char>> list;
+	List<String> list;
 	list.Add("Apples");
 	list.Add("Pears");
 	list.Add("Bananas");
 	list.Add("Apricots");
 
-	List<String<char>> result = list.Filter([](const String<char>& v) { return v.StartsWith("Ap"); });
+	List<String> result = list.Filter([](const String& v) { return v.StartsWith("Ap"); });
 	Assert(result.GetCount() == 2);
 	Assert(result[0].IsEqualTo("Apples"));
 	Assert(result[1].IsEqualTo("Apricots"));
@@ -565,7 +565,7 @@ Fact("List Map To Different Type")
 	list.Add(2);
 	list.Add(3);
 
-	List<String<char>> strs = list.Map<String<char>>([](const int& v) { return String<char>::Format("#%d", v); });
+	List<String> strs = list.Map<String>([](const int& v) { return String::Format("#%d", v); });
 	Assert(strs.GetCount() == 3);
 	Assert(strs[0].IsEqualTo("#1"));
 	Assert(strs[1].IsEqualTo("#2"));
@@ -591,7 +591,7 @@ Fact("List Map Extracts Struct Field")
 	Assert(ids[1] == 2);
 	Assert(ids[2] == 3);
 
-	List<String<char>> names = items.Map<String<char>>([](const Item& item) { return String<char>(item.name); });
+	List<String> names = items.Map<String>([](const Item& item) { return String(item.name); });
 	Assert(names.GetCount() == 3);
 	Assert(names[0].IsEqualTo("Apples"));
 	Assert(names[2].IsEqualTo("Bananas"));
@@ -600,7 +600,7 @@ Fact("List Map Extracts Struct Field")
 Fact("List Map Empty List")
 {
 	List<int> list;
-	List<String<char>> result = list.Map<String<char>>([](const int& v) { return String<char>::Format("%d", v); });
+	List<String> result = list.Map<String>([](const int& v) { return String::Format("%d", v); });
 	Assert(result.GetCount() == 0);
 	Assert(result.IsEmpty());
 }
@@ -836,7 +836,7 @@ Fact("List Of Shared Pointers")
 
 Fact("List Of Strings")
 {
-	List<String<wchar_t>> list;
+	List<WString> list;
 	list.Add(L"Apples");
 	list.Add(L"Pears");
 	list.Add(L"Bananas");

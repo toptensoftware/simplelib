@@ -23,7 +23,7 @@ public:
         return _waccess(Encode<wchar_t>(pszFileName), 0) == 0;
     }
 
-    static String<char> GetTempDirectory()
+    static String GetTempDirectory()
     {
         wchar_t sz[MAX_PATH];
         GetTempPathW(MAX_PATH, sz);

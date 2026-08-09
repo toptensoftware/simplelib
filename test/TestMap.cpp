@@ -224,14 +224,14 @@ Fact("Map GetKeys And GetValues Do Not Modify Map")
 	Assert(map.Get(1) == 100);
 }
 
-Fact("Map GetKeys Of String Keys")
+Fact("Map GetKeys Of StringCore Keys")
 {
-	Map<String<char>, int> map;
+	Map<String, int> map;
 	map.Add("Apples", 1);
 	map.Add("Pears", 2);
 	map.Add("Bananas", 3);
 
-	List<String<char>> keys = map.GetKeys();
+	List<String> keys = map.GetKeys();
 	Assert(keys.GetCount() == 3);
 	Assert(keys.Contains("Apples"));
 	Assert(keys.Contains("Pears"));
@@ -359,9 +359,9 @@ Fact("Map Of Owned Pointers")
 	Assert(InstanceCounter::s_iInstances == 0);
 }
 
-Fact("Map Of String Keys")
+Fact("Map Of StringCore Keys")
 {
-	Map<String<char>, int> map;
+	Map<String, int> map;
 	map.Add("Apples", 1);
 	map.Add("Pears", 2);
 	map.Add("Bananas", 3);

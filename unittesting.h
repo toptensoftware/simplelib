@@ -39,8 +39,8 @@ public:
 		m_fn = fn;
 	}
 
-	String<char> m_strName;
-	String<char> m_strFile;
+	String m_strName;
+	String m_strFile;
 	int m_iLine;
 	void (*m_fn)();
 

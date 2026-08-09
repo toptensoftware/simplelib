@@ -12,8 +12,8 @@ using namespace SimpleLib;
 bool g_bAnyFailed=false;
 bool g_bFailed=false;
 
-typedef String<char> CAnsiString;
-typedef String<wchar_t> CUniString;
+typedef String CAnsiString;
+typedef WString CUniString;
 
 void Failed(int iLine, const char* psz)
 {
@@ -232,7 +232,7 @@ void TestList()
 	assert(InstanceCounter::m_iInstances==0);
 
 
-	List<String<wchar_t>> strs;
+	List<WString> strs;
 	strs.Add(L"Apples");
 	strs.Add(L"Pears");
 	strs.Add(L"Bananas");
