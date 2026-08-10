@@ -8,13 +8,13 @@ using namespace SimpleLib;
 Fact("CowList Basic Add And GetAt")
 {
 	CowList<int> list;
-	Assert(list.GetSize() == 0);
+	Assert(list.GetCount() == 0);
 
 	list.Add(10);
 	list.Add(20);
 	list.Add(30);
 
-	Assert(list.GetSize() == 3);
+	Assert(list.GetCount() == 3);
 	Assert(list.GetAt(0) == 10);
 	Assert(list[1] == 20);
 	Assert(list.GetAt(2) == 30);
@@ -28,7 +28,7 @@ Fact("CowList InsertAt")
 	list.Add(3);
 
 	list.InsertAt(1, 100);
-	Assert(list.GetSize() == 4);
+	Assert(list.GetCount() == 4);
 	Assert(list.GetAt(0) == 1);
 	Assert(list.GetAt(1) == 100);
 	Assert(list.GetAt(2) == 2);
@@ -43,7 +43,7 @@ Fact("CowList RemoveAt")
 	list.Add(3);
 
 	list.RemoveAt(1);
-	Assert(list.GetSize() == 2);
+	Assert(list.GetCount() == 2);
 	Assert(list.GetAt(0) == 1);
 	Assert(list.GetAt(1) == 3);
 }
@@ -56,13 +56,13 @@ Fact("CowList Remove By Value")
 	list.Add(3);
 
 	list.Remove(2);
-	Assert(list.GetSize() == 2);
+	Assert(list.GetCount() == 2);
 	Assert(list.GetAt(0) == 1);
 	Assert(list.GetAt(1) == 3);
 
 	// Removing a value that isn't present must be a safe no-op
 	list.Remove(999);
-	Assert(list.GetSize() == 2);
+	Assert(list.GetCount() == 2);
 }
 
 Fact("CowList Move")
@@ -100,10 +100,10 @@ Fact("CowList Reset")
 	list.Add(2);
 
 	list.Reset();
-	Assert(list.GetSize() == 0);
+	Assert(list.GetCount() == 0);
 
 	list.Add(99);
-	Assert(list.GetSize() == 1);
+	Assert(list.GetCount() == 1);
 	Assert(list.GetAt(0) == 99);
 }
 
@@ -115,7 +115,7 @@ Fact("CowList Snapshot Reflects Full Contents")
 	list.Add(3);
 
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 3);
+	Assert(snap.GetCount() == 3);
 	Assert(snap.GetItem(0) == 1);
 	Assert(snap.GetItem(1) == 2);
 	Assert(snap.GetItem(2) == 3);
@@ -141,7 +141,7 @@ Fact("CowList Snapshot With No Changes Reports Nothing")
 
 	// No mutations since the last snapshot
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 1);
+	Assert(snap.GetCount() == 1);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
 }
@@ -155,7 +155,7 @@ Fact("CowList Snapshot Reports Only Items Added Since Last Snapshot")
 
 	list.Add(3);
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 3);
+	Assert(snap.GetCount() == 3);
 	Assert(snap.GetInsertedCount() == 1);
 	Assert(snap.GetInsertedItem(0) == 3);
 	Assert(snap.GetDeletedCount() == 0);
@@ -171,7 +171,7 @@ Fact("CowList Snapshot Reports Only Items Removed Since Last Snapshot")
 
 	list.RemoveAt(1);	// removes 2
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 2);
+	Assert(snap.GetCount() == 2);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 1);
 	Assert(snap.GetDeletedItem(0) == 2);
@@ -188,7 +188,7 @@ Fact("CowList Insert Then Remove Before Snapshot Cancels Out")
 	list.RemoveAt(list.Find(3));
 
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 2);
+	Assert(snap.GetCount() == 2);
 	Assert(snap.GetItem(0) == 1);
 	Assert(snap.GetItem(1) == 2);
 	Assert(snap.GetInsertedCount() == 0);
@@ -212,18 +212,18 @@ Fact("CowList Move Does Not Appear In Inserted Or Deleted")
 	Assert(snap.GetItem(2) == 1);
 }
 
-Fact("CowList Grows Beyond Initial Size")
+Fact("CowList Grows Beyond Initial Capacity")
 {
 	CowList<int> list(4, 4);
 	for (int i = 0; i < 100; i++)
 		list.Add(i);
 
-	Assert(list.GetSize() == 100);
+	Assert(list.GetCount() == 100);
 	for (int i = 0; i < 100; i++)
 		Assert(list.GetAt(i) == i);
 
 	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetSize() == 100);
+	Assert(snap.GetCount() == 100);
 	for (int i = 0; i < 100; i++)
 		Assert(snap.GetItem(i) == i);
 }
@@ -243,10 +243,10 @@ Fact("CowList Writer Reader Threads Stay Consistent")
 		for (int i = 0; i < kOps; i++)
 		{
 			list.Add(next++);
-			if (list.GetSize() > 10)
+			if (list.GetCount() > 10)
 				list.RemoveAt(0);
-			if (list.GetSize() >= 2)
-				list.Move(0, list.GetSize() - 1);
+			if (list.GetCount() >= 2)
+				list.Move(0, list.GetCount() - 1);
 		}
 		done = true;
 	});
@@ -263,7 +263,7 @@ Fact("CowList Writer Reader Threads Stay Consistent")
 			// Every item in a snapshot must be within range and unique -
 			// a torn read of the writer's buffer would likely violate this
 			int touchedCount = 0;
-			for (int i = 0; i < snap.GetSize(); i++)
+			for (int i = 0; i < snap.GetCount(); i++)
 			{
 				int v = snap.GetItem(i);
 				if (v < 0 || v >= kOps)

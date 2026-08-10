@@ -42,13 +42,13 @@ class List
 	// Move
 	List(List&& other)
 	{
-		m_iSize = other.m_iSize;
-		m_iMemSize = other.m_iMemSize;
+		m_iCount = other.m_iCount;
+		m_iCapacity = other.m_iCapacity;
 		m_pData = other.m_pData;
 
 		other.m_pData = nullptr;
-		other.m_iMemSize = 0;
-		other.m_iSize = 0;
+		other.m_iCapacity = 0;
+		other.m_iCount = 0;
 	}
 
 	// Move
@@ -59,53 +59,54 @@ class List
 
 		delete[] m_pData;
 
-		m_iSize = other.m_iSize;
-		m_iMemSize = other.m_iMemSize;
+		m_iCount = other.m_iCount;
+		m_iCapacity = other.m_iCapacity;
 		m_pData = other.m_pData;
 
 		other.m_pData = nullptr;
-		other.m_iMemSize = 0;
-		other.m_iSize = 0;
+		other.m_iCapacity = 0;
+		other.m_iCount = 0;
 
 		return *this;    
 	}
 
-	// Reallocate memory
-	void GrowTo(int iRequiredSize)
+	// Ensure allocated capacity is at least iRequiredCapacity (does not shrink)
+	void SetCapacity(int iRequiredCapacity)
 	{
 		// Quit if already big enough
-		if (iRequiredSize <= m_iMemSize)
+		if (iRequiredCapacity <= m_iCapacity)
 			return;
 
 		// Work out how big to make it
-		int iNewSize = iRequiredSize * 2;
-		if (iNewSize < 16)
-			iNewSize = 16;
+		int iNewCapacity = iRequiredCapacity * 2;
+		if (iNewCapacity < 16)
+			iNewCapacity = 16;
 
 		if (m_pData)
 		{
 			// Reallocate memory
-			assert(m_iMemSize != 0);
-			m_pData = (T*)realloc((void*)m_pData, iNewSize * sizeof(T));
+			assert(m_iCapacity != 0);
+			m_pData = (T*)realloc((void*)m_pData, iNewCapacity * sizeof(T));
 		}
 		else
 		{
 			// Allocate memory
-			assert(m_iMemSize == 0);
-			m_pData = (T*)malloc(iNewSize * sizeof(T));
+			assert(m_iCapacity == 0);
+			m_pData = (T*)malloc(iNewCapacity * sizeof(T));
 		}
 
-		// Store new sizes
-		m_iMemSize = iNewSize;
+		// Store new capacity
+		m_iCapacity = iNewCapacity;
 	}
 
-	// Set size...
-	void SetSize(int iRequiredSize, const T& val)
+	// Set the number of elements, adding default-constructed elements or
+	// popping existing ones as needed
+	void SetCount(int iRequiredCount, const T& val)
 	{
-		GrowTo(iRequiredSize);
-		while (GetCount() < iRequiredSize)
+		SetCapacity(iRequiredCount);
+		while (GetCount() < iRequiredCount)
 			Add(val);
-		while (GetCount() > iRequiredSize)
+		while (GetCount() > iRequiredCount)
 			Pop();
 	}
 
@@ -113,22 +114,22 @@ class List
 	void FreeExtra()
 	{
 		// Quit if no extra memory allocated
-		if (m_iMemSize == m_iSize)
+		if (m_iCapacity == m_iCount)
 			return;
 
 		// Free or realloc memory...
-		if (m_iSize == 0)
+		if (m_iCount == 0)
 		{
 			free(m_pData);
 			m_pData = nullptr;
 		}
 		else
 		{
-			m_pData = (T*)realloc(m_pData, m_iSize * sizeof(T));
+			m_pData = (T*)realloc(m_pData, m_iCount * sizeof(T));
 		}
 
-		// Store new memory size
-		m_iMemSize = m_iSize;
+		// Store new capacity
+		m_iCapacity = m_iCount;
 	}
 
 	// InsertAt
@@ -219,12 +220,12 @@ class List
 	int Add(const TArg& val)
 	{
 		// Grow if necessary
-		if (m_iSize + 1 > m_iMemSize)
-			GrowTo(m_iSize + 1);
+		if (m_iCount + 1 > m_iCapacity)
+			SetCapacity(m_iCount + 1);
 
-		Constructor(m_pData + m_iSize, val);
-		m_iSize++;
-		return m_iSize - 1;
+		Constructor(m_pData + m_iCount, val);
+		m_iCount++;
+		return m_iCount - 1;
 	}
 
 	// Remove a particular item
@@ -246,10 +247,10 @@ class List
 
 		// Shuffle memory
 		if (iPosition < GetCount() - 1)
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iSize - iPosition - 1) * sizeof(T));
+			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iCount - iPosition - 1) * sizeof(T));
 
-		// Update size
-		m_iSize--;
+		// Update count
+		m_iCount--;
 	}
 
 	T DetachAt(int iPosition)
@@ -262,10 +263,10 @@ class List
 
 		// Shuffle memory
 		if (iPosition < GetCount() - 1)
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iSize - iPosition - 1) * sizeof(T));
+			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iCount - iPosition - 1) * sizeof(T));
 
-		// Update size
-		m_iSize--;
+		// Update count
+		m_iCount--;
 
 		return val;
 	}
@@ -280,7 +281,7 @@ class List
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
 		assert(iPosition + iCount - 1 < GetCount());
-		assert(m_iSize - iCount >= 0);
+		assert(m_iCount - iCount >= 0);
 
 		for (int i = 0; i < iCount; i++)
 		{
@@ -289,24 +290,24 @@ class List
 
 		// Shuffle emory
 		if (iPosition + iCount < GetCount())
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + iCount), (m_iSize - (size_t)iPosition - (size_t)iCount) * sizeof(T));
+			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + iCount), (m_iCount - (size_t)iPosition - (size_t)iCount) * sizeof(T));
 
-		// Update size
-		m_iSize -= iCount;
+		// Update count
+		m_iCount -= iCount;
 	}
 
 	// RemoveAll
 	void Clear()
 	{
-		if (m_iSize)
+		if (m_iCount)
 		{
-			RemoveAt(0, m_iSize);
-			m_iSize = 0;
+			RemoveAt(0, m_iCount);
+			m_iCount = 0;
 		}
 	}
 
 	// GetAt
-	TArg& GetAt(int iPosition) const
+	T& GetAt(int iPosition) const
 	{
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
@@ -315,7 +316,7 @@ class List
 	}
 
 	// operator[]
-	TArg& operator[](int iPosition) const
+	T& operator[](int iPosition) const
 	{
 		return GetAt(iPosition);
 	}
@@ -329,7 +330,7 @@ class List
 	// GetCount
 	int GetCount() const
 	{
-		return m_iSize;
+		return m_iCount;
 	}
 
     class Iter
@@ -366,7 +367,7 @@ class List
 	bool GetNext(Iter& iter) const
     {
         iter._pos++;
-		if (iter._pos >= m_iSize)
+		if (iter._pos >= m_iCount)
 			return false;
 
 		iter._value = m_pData + iter._pos;
@@ -395,9 +396,9 @@ class List
 		ctx.callback = callback;
 		ctx.user = user;
 		#ifdef _MSC_VER
-		qsort_s(m_pData, m_iSize, sizeof(T), sort_function_s, &ctx);
+		qsort_s(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
 		#else
-		qsort_r(m_pData, m_iSize, sizeof(T), sort_function_s, &ctx);
+		qsort_r(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
 		#endif
 	}
 
@@ -421,9 +422,9 @@ class List
 		sort_ctx ctx;
 		ctx.callback = callback;
 		#ifdef _MSC_VER
-		qsort_s(m_pData, m_iSize, sizeof(T), sort_function, &ctx);
+		qsort_s(m_pData, m_iCount, sizeof(T), sort_function, &ctx);
 		#else
-		qsort_r(m_pData, m_iSize, sizeof(T), sort_function, &ctx);
+		qsort_r(m_pData, m_iCount, sizeof(T), sort_function, &ctx);
 		#endif
 	}
 
@@ -441,7 +442,7 @@ class List
 	int IndexOf(const TArg& val, int iStartAfter = -1) const
 	{
 		// Find an item
-		for (int i = iStartAfter + 1; i < m_iSize; i++)
+		for (int i = iStartAfter + 1; i < m_iCount; i++)
 		{
 			if (TCompare::AreEqual(m_pData[i], val))
 				return i;
@@ -507,21 +508,21 @@ class List
 	// Pop
 	bool TryPop(TArg& val)
 	{
-		if (m_iSize == 0)
+		if (m_iCount == 0)
 			return false;
 
-		// Update size
-		m_iSize--;
+		// Update count
+		m_iCount--;
 
-		val = m_pData[m_iSize];
+		val = m_pData[m_iCount];
 
-		Destructor(m_pData + m_iSize);
+		Destructor(m_pData + m_iCount);
 
 		return true;
 	}
 
-	// Tail 
-	TArg& Tail() const
+	// Tail
+	T& Tail() const
 	{
 		assert(!IsEmpty());
 		return GetAt(GetCount() - 1);
@@ -537,7 +538,7 @@ class List
 	}
 
 	// Head
-	TArg& Head() const
+	T& Head() const
 	{
 		assert(!IsEmpty());
 		return GetAt(0);
@@ -578,8 +579,8 @@ class List
 	}
 
 protected:
-	int		m_iSize = 0;
-	int		m_iMemSize = 0;
+	int		m_iCount = 0;
+	int		m_iCapacity = 0;
 	T* 		m_pData = nullptr;
 
 	// Insert at a position
@@ -592,11 +593,11 @@ protected:
 		assert(iPosition <= GetCount());
 
 		// Make sure have room
-		GrowTo(m_iSize + iCount);
+		SetCapacity(m_iCount + iCount);
 
 		// Shuffle memory
-		if (iPosition < m_iSize)
-			memmove(VECDATAPTR(iPosition + iCount), VECDATAPTR(iPosition), (m_iSize - iPosition) * sizeof(T));
+		if (iPosition < m_iCount)
+			memmove(VECDATAPTR(iPosition + iCount), VECDATAPTR(iPosition), (m_iCount - iPosition) * sizeof(T));
 
 		// Store pointer
 		for (int i = 0; i < iCount; i++)
@@ -604,8 +605,8 @@ protected:
 			Constructor(m_pData + iPosition + i, *(pVal + i));
 		}
 
-		// Update size
-		m_iSize += iCount;
+		// Update count
+		m_iCount += iCount;
 	}
 
 	void* VECDATAPTR(int index) { return (void*)(((char*)m_pData) + sizeof(m_pData[0]) * (index)); }

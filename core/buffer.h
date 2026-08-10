@@ -9,7 +9,7 @@ namespace SimpleLib
 		Buffer(int initialSize = 0)
 		{
 			_pData = nullptr;
-			SetSize(initialSize);
+			SetCapacity(initialSize);
 		}
 
 		~Buffer()
@@ -22,7 +22,7 @@ namespace SimpleLib
 			return (T*)_pData;
 		}
 
-		void SetSize(int size)
+		void SetCapacity(int size)
 		{
 			if (_size != size)
 			{
@@ -35,10 +35,10 @@ namespace SimpleLib
 		void EnsureSize(int size)
 		{
 			if (_size < size)
-				SetSize(_size);
+				SetCapacity(_size);
 		}
 
-		int GetSize() const
+		int GetCapacity() const
 		{
 			return _size;
 		}

@@ -47,8 +47,7 @@ public:
             uint32_t current = m_count.Get();
             while (current > 0)
             {
-                uint32_t prev = m_count.TrySet(current - 1, current);
-                if (prev == current)
+                if (m_count.TrySet(current - 1, current))
                     return true; // successfully claimed one unit
                 current = m_count.Get(); // CAS failed, retry with fresh value
             }

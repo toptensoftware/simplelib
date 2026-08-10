@@ -61,7 +61,7 @@ namespace SimpleLib
 
 		T* operator->() const
 		{
-			ASSERT(_ptr != nullptr);
+			assert(_ptr != nullptr);
 			return _ptr;
 		}
 

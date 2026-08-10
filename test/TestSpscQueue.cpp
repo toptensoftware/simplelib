@@ -6,19 +6,19 @@ using namespace SimpleLib;
 Fact("SpscQueue Basic Write Read")
 {
 	SpscQueue<int> q(8);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 
 	Assert(q.TryWrite(1));
 	Assert(q.TryWrite(2));
-	Assert(!q.IsEmpty());
-	Assert(q.GetCount() == 2);
+	Assert(!q.IsLikelyEmpty());
+	Assert(q.GetLikelyCount() == 2);
 
 	int val;
 	Assert(q.Read(val));
 	Assert(val == 1);
 	Assert(q.Read(val));
 	Assert(val == 2);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 	Assert(!q.Read(val));
 }
 
@@ -46,7 +46,7 @@ Fact("SpscQueue Fills Up To Capacity Minus One")
 		count++;
 
 	Assert(count == q.GetCapacity() - 1);
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 	Assert(!q.TryWrite(999));
 }
 
@@ -54,13 +54,13 @@ Fact("SpscQueue TryWrite Succeeds Again After Read Frees A Slot")
 {
 	SpscQueue<int> q(4);
 	while (q.TryWrite(0)) {}
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 
 	int val;
 	Assert(q.Read(val));
-	Assert(!q.IsFull());
+	Assert(!q.IsLikelyFull());
 	Assert(q.TryWrite(999));
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 }
 
 Fact("SpscQueue Peek Does Not Remove")
@@ -71,11 +71,11 @@ Fact("SpscQueue Peek Does Not Remove")
 	int val = -1;
 	Assert(q.Peek(val));
 	Assert(val == 42);
-	Assert(q.GetCount() == 1);		// still there
+	Assert(q.GetLikelyCount() == 1);		// still there
 
 	Assert(q.Read(val));
 	Assert(val == 42);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }
 
 Fact("SpscQueue Peek On Empty Fails")
@@ -100,16 +100,16 @@ Fact("SpscQueue Peek With Offset")
 	Assert(!q.Peek(3, val));		// out of range: only 3 items present
 }
 
-Fact("SpscQueue GetAt")
+Fact("SpscQueue GetLikelyAt")
 {
 	SpscQueue<int> q(8);
 	q.TryWrite(10);
 	q.TryWrite(20);
 	q.TryWrite(30);
 
-	Assert(q.GetAt(0) == 10);
-	Assert(q.GetAt(1) == 20);
-	Assert(q.GetAt(2) == 30);
+	Assert(q.GetLikelyAt(0) == 10);
+	Assert(q.GetLikelyAt(1) == 20);
+	Assert(q.GetLikelyAt(2) == 30);
 }
 
 Fact("SpscQueue RemoveAll")
@@ -120,12 +120,12 @@ Fact("SpscQueue RemoveAll")
 	q.TryWrite(3);
 
 	q.RemoveAll();
-	Assert(q.IsEmpty());
-	Assert(q.GetCount() == 0);
+	Assert(q.IsLikelyEmpty());
+	Assert(q.GetLikelyCount() == 0);
 
 	// Still usable afterwards
 	Assert(q.TryWrite(99));
-	Assert(q.GetCount() == 1);
+	Assert(q.GetLikelyCount() == 1);
 }
 
 Fact("SpscQueue Reset Same Size")
@@ -135,11 +135,11 @@ Fact("SpscQueue Reset Same Size")
 	q.TryWrite(2);
 
 	q.Reset();
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 	Assert(q.GetCapacity() == 8);
 
 	Assert(q.TryWrite(5));
-	Assert(q.GetCount() == 1);
+	Assert(q.GetLikelyCount() == 1);
 }
 
 Fact("SpscQueue Reset New Size")
@@ -148,7 +148,7 @@ Fact("SpscQueue Reset New Size")
 	q.TryWrite(1);
 
 	q.Reset(16);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 	Assert(q.GetCapacity() == 16);
 }
 
@@ -173,7 +173,7 @@ Fact("SpscQueue Wraparound Preserves FIFO Order")
 		}
 	}
 
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }
 
 Fact("SpscQueue Producer Consumer Threads Preserve Order And Count")
@@ -206,5 +206,5 @@ Fact("SpscQueue Producer Consumer Threads Preserve Order And Count")
 	producer.join();
 	consumer.join();
 
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }

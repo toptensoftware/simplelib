@@ -14,11 +14,11 @@ class alignas(kCacheLineSize) SpscQueue
 {
 public:
 // Construction
-	SpscQueue(int iSize)
+	SpscQueue(int iCapacity)
 	{
-		m_iSize=iSize;
-		m_pMem=(T*)malloc(sizeof(T) * iSize);
-		m_pWrapPos=m_pMem+iSize;
+		m_iCapacity=iCapacity;
+		m_pMem=(T*)malloc(sizeof(T) * iCapacity);
+		m_pWrapPos=m_pMem+iCapacity;
 		m_pWritePos.Set(m_pMem);
 		m_pReadPos.Set(m_pMem);
 	}
@@ -30,27 +30,27 @@ public:
 
 	#define AdvancePtr(x) (((x)+1)==m_pWrapPos ? m_pMem : ((x)+1))
 
-	void Reset(int iNewSize=-1)
+	void Reset(int iNewCapacity=-1)
 	{
-		if (iNewSize>=0 && iNewSize!=m_iSize)
+		if (iNewCapacity>=0 && iNewCapacity!=m_iCapacity)
 		{
 			free(m_pMem);
-			m_pMem=(T*)malloc(sizeof(T) * iNewSize);
-			m_iSize=iNewSize;
+			m_pMem=(T*)malloc(sizeof(T) * iNewCapacity);
+			m_iCapacity=iNewCapacity;
 		}
-		m_pWrapPos=m_pMem+m_iSize;
+		m_pWrapPos=m_pMem+m_iCapacity;
 		m_pWritePos.Set(m_pMem);
 		m_pReadPos.Set(m_pMem);
 	}
 
-	bool IsEmpty() const
+	bool IsLikelyEmpty() const
 	{
 		T* readPos = m_pReadPos.Get();
 		T* writePos = m_pWritePos.Get();
 		return readPos == writePos;
 	}
 
-	bool IsFull() const
+	bool IsLikelyFull() const
 	{
 		T* writePos = m_pWritePos.Get();
 		T* readPos = m_pReadPos.Get();
@@ -59,7 +59,7 @@ public:
 
 	bool Peek(T& Value)
 	{
-		if (IsEmpty())
+		if (IsLikelyEmpty())
 			return false;
 
 		T* readPos = m_pReadPos.Get();
@@ -71,7 +71,7 @@ public:
 	bool Peek(int offset, T& Value)
 	{
 		// In range?
-		if (offset < 0 || offset >= GetCount())
+		if (offset < 0 || offset >= GetLikelyCount())
 			return false;
 
 		// Calculate wrapped position of this item
@@ -79,7 +79,7 @@ public:
 		T* pPos = readPos + offset;
 		if (pPos >= m_pWrapPos)
 		{
-			pPos -= m_iSize;
+			pPos -= m_iCapacity;
 		}
 
 		// Return it
@@ -100,7 +100,7 @@ public:
 	bool Read(T& Value)
 	{
 		// Quit if empty
-		if (IsEmpty())
+		if (IsLikelyEmpty())
 		{
 			return false;
 		}
@@ -119,7 +119,7 @@ public:
 	// Write to end
 	void MustWrite(const T& t)
 	{
-		if (IsFull())
+		if (IsLikelyFull())
 		{
 			assert(false);
 			return;
@@ -136,7 +136,7 @@ public:
 	// Write to end
 	bool TryWrite(const T& t)
 	{
-		if (IsFull())
+		if (IsLikelyFull())
 		{
 			return false;
 		}
@@ -153,22 +153,22 @@ public:
 
 	int GetCapacity()
 	{
-		return m_iSize;
+		return m_iCapacity;
 	}
 
-	int GetCount()
+	int GetLikelyCount()
 	{
 		T* writePos = m_pWritePos.Get();
 		T* readPos = m_pReadPos.Get();
-		int iSize = int(writePos - readPos);
-		if (iSize < 0)
-			iSize += m_iSize;
-		return iSize;
+		int iCount = int(writePos - readPos);
+		if (iCount < 0)
+			iCount += m_iCapacity;
+		return iCount;
 	}
 
-	T& GetAt(int index)
+	T& GetLikelyAt(int index)
 	{
-		assert(index >= 0 && index < GetCount());
+		assert(index >= 0 && index < GetLikelyCount());
 
 		// Find the Nth item
 		T* readPos = m_pReadPos.Get();
@@ -176,7 +176,7 @@ public:
 
 		// Check for wrap around
 		if (p >= m_pWrapPos)
-			p -= m_iSize;
+			p -= m_iCapacity;
 
 		return *p;
 	}
@@ -186,7 +186,7 @@ public:
 	// Implementation
 protected:
 	// Attributes
-	int m_iSize;
+	int m_iCapacity;
 	T* m_pMem;
 	T* m_pWrapPos;
 

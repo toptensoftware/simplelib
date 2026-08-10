@@ -41,9 +41,9 @@ namespace SimpleLib
 		}
 
 		// Constructor
-		StringCore(const T* psz, int iLen)
+		StringCore(const T* psz, int iLength)
 		{
-			m_pData = AllocStringData(psz, iLen);
+			m_pData = AllocStringData(psz, iLength);
 		}
 
 		// Constructor
@@ -215,13 +215,13 @@ namespace SimpleLib
 			return true;
 		}
 
-		void Assign(const T* psz, int iLen = -1)
+		void Assign(const T* psz, int iLength = -1)
 		{
 			// Clear old value
 			Clear();
 
 			// Store new
-			m_pData = AllocStringData(psz, iLen);
+			m_pData = AllocStringData(psz, iLength);
 		}
 
 		int GetLength() const

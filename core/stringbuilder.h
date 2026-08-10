@@ -20,7 +20,7 @@ namespace SimpleLib
 		// Constructor
 		StringBuilder()
 		{
-			m_iUsed = 0;
+			m_iLength = 0;
 			m_pMem = m_shortBuffer;
 			m_iCapacity = sizeof(m_shortBuffer) / sizeof(T);
 		}
@@ -36,7 +36,7 @@ namespace SimpleLib
 		{
 			if (m_pMem != m_shortBuffer)
 				free(m_pMem);
-			m_iUsed = 0;
+			m_iLength = 0;
 			m_pMem = m_shortBuffer;
 			m_iCapacity = sizeof(m_shortBuffer) / sizeof(T);
 		}
@@ -44,30 +44,30 @@ namespace SimpleLib
 		// Clear, keeping memory buffer
 		void Clear()
 		{
-			m_iUsed = 0;
+			m_iLength = 0;
 		}
 
 		int GetLength()
 		{
-			return m_iUsed;
+			return m_iLength;
 		}
 
 		void Truncate(int newLength)
 		{
 			assert(newLength >= 0);
-			assert(newLength <= m_iUsed);
-			m_iUsed = newLength;
+			assert(newLength <= m_iLength);
+			m_iLength = newLength;
 		}
 
 		// Rescans the content for a NUL terminator and sets the builder's
 		// internally tracked length to match (eg: after writing through a
 		// buffer obtained via GetBuffer() using nul-terminated C APIs).
-		// Returns *this so it can be chained eg: sb.SyncLen().ToString()
-		StringBuilder& SyncLen()
+		// Returns *this so it can be chained eg: sb.SyncLength().ToString()
+		StringBuilder& SyncLength()
 		{
-			int len = SChar<T>::Length(m_pMem);
-			assert(len <= m_iCapacity);
-			m_iUsed = len;
+			int length = SChar<T>::Length(m_pMem);
+			assert(length <= m_iCapacity);
+			m_iLength = length;
 			return *this;
 		}
 
@@ -124,24 +124,24 @@ namespace SimpleLib
 		//     allocated
 		T* Reserve(int length)
 		{
-			if (m_iUsed + length > m_iCapacity)
+			if (m_iLength + length > m_iCapacity)
 			{
 				// Work out new capacity
-				int newCap = m_iCapacity;
-				while (newCap < m_iUsed + length)
-					newCap *= 2;
+				int newCapacity = m_iCapacity;
+				while (newCapacity < m_iLength + length)
+					newCapacity *= 2;
 
 				if (m_pMem == m_shortBuffer)
 				{
-					T* pNew = (T*)malloc(sizeof(T) * newCap);
+					T* pNew = (T*)malloc(sizeof(T) * newCapacity);
 					if (pNew == nullptr)
 						return nullptr;
 					m_pMem = pNew;
-					memcpy(m_pMem, m_shortBuffer, m_iUsed * sizeof(T));
+					memcpy(m_pMem, m_shortBuffer, m_iLength * sizeof(T));
 				}
 				else
 				{
-					T* pNew = (T*)realloc(m_pMem, sizeof(T) * newCap);
+					T* pNew = (T*)realloc(m_pMem, sizeof(T) * newCapacity);
 					if (pNew == nullptr)
 						return nullptr;
 					m_pMem = pNew;
@@ -149,8 +149,8 @@ namespace SimpleLib
 			}
 
 			// Take room
-			T* retv = m_pMem + m_iUsed;
-			m_iUsed += length;
+			T* retv = m_pMem + m_iLength;
+			m_iLength += length;
 			return retv;
 		}
 
@@ -172,11 +172,11 @@ namespace SimpleLib
 		// Finish building and return the current string and its length
 		T* Finish(int* piLength) const
 		{
-			if (m_iUsed == 0 || (m_iUsed > 0 && m_pMem[m_iUsed - 1] != '\0'))
+			if (m_iLength == 0 || (m_iLength > 0 && m_pMem[m_iLength - 1] != '\0'))
 			{
 				const_cast<StringBuilder*>(this)->Append((T)'\0');
 			}
-			*piLength = m_iUsed - 1;
+			*piLength = m_iLength - 1;
 			return m_pMem;
 		}
 
@@ -197,7 +197,7 @@ namespace SimpleLib
 			{
 				T* retv = (T*)malloc(length + 1);
 				memcpy(retv, m_pMem, length + 1);
-				m_iUsed = 0;
+				m_iLength = 0;
 				return retv;
 			}
 			else
@@ -275,7 +275,7 @@ namespace SimpleLib
 
 	private:
 		T* m_pMem;
-		int m_iUsed;
+		int m_iLength;
 		int m_iCapacity;
 		T m_shortBuffer[128];
 	};

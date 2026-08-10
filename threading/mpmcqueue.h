@@ -15,10 +15,10 @@ class alignas(kCacheLineSize) MpmcQueue
 {
 public:
 	// Construction
-	MpmcQueue(int iSize)
+	MpmcQueue(int iCapacity)
 	{
 		m_pCells = nullptr;
-		Reset(iSize);
+		Reset(iCapacity);
 	}
 
 	virtual ~MpmcQueue()
@@ -27,23 +27,23 @@ public:
 			free(m_pCells);
 	}
 
-	void Reset(int iSize)
+	void Reset(int iCapacity)
 	{
-		// iSize == 1 is degenerate: the sequence number a Read() sets to
+		// iCapacity == 1 is degenerate: the sequence number a Read() sets to
 		// free a cell for its next lap collides with the number that same
 		// cell had immediately after being written, so a second concurrent
 		// writer can't tell "free" from "written but not yet read" and
 		// silently clobbers unread data instead of reporting the queue full.
-		assert(iSize != 1);
-		assert((iSize & (iSize - 1)) == 0);		// Must be a power of two
+		assert(iCapacity != 1);
+		assert((iCapacity & (iCapacity - 1)) == 0);		// Must be a power of two
 
 		if (m_pCells)
 			free(m_pCells);
 
-		m_iSize = iSize;
-		m_iMask = (uint32_t)iSize - 1;
-		m_pCells = (Cell*)malloc(sizeof(Cell) * iSize);
-		for (int i = 0; i < iSize; i++)
+		m_iCapacity = iCapacity;
+		m_iMask = (uint32_t)iCapacity - 1;
+		m_pCells = (Cell*)malloc(sizeof(Cell) * iCapacity);
+		for (int i = 0; i < iCapacity; i++)
 			m_pCells[i].m_iSequence.Set(i);
 
 		// Cell sequence numbers above assume enqueue/dequeue start at position
@@ -53,15 +53,28 @@ public:
 		m_iDequeuePos.Set(0);
 	}
 
-	bool IsEmpty()
+	bool IsLikelyEmpty()
 	{
-		return GetCount() == 0;
+		return GetLikelyCount() == 0;
 	}
 
-	bool IsFull()
+	bool IsLikelyFull()
 	{
-		return GetCount() >= m_iSize;
+		return GetLikelyCount() >= m_iCapacity;
 	}
+
+	// Approximate only - since other threads may be concurrently
+	// reading/writing, the true count may have already changed by
+	// the time this returns.
+	int GetLikelyCount()
+	{
+		int32_t iCount = (int32_t)(m_iEnqueuePos.Get() - m_iDequeuePos.Get());
+		if (iCount < 0)
+			iCount = 0;
+		return iCount;
+	}
+
+
 
 	// Write to end
 	bool TryWrite(const T& t)
@@ -76,7 +89,7 @@ public:
 			if (iDif == 0)
 			{
 				// Cell is free for this lap - try to claim it
-				if (m_iEnqueuePos.TrySet(iPos + 1, iPos) == iPos)
+				if (m_iEnqueuePos.TrySet(iPos + 1, iPos))
 					break;
 			}
 			else if (iDif < 0)
@@ -120,7 +133,7 @@ public:
 			if (iDif == 0)
 			{
 				// Cell has been written - try to claim it
-				if (m_iDequeuePos.TrySet(iPos + 1, iPos) == iPos)
+				if (m_iDequeuePos.TrySet(iPos + 1, iPos))
 					break;
 			}
 			else if (iDif < 0)
@@ -138,25 +151,14 @@ public:
 		// Copy out the value and mark the cell free for the next lap
 		Destructor(&Value);
 		memcpy(&Value, const_cast<T*>(&pCell->m_Value), sizeof(T));
-		pCell->m_iSequence.Set(iPos + (uint32_t)m_iSize);
+		pCell->m_iSequence.Set(iPos + (uint32_t)m_iCapacity);
 
 		return true;
 	}
 
 	int GetCapacity()
 	{
-		return m_iSize;
-	}
-
-	// Approximate only - since other threads may be concurrently
-	// reading/writing, the true count may have already changed by
-	// the time this returns.
-	int GetCount()
-	{
-		int32_t iCount = (int32_t)(m_iEnqueuePos.Get() - m_iDequeuePos.Get());
-		if (iCount < 0)
-			iCount = 0;
-		return iCount;
+		return m_iCapacity;
 	}
 
 	// Implementation
@@ -168,7 +170,7 @@ protected:
 	};
 
 	// Attributes
-	int m_iSize = 0;
+	int m_iCapacity = 0;
 	uint32_t m_iMask = 0;
 	Cell* m_pCells = nullptr;
 

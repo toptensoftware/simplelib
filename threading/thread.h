@@ -36,8 +36,9 @@ public:
 	{
 		assert(m_handle == nullptr);
 
-        DWORD dwID;
-        m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, 0, &dwID);
+        DWORD dwId;
+        m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, 0, &dwId);
+        m_id = dwId;
 
 		SetPriority(m_priority);
 		if (!m_description.IsEmpty())
@@ -82,7 +83,31 @@ public:
 				SetThreadPriority(m_handle, THREAD_PRIORITY_BELOW_NORMAL);
 				break;
 		}
+	}
 
+	void* GetHandle()
+	{
+		return m_handle;
+	}
+
+	// Id of this thread instance
+	size_t GetId()
+	{
+		return m_id;
+	}
+
+	// Id of the calling thread
+	static size_t GetCurrentId()
+	{
+		return (size_t)GetCurrentThreadId();
+	}
+
+	// Pseudo-handle of the calling thread. Only valid for use by that same
+	// thread (eg: passing to SetThreadPriority) - it can't be used from
+	// another thread to wait on or otherwise reference this thread.
+	static void* GetCurrentHandle()
+	{
+		return (void*)GetCurrentThread();
 	}
 
 protected:
@@ -90,6 +115,7 @@ protected:
 
 private:
 	void* m_handle = nullptr;
+	size_t m_id = 0;
 	ThreadPriority m_priority;
 	String m_description;
 

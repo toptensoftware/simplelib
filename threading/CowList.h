@@ -25,7 +25,7 @@ namespace SimpleLib
 // cycles.
 //
 // Each snapshot exposes three views:
-//   - GetSize()/GetItem(i)          - the full current contents, in order.
+//   - GetCount()/GetItem(i)         - the full current contents, in order.
 //   - GetInsertedCount()/GetInsertedItem(i) - items added since the reader's
 //                                     previous snapshot.
 //   - GetDeletedCount()/GetDeletedItem(i)   - items removed since the
@@ -78,14 +78,14 @@ template <typename T>
 class CowListSnapshot
 {
 public:
-	int GetSize() const
+	int GetCount() const
 	{
-		return size;
+		return count;
 	}
 
 	T GetItem(int index) const
 	{
-		assert(index >= 0 && index < size);
+		assert(index >= 0 && index < count);
 		return data[index];
 	}
 
@@ -97,7 +97,7 @@ public:
 	T GetInsertedItem(int index) const
 	{
 		assert(index >= 0 && index < insertedCount);
-		return data[size + index];
+		return data[count + index];
 	}
 
 	int GetDeletedCount() const
@@ -108,19 +108,19 @@ public:
 	T GetDeletedItem(int index) const
 	{
 		assert(index >= 0 && index < deletedCount);
-		return data[size + insertedRoom + index];
+		return data[count + insertedRoom + index];
 	}
 
 
 private:
-	CowListSnapshot(int size, int inserted, int deleted) :
-		size(size),
+	CowListSnapshot(int count, int inserted, int deleted) :
+		count(count),
 		insertedCount(inserted),
 		insertedRoom(inserted),
 		deletedCount(deleted),
 		deletedRoom(deleted)
 	{
-		data = (T*)malloc(sizeof(T) * (size + insertedRoom + deletedRoom));
+		data = (T*)malloc(sizeof(T) * (count + insertedRoom + deletedRoom));
 	}
 
 	~CowListSnapshot()
@@ -144,12 +144,12 @@ private:
 
 	T* GetInsertedBuffer()
 	{
-		return data + size;
+		return data + count;
 	}
 
 	T* GetDeletedBuffer()
 	{
-		return data + size + insertedRoom;
+		return data + count + insertedRoom;
 	}
 
 	void ClearModifications()
@@ -183,7 +183,7 @@ private:
 		return false;
 	}
 
-	int size;
+	int count;
 	int insertedCount;
 	int insertedRoom;
 	int deletedCount;
@@ -200,13 +200,13 @@ class CowList
 		"T must be trivially copyable for use in CowList");
 
 public:
-	CowList(int initialSize = 16, int growSize = 16)
+	CowList(int initialCapacity = 16, int growCapacity = 16)
 	{
-		m_iInitialSize = initialSize;
-		m_iGrowSize = growSize;
+		m_iInitialCapacity = initialCapacity;
+		m_iGrowCapacity = growCapacity;
 		m_pData = NULL;
-		m_iSizeAllocated = 0;
-		m_iSize = 0;
+		m_iCapacity = 0;
+		m_iCount = 0;
 		m_pending.Set(nullptr);
 		m_retired.Set(nullptr);
 		m_current = new CowListSnapshot<T>(0, 0, 0);
@@ -223,8 +223,8 @@ public:
 		RemoveAll();
 		free(m_pData);
 		m_pData = NULL;
-		m_iSizeAllocated = 0;
-		m_iSize = 0;
+		m_iCapacity = 0;
+		m_iCount = 0;
 		delete m_pending.Set(nullptr);
 		ReclaimRetired();
 		delete m_current;
@@ -255,45 +255,46 @@ public:
 
 	void RemoveAll()
 	{
-		m_iSize = 0;
+		m_iCount = 0;
 	}
 
-	void GrowTo(int size)
+	// Ensure allocated capacity is at least `capacity` (does not shrink)
+	void SetCapacity(int capacity)
 	{
-		if (size <= m_iSizeAllocated)
+		if (capacity <= m_iCapacity)
 			return;
 
-		m_pData = (T*)realloc(m_pData, sizeof(T) * size);
-		m_iSizeAllocated = size;
+		m_pData = (T*)realloc(m_pData, sizeof(T) * capacity);
+		m_iCapacity = capacity;
 	}
 
 	int Add(const T& val)
 	{
-		return InsertAt(m_iSize, val);
+		return InsertAt(m_iCount, val);
 	}
 
 	int InsertAt(int iPosition, const T& val)
 	{
 		assert(iPosition >= 0);
-		assert(iPosition <= GetSize());
+		assert(iPosition <= GetCount());
 
 		ReclaimRetired();
 
 		// Grow?
-		if (m_iSize + 1 >= m_iSizeAllocated)
+		if (m_iCount + 1 >= m_iCapacity)
 		{
-			GrowTo(m_iSize == 0 ? m_iInitialSize : m_iSizeAllocated + m_iGrowSize);
+			SetCapacity(m_iCount == 0 ? m_iInitialCapacity : m_iCapacity + m_iGrowCapacity);
 		}
 
 		// Shuffle memory
-		if (iPosition < m_iSize)
-			memmove(m_pData + iPosition + 1, m_pData + iPosition, (m_iSize - iPosition) * sizeof(T));
+		if (iPosition < m_iCount)
+			memmove(m_pData + iPosition + 1, m_pData + iPosition, (m_iCount - iPosition) * sizeof(T));
 
 		// Store value
 		m_pData[iPosition] = val;
 
-		// Update size
-		m_iSize++;
+		// Update count
+		m_iCount++;
 
 		// Update snapshot
 		CowListSnapshot<T>* pending = m_pending.Get();
@@ -306,7 +307,7 @@ public:
 	void RemoveAt(int iPosition)
 	{
 		assert(iPosition >= 0);
-		assert(iPosition < GetSize());
+		assert(iPosition < GetCount());
 
 		ReclaimRetired();
 
@@ -314,11 +315,11 @@ public:
 		T val = GetAt(iPosition);
 
 		// Shuffle memory
-		if (iPosition < GetSize() - 1)
-			memmove(m_pData + iPosition, m_pData + iPosition + 1, (m_iSize - iPosition - 1) * sizeof(T));
+		if (iPosition < GetCount() - 1)
+			memmove(m_pData + iPosition, m_pData + iPosition + 1, (m_iCount - iPosition - 1) * sizeof(T));
 
-		// Update size
-		m_iSize--;
+		// Update count
+		m_iCount--;
 
 		// Update snapshot
 		CowListSnapshot<T>* pending = m_pending.Get();
@@ -328,8 +329,8 @@ public:
 
 	void Move(int iFrom, int iTo)
 	{
-		assert(iFrom >= 0 && iFrom < GetSize());
-		assert(iTo >= 0 && iTo < GetSize());
+		assert(iFrom >= 0 && iFrom < GetCount());
+		assert(iTo >= 0 && iTo < GetCount());
 
 		// Redundant?
 		if (iFrom == iTo)
@@ -367,8 +368,8 @@ public:
 		int insertedCount = (pending ? pending->GetInsertedCount() : 0) + (kind == ChangeKind::Inserted ? 1 : 0);
 		int deletedCount = (pending ? pending->GetDeletedCount() : 0) + (kind == ChangeKind::Deleted ? 1 : 0);
 
-		CowListSnapshot<T>* newSnapshot = new CowListSnapshot<T>(m_iSize, insertedCount, deletedCount);
-		memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iSize);
+		CowListSnapshot<T>* newSnapshot = new CowListSnapshot<T>(m_iCount, insertedCount, deletedCount);
+		memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iCount);
 
 		if (pending)
 		{
@@ -387,9 +388,7 @@ public:
 	void StorePendingSnapshot(CowListSnapshot<T>* newSnapshot, CowListSnapshot<T>* oldSnapshot, ChangeKind kind, const T* val)
 	{
 		// Try to store it
-		CowListSnapshot<T>* replaced = m_pending.TrySet(newSnapshot, oldSnapshot);
-
-		if (replaced != oldSnapshot)
+		if (!m_pending.TrySet(newSnapshot, oldSnapshot))
 		{
 			// Under the single-writer/single-reader contract, the only way
 			// this CAS can fail is the reader's GetSnapshot() concurrently
@@ -416,7 +415,7 @@ public:
 		else
 		{
 			// The previous snap shot was never used, discard it
-			delete replaced;
+			delete oldSnapshot;
 		}
 	}
 
@@ -452,7 +451,7 @@ public:
 			for (;;)
 			{
 				oldCurrent->next = head;
-				CowListSnapshot<T>* prevHead = m_retired.TrySet(oldCurrent, head);
+				CowListSnapshot<T>* prevHead = m_retired.CompareExchange(oldCurrent, head);
 				if (prevHead == head)
 					break;
 				head = prevHead;
@@ -470,7 +469,7 @@ public:
 
 	int Find(const T& arg)
 	{
-		for (int i = 0; i < GetSize(); i++)
+		for (int i = 0; i < GetCount(); i++)
 		{
 			if (GetAt(i) == arg)
 				return i;
@@ -485,9 +484,9 @@ public:
 			RemoveAt(pos);
 	}
 
-	int GetSize() const
+	int GetCount() const
 	{
-		return m_iSize;
+		return m_iCount;
 	}
 
 	T& operator[] (int index) const
@@ -497,14 +496,14 @@ public:
 
 	T& GetAt(int index) const
 	{
-		assert(index >= 0 && index < m_iSize);
+		assert(index >= 0 && index < m_iCount);
 
 		return m_pData[index];
 	}
 
 	int IndexOf(const T& item)
 	{
-		for (int i = 0; i < m_iSize; i++)
+		for (int i = 0; i < m_iCount; i++)
 		{
 			if (m_pData[i] == item)
 				return i;
@@ -518,7 +517,7 @@ public:
 
 	void Sort(PFNCOMPARE pfnCompare)
 	{
-		qsort(m_pData, m_iSize, sizeof(T), (PFNCOMPAREQSORT)pfnCompare);
+		qsort(m_pData, m_iCount, sizeof(T), (PFNCOMPAREQSORT)pfnCompare);
 	}
 	*/
 
@@ -527,10 +526,10 @@ public:
 protected:
 	// Writer side mutable data
 	T* m_pData;
-	int m_iSizeAllocated;
-	int m_iSize;
-	int m_iGrowSize;
-	int m_iInitialSize;
+	int m_iCapacity;
+	int m_iCount;
+	int m_iGrowCapacity;
+	int m_iInitialCapacity;
 
 	// Pending immutable vector will be picked up on next snapshot
 	Atomic<CowListSnapshot<T>*> m_pending;

@@ -8,19 +8,19 @@ using namespace SimpleLib;
 Fact("MpmcQueue Basic Write Read")
 {
 	MpmcQueue<int> q(8);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 
 	Assert(q.TryWrite(1));
 	Assert(q.TryWrite(2));
-	Assert(!q.IsEmpty());
-	Assert(q.GetCount() == 2);
+	Assert(!q.IsLikelyEmpty());
+	Assert(q.GetLikelyCount() == 2);
 
 	int val;
 	Assert(q.Read(val));
 	Assert(val == 1);
 	Assert(q.Read(val));
 	Assert(val == 2);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 	Assert(!q.Read(val));
 }
 
@@ -45,7 +45,7 @@ Fact("MpmcQueue Fills To Full Capacity")
 		count++;
 
 	Assert(count == q.GetCapacity());	// no sentinel slot wasted, unlike SpscQueue
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 	Assert(!q.TryWrite(999));
 }
 
@@ -53,13 +53,13 @@ Fact("MpmcQueue TryWrite Succeeds Again After Read Frees A Slot")
 {
 	MpmcQueue<int> q(4);
 	while (q.TryWrite(0)) {}
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 
 	int val;
 	Assert(q.Read(val));
-	Assert(!q.IsFull());
+	Assert(!q.IsLikelyFull());
 	Assert(q.TryWrite(999));
-	Assert(q.IsFull());
+	Assert(q.IsLikelyFull());
 }
 
 Fact("MpmcQueue Reset")
@@ -69,11 +69,11 @@ Fact("MpmcQueue Reset")
 	q.TryWrite(2);
 
 	q.Reset(8);
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 	Assert(q.GetCapacity() == 8);
 
 	Assert(q.TryWrite(5));
-	Assert(q.GetCount() == 1);
+	Assert(q.GetLikelyCount() == 1);
 }
 
 Fact("MpmcQueue Wraparound Preserves FIFO Order")
@@ -96,7 +96,7 @@ Fact("MpmcQueue Wraparound Preserves FIFO Order")
 		}
 	}
 
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }
 
 Fact("MpmcQueue Single Producer Single Consumer Threads")
@@ -129,7 +129,7 @@ Fact("MpmcQueue Single Producer Single Consumer Threads")
 	producer.join();
 	consumer.join();
 
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }
 
 Fact("MpmcQueue Multiple Producers And Consumers Deliver Every Item Exactly Once")
@@ -186,5 +186,5 @@ Fact("MpmcQueue Multiple Producers And Consumers Deliver Every Item Exactly Once
 	for (int i = 0; i < kTotal; i++)
 		Assert(seen[i]);
 
-	Assert(q.IsEmpty());
+	Assert(q.IsLikelyEmpty());
 }

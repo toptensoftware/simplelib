@@ -7,9 +7,11 @@ using namespace SimpleLib;
 class InstanceCounter
 {
 public:
-	InstanceCounter() { s_iInstances++; }
-	InstanceCounter(const InstanceCounter&) { s_iInstances++; }
+	InstanceCounter(int iValue = 0) : Value(iValue) { s_iInstances++; }
+	InstanceCounter(const InstanceCounter& other) : Value(other.Value) { s_iInstances++; }
 	~InstanceCounter() { s_iInstances--; }
+
+	int Value;
 
 	inline static int s_iInstances = 0;
 };
@@ -101,11 +103,17 @@ Fact("List Iterate Empty List")
 	Assert(!it.Next());
 }
 
-Fact("List GrowTo Preserves Contents")
+Fact("List SetCapacity Preserves Contents")
 {
 	List<int> list;
 	for (int i = 0; i < 100; i++)
 		list.Add(i);
+	Assert(list.GetCount() == 100);
+	for (int i = 0; i < 100; i++)
+		Assert(list[i] == i);
+
+	// Growing capacity ahead of time must not disturb existing contents
+	list.SetCapacity(500);
 	Assert(list.GetCount() == 100);
 	for (int i = 0; i < 100; i++)
 		Assert(list[i] == i);
@@ -264,15 +272,15 @@ Fact("List ReplaceAt")
 	Assert(list[2] == 3);
 }
 
-Fact("List SetSize")
+Fact("List SetCount")
 {
 	List<int> list;
-	list.SetSize(5, 7);
+	list.SetCount(5, 7);
 	Assert(list.GetCount() == 5);
 	for (int i = 0; i < 5; i++)
 		Assert(list[i] == 7);
 
-	list.SetSize(2, 0);
+	list.SetCount(2, 0);
 	Assert(list.GetCount() == 2);
 	Assert(list[0] == 7);
 	Assert(list[1] == 7);
@@ -823,6 +831,28 @@ Fact("List Of Owned Pointers")
 	Assert(InstanceCounter::s_iInstances == 3);
 	delete p;
 	Assert(InstanceCounter::s_iInstances == 2);
+
+	list.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Of Owned Pointers Indexed Access")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> list;
+	list.Add(new InstanceCounter(10));
+	list.Add(new InstanceCounter(20));
+	list.Add(new InstanceCounter(30));
+
+	// operator[]/GetAt must return a reference to the stored OwnedPtr so
+	// -> and * work directly on the element
+	Assert(list[0]->Value == 10);
+	Assert(list[1]->Value == 20);
+	Assert(list.GetAt(2)->Value == 30);
+
+	list[0]->Value = 100;
+	Assert(list[0]->Value == 100);
 
 	list.Clear();
 	Assert(InstanceCounter::s_iInstances == 0);

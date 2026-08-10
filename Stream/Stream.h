@@ -16,9 +16,9 @@ public:
     {
     }
 
-	virtual int Read(void* pv, uint32_t cb, uint32_t* pcb=nullptr) = 0;
-	virtual int Write(const void* pv, uint32_t cb, uint32_t* pcb=nullptr) = 0;
-	virtual int Seek(int64_t offset, int origin=SEEK_SET) = 0;
+	virtual int Read(void* pv, uint32_t cb, uint32_t* pcb = nullptr) = 0;
+	virtual int Write(const void* pv, uint32_t cb, uint32_t* pcb = nullptr) = 0;
+	virtual int Seek(int64_t offset, int origin = SEEK_SET) = 0;
 	virtual int64_t Tell() = 0;
 	virtual int64_t Length() = 0;
 	virtual int SetLength() = 0;

@@ -262,7 +262,7 @@ public:
     Atomic(const Atomic&) = delete;
     Atomic& operator=(const Atomic&) = delete;
 
-    T TrySet(T val, T compare)
+    T CompareExchange(T val, T compare)
     {
         if constexpr (sizeof(T) == sizeof(void*))
             return (T)atomicCompareExchange(
@@ -274,6 +274,13 @@ public:
                 (uint32_t volatile*)&m_val,
                 (uint32_t)val,
                 (uint32_t)compare);
+    }
+
+    // Same as CompareExchange, but returns whether it succeeded rather
+    // than the previous value
+    bool TrySet(T val, T compare)
+    {
+        return CompareExchange(val, compare) == compare;
     }
 
     T Get() const

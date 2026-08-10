@@ -20,18 +20,31 @@ Fact("Atomic Get Set")
 	Assert(a.Get() == 10);
 }
 
+Fact("Atomic CompareExchange")
+{
+	Atomic<uint32_t> a(5);
+
+	// Compare matches current value -> succeeds
+	uint32_t prev = a.CompareExchange(10, 5);
+	Assert(prev == 5);
+	Assert(a.Get() == 10);
+
+	// Compare no longer matches -> fails, returns actual current value
+	prev = a.CompareExchange(20, 5);
+	Assert(prev == 10);
+	Assert(a.Get() == 10);
+}
+
 Fact("Atomic TrySet")
 {
 	Atomic<uint32_t> a(5);
 
 	// Compare matches current value -> succeeds
-	uint32_t prev = a.TrySet(10, 5);
-	Assert(prev == 5);
+	Assert(a.TrySet(10, 5) == true);
 	Assert(a.Get() == 10);
 
-	// Compare no longer matches -> fails, returns actual current value
-	prev = a.TrySet(20, 5);
-	Assert(prev == 10);
+	// Compare no longer matches -> fails, value unchanged
+	Assert(a.TrySet(20, 5) == false);
 	Assert(a.Get() == 10);
 }
 
@@ -66,13 +79,19 @@ Fact("Atomic Pointer Sized")
 	Assert(old == &x);
 	Assert(p.Get() == &y);
 
-	int* prev = p.TrySet(&z, &y);
+	int* prev = p.CompareExchange(&z, &y);
 	Assert(prev == &y);
 	Assert(p.Get() == &z);
 
-	prev = p.TrySet(&x, &y);	// compare no longer matches
+	prev = p.CompareExchange(&x, &y);	// compare no longer matches
 	Assert(prev == &z);
 	Assert(p.Get() == &z);
+
+	Assert(p.TrySet(&x, &z) == true);
+	Assert(p.Get() == &x);
+
+	Assert(p.TrySet(&y, &z) == false);	// compare no longer matches
+	Assert(p.Get() == &x);
 }
 
 Fact("Atomic Size_t Sized")

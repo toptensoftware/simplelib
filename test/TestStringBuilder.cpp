@@ -72,7 +72,7 @@ Fact("StringBuilder ToString Returns Content As StringCore")
 	Assert(str.GetLength() == 11);
 }
 
-Fact("StringBuilder SyncLen Adopts Nul Terminated Length Of Content")
+Fact("StringBuilder SyncLength Adopts Nul Terminated Length Of Content")
 {
 	StringBuilder<char> sb;
 
@@ -84,17 +84,17 @@ Fact("StringBuilder SyncLen Adopts Nul Terminated Length Of Content")
 	// Length is still 20 until we resync it against the nul terminator
 	Assert(sb.GetLength() == 20);
 
-	sb.SyncLen();
+	sb.SyncLength();
 	Assert(sb.GetLength() == 3);
 	Assert(sb.ToString().IsEqualTo("abc"));
 }
 
-Fact("StringBuilder SyncLen Returns Self For Chaining")
+Fact("StringBuilder SyncLength Returns Self For Chaining")
 {
 	StringBuilder<char> sb;
 	char* buf = sb.GetBuffer(20);
 	strcpy(buf, "chained");
 
-	String str = sb.SyncLen().ToString();
+	String str = sb.SyncLength().ToString();
 	Assert(str.IsEqualTo("chained"));
 }

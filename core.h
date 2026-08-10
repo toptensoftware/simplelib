@@ -13,6 +13,7 @@
 #include "Core/Buffer.h"
 #include "Core/SharedPtr.h"
 #include "Core/OwnedPtr.h"
+#include "Core/RefCountedPtr.h"
 #include "Core/List.h"
 #include "Core/Map.h"
 #include "Core/Set.h"

@@ -78,7 +78,7 @@ public:
         return 0;
     }
 
-    virtual int Seek(int64_t offset, int origin) override
+    virtual int Seek(int64_t offset, int origin = SEEK_SET) override
     {
         assert(m_pFile!=nullptr);
     	return _fseeki64(m_pFile, offset, origin);

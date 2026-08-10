@@ -44,6 +44,19 @@ public:
 	}
 };
 
+class IdCapturingThread : public Thread
+{
+public:
+	size_t idFromThreadProc = 0;
+	std::atomic<bool> finished{ false };
+
+	virtual void ThreadProc() override
+	{
+		idFromThreadProc = Thread::GetCurrentId();
+		finished = true;
+	}
+};
+
 Fact("Thread Runs ThreadProc")
 {
 	FlagThread t;
@@ -100,6 +113,33 @@ Fact("Thread SetDescription Does Not Crash")
 	t.SetDescription("SimpleLib Test Thread");
 	t.Wait();
 	Assert(t.finished);
+}
+
+Fact("Thread GetId Matches Current Id Seen From ThreadProc")
+{
+	IdCapturingThread t;
+	t.Start();
+	t.Wait();
+
+	Assert(t.finished);
+	Assert(t.idFromThreadProc != 0);
+	Assert(t.GetId() == t.idFromThreadProc);
+}
+
+Fact("Thread GetCurrentId Differs Between Threads")
+{
+	size_t mainId = Thread::GetCurrentId();
+
+	IdCapturingThread t;
+	t.Start();
+	t.Wait();
+
+	Assert(t.idFromThreadProc != mainId);
+}
+
+Fact("Thread GetCurrentHandle Is Not Null")
+{
+	Assert(Thread::GetCurrentHandle() != nullptr);
 }
 
 Fact("Thread Multiple Threads Run Concurrently")
