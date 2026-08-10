@@ -91,10 +91,10 @@ struct Guid
         while (*in && pos < 32)
         {
             if (isxdigit(in[0]))
-                buf[pos] = in[0];
+                buf[pos++] = in[0];
             else if (in[0] != '-' && in[0] != '_')
                 return false;
-            pos++;
+			in++;
         }
 
         // Must have 32 digits
