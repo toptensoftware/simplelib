@@ -12,34 +12,34 @@ public:
     {
         m_slot = TlsAlloc();
         EnterMutex emx(m_mx);
-        m_instances.Add(this);
+        m_slots.Add(this);
     }
     ~ThreadLocalBase()
     {
         TlsFree(m_slot);
         EnterMutex emx(m_mx);
-        m_instances.Remove(this);
+        m_slots.Remove(this);
     }
 
     virtual void Free() = 0;
 
-
+    // Free all TLS data types for the current thread
+    // (Called automatically when SimpleLib Thread ends)
     static void FreeAll()
     {
         EnterMutex emx(m_mx);
-        for (int i=0; i<m_instances.GetCount(); i++)
+        for (int i=0; i<m_slots.GetCount(); i++)
         {
-            m_instances[i]->Free();
+            m_slots[i]->Free();
         }
-
     }
 
 protected:
-    DWORD m_slot;
+    uint32_t m_slot;
 
 private:
     inline static Mutex m_mx;
-    inline static List<ThreadLocalBase*> m_instances;
+    inline static List<ThreadLocalBase*> m_slots;
     friend class Thread;
 };
 
@@ -54,23 +54,33 @@ public:
     {
     }
 
-    T* Get()
+    // Get a per-thread object instance for this thread
+    // (Creates instance if not already set)
+    T* Get(bool create = true)
     {
     	T* p = (T*)TlsGetValue(m_slot);
-        if (!p)
+        if (!p && create)
         {
-            p = new T();
-            TlsSetValue(m_slot, p);
+            p = Set(new T());
         }
         return p;
     }
 
+    // Sets the per-thread instance data for this thread
+    // (Note: old instance won't be automatically deleted)
+    T* Set(T* val)
+    {
+        TlsSetValue(m_slot, (void*)val);
+        return val;
+    }
+
+    // Delete the thread data associated with the current thread
     virtual void Free() override
     {
-    	T* p = (T*)TlsGetValue(m_slot);
+        T* p = (T*)TlsGetValue(m_slot);
         delete p;
     }
-};
+};  
 
 
 

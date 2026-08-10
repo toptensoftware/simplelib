@@ -70,6 +70,7 @@ inline void TestRunner::Run()
 	{
 		FactEntry* f = m_allFacts[i];
 		printf("%s: ", f->m_strName.sz());
+		fflush(stdout);
         try
         {
 			count++;

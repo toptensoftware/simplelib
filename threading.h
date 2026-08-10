@@ -13,3 +13,4 @@
 #include "Threading/ThreadLocal.h"
 #include "Threading/CowList.h"
 #include "Threading/HighWaterHeap.h"
+#include "Threading/HighWaterHeapSet.h"
