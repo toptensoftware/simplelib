@@ -157,6 +157,52 @@ Fact("Set Iterate")
 	Assert(iSum == 6);
 }
 
+Fact("Set IterateReverse")
+{
+	Set<int> set;
+	set.Add(1);
+	set.Add(2);
+	set.Add(3);
+
+	int iSeen = 0;
+	int iSum = 0;
+	auto it = set.IterateReverse();
+	while (it.Next())
+	{
+		iSeen++;
+		iSum += it.Get();
+	}
+	Assert(iSeen == 3);
+	Assert(iSum == 6);
+}
+
+Fact("Set IterateReverse Is Exact Reverse Of Iterate")
+{
+	Set<int> set;
+	for (int i = 0; i < 50; i++)
+		set.Add(i);
+
+	List<int> forward;
+	for (auto it = set.Iterate(); it.Next(); )
+		forward.Add(it.Get());
+
+	List<int> reverse;
+	for (auto it = set.IterateReverse(); it.Next(); )
+		reverse.Add(it.Get());
+
+	Assert(forward.GetCount() == 50);
+	Assert(reverse.GetCount() == 50);
+	for (int i = 0; i < 50; i++)
+		Assert(forward[i] == reverse[49 - i]);
+}
+
+Fact("Set IterateReverse Empty Set")
+{
+	Set<int> set;
+	auto it = set.IterateReverse();
+	Assert(!it.Next());
+}
+
 Fact("Set Many Elements")
 {
 	Set<int> set;

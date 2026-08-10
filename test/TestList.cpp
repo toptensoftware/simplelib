@@ -905,3 +905,44 @@ Fact("List Of Strings")
 	Assert(list.Contains(L"Bananas"));
 	Assert(!list.Contains(L"Oranges"));
 }
+
+Fact("List Iterate")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<int> seen;
+	for (auto it = list.Iterate(); it.Next(); )
+		seen.Add(it.Get());
+
+	Assert(seen.GetCount() == 3);
+	Assert(seen[0] == 1);
+	Assert(seen[1] == 2);
+	Assert(seen[2] == 3);
+}
+
+Fact("List IterateReverse")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	List<int> seen;
+	for (auto it = list.IterateReverse(); it.Next(); )
+		seen.Add(it.Get());
+
+	Assert(seen.GetCount() == 3);
+	Assert(seen[0] == 3);
+	Assert(seen[1] == 2);
+	Assert(seen[2] == 1);
+}
+
+Fact("List IterateReverse Empty List")
+{
+	List<int> list;
+	auto it = list.IterateReverse();
+	Assert(!it.Next());
+}

@@ -107,15 +107,17 @@ public:
         bool Next() { return _owner->GetNext(*this); }
 
     private:
-        Iter(Map* owner, int version)
+        Iter(Map* owner, bool forward, int version)
         {
             _owner = owner;
+            _forward = forward;
             _version = version;
         }
 
         Iter(const Iter& other)
         {
             _owner = other._owner;
+            _forward = other._forward;
             _pos = other._pos;
             _version = other._version;
             _key = other._key;
@@ -127,12 +129,20 @@ public:
         Map* _owner;
         int _pos = -1;
         int _version = 0;
+        bool _forward = false;
         friend class Map;
     };
 
     Iter Iterate()
     {
-        return Iter(this, core.get_table_version());
+        return Iter(this, true, core.get_table_version());
+    }
+
+    Iter IterateReverse()
+    {
+        Iter iter(this, false, core.get_table_version());
+        iter._pos = core.get_table_count();
+        return iter;
     }
 
     bool GetNext(Iter& iter)
@@ -140,20 +150,39 @@ public:
         // Check not modified
         assert(core.get_table_version() == iter._version);
 
-        int count = core.get_table_count();
-
-        iter._pos++;
-        while (iter._pos < count)
+        if (iter._forward)
         {
-            void* key;
-            void* value;
-            if (core.get_table_entry(iter._pos, key, value))
-            {
-                iter._key = (TKey*)key;
-                iter._value = (TValue*)value;
-                return true;
-            }
+            int count = core.get_table_count();
+
             iter._pos++;
+            while (iter._pos < count)
+            {
+                void* key;
+                void* value;
+                if (core.get_table_entry(iter._pos, key, value))
+                {
+                    iter._key = (TKey*)key;
+                    iter._value = (TValue*)value;
+                    return true;
+                }
+                iter._pos++;
+            }
+        }
+        else
+        {
+            iter._pos--;
+            while (iter._pos >= 0)
+            {
+                void* key;
+                void* value;
+                if (core.get_table_entry(iter._pos, key, value))
+                {
+                    iter._key = (TKey*)key;
+                    iter._value = (TValue*)value;
+                    return true;
+                }
+                iter._pos--;
+            }
         }
         return false;
     }

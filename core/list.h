@@ -341,14 +341,16 @@ class List
         bool Next() { return _owner->GetNext(*this); }
 
     private:
-        Iter(const List* owner)
+        Iter(const List* owner, bool forward)
         {
             _owner = owner;
+            _forward = forward;
         }
 
         Iter(const Iter& other)
         {
             _owner = other._owner;
+            _forward = other._forward;
             _pos = other._pos;
             _value = other._value;
         }
@@ -356,19 +358,36 @@ class List
         const T* _value = nullptr;
         const List* _owner;
         int _pos = -1;
+        bool _forward = true;
         friend class List;
     };
 
     Iter Iterate() const
     {
-        return Iter(this);
+        return Iter(this, true);
+    }
+
+    Iter IterateReverse() const
+    {
+        Iter iter(this, false);
+        iter._pos = m_iCount;
+        return iter;
     }
 
 	bool GetNext(Iter& iter) const
     {
-        iter._pos++;
-		if (iter._pos >= m_iCount)
-			return false;
+        if (iter._forward)
+        {
+            iter._pos++;
+            if (iter._pos >= m_iCount)
+                return false;
+        }
+        else
+        {
+            iter._pos--;
+            if (iter._pos < 0)
+                return false;
+        }
 
 		iter._value = m_pData + iter._pos;
         return true;

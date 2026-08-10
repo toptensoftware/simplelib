@@ -371,3 +371,51 @@ Fact("Map Of StringCore Keys")
 	Assert(map.ContainsKey("Bananas"));
 	Assert(!map.ContainsKey("Oranges"));
 }
+
+Fact("Map Iterate")
+{
+	Map<int, int> map;
+	map.Add(1, 10);
+	map.Add(2, 20);
+	map.Add(3, 30);
+
+	int iSeen = 0;
+	int iKeySum = 0;
+	int iValueSum = 0;
+	for (auto it = map.Iterate(); it.Next(); )
+	{
+		iSeen++;
+		iKeySum += it.GetKey();
+		iValueSum += it.GetValue();
+	}
+	Assert(iSeen == 3);
+	Assert(iKeySum == 6);
+	Assert(iValueSum == 60);
+}
+
+Fact("Map IterateReverse Is Exact Reverse Of Iterate")
+{
+	Map<int, int> map;
+	for (int i = 0; i < 50; i++)
+		map.Add(i, i * 10);
+
+	List<int> forward;
+	for (auto it = map.Iterate(); it.Next(); )
+		forward.Add(it.GetKey());
+
+	List<int> reverse;
+	for (auto it = map.IterateReverse(); it.Next(); )
+		reverse.Add(it.GetKey());
+
+	Assert(forward.GetCount() == 50);
+	Assert(reverse.GetCount() == 50);
+	for (int i = 0; i < 50; i++)
+		Assert(forward[i] == reverse[49 - i]);
+}
+
+Fact("Map IterateReverse Empty Map")
+{
+	Map<int, int> map;
+	auto it = map.IterateReverse();
+	Assert(!it.Next());
+}
