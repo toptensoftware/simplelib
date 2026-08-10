@@ -6,23 +6,18 @@
 namespace SimpleLib
 {
 
+// Implements a lock free high-water heap set.
+// This is designed for a very specific use case - fast, lock free, but short-lived
+// memory allocations.
 class HighWaterHeapSet
 {
-protected:
-    class Bucket : public HighWaterHeap
-    {
-    public:
-        Bucket(uint32_t capacity) : HighWaterHeap(capacity)
-        {
-        }
-
-        Bucket* next;       // For MpmcStack
-    };
-
     public:
     HighWaterHeapSet(int initialBuckets,  uint32_t bucketSize)
     {
+        // Store bucket size
         m_bucketSize = bucketSize;
+
+        // Allocate the initial buckets
         for (int i=0; i<initialBuckets; i++)
         {
             m_reserveBuckets.Push(new Bucket(bucketSize));
@@ -37,34 +32,62 @@ protected:
     // Allocate memory 
     void* Alloc(size_t size)
     {
+        // The idea here is we want to continue to use the same active buckets repeatedly until
+        // they fill up.   Once full a bucket will be drained out to empty as the allocations
+        // are freed (remember this is designed for short lived allocations) and eventually
+        // returned to the reserve list
         Bucket* triedBuckets = nullptr;
-        Bucket* lastTriedBucket = nullptr;
         Bucket* bucket;
         while (bucket = m_activeBuckets.Pop())
         {
+            // If it's empty put if back on the reserve stack
+            // Note: GetLikelyUsed() check for zero is not a guess - no one else has a reference
+            // to this bucket so nothing can be allocated from it.  And if its already empty,
+            // nothing else could since be freed from it.
+            if (bucket->GetLikelyUsed() == 0)
+                m_reserveBuckets.Push(bucket);
+
+            // Try the allocation in this bucket
             void* mem = bucket->Alloc(size);
             if (mem)
             {
-                m_activeBuckets.Push(triedBuckets, lastTriedBucket);
+                // Put the succeeding bucket and any other tried buckets back on the active list
+                // (with the succeeding one on top)
+                bucket->next = triedBuckets;
+                triedBuckets = bucket;
+                m_activeBuckets.PushMany(bucket);
                 return mem;
             }
 
-            // Save in list
-            if (lastTriedBucket == nullptr)
-                lastTriedBucket = bucket;
+            // Save a list of buckets we've tried
             bucket->next = triedBuckets;
             triedBuckets = bucket;
         }
+
+        // Put the tried buckets back on the active list
+        if (triedBuckets)
+            m_activeBuckets.PushMany(triedBuckets);
+
+        // Try the reserve list
+        Bucket* bucket = m_reserveBuckets.Pop();
+        if (!bucket)
+            return nullptr;
+        void* mem = bucket->Alloc(size);
+        m_activeBuckets.Push(bucket);
+
+        // Done
+        return mem;
     }
 
     // Free memory
     void Free(void* mem)
     {
-        // Free from allocated heap
+        // Pass through...
         HighWaterHeap::FreeFromCorrectHeap(mem);
     }
 
 protected:
+
     class Bucket : public HighWaterHeap
     {
     public:

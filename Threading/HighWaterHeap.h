@@ -139,6 +139,14 @@ public:
         return state.unpacked.high;
     }
 
+    // Check how much of the heap has been used
+    size_t GetLikelyCount()
+    {
+        STATE state;
+        state.packed = m_state.Get();
+        return state.unpacked.count;
+    }
+
     // Get the heap's capacity
     size_t GetCapacity()
     {
