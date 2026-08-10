@@ -87,6 +87,33 @@ public:
 		}
 	}
 
+	bool PushMany(T* first)
+	{
+		assert(first != nullptr);
+
+		int count = 0;
+		T* p = first;
+		T* last = nullptr;
+		while (p)
+		{
+			count++;
+			last = p;
+			p = p->next;
+		}
+
+		while(true)
+		{
+			T* oldHead = m_pHead.Get();
+			last->next = oldHead;
+			bool isFirst = oldHead == nullptr;
+			if (m_pHead.TrySet(first, oldHead))
+			{
+				m_count.Add(count);
+				return isFirst;
+			}
+		}
+	}
+
 	// Pops item from the stack
 	// Returns nullptr if the list is empty
 	// Returns nowEmpty true if the list transitioned to empty
