@@ -22,6 +22,7 @@ public:
 	virtual int64_t Tell() = 0;
 	virtual int64_t Length() = 0;
 	virtual int SetLength() = 0;
+    virtual int Flush() { return 0; };
 
     bool IsEof() { return Tell() == Length(); }
 
@@ -65,6 +66,18 @@ public:
         return value;
     }
 */
+
+    int Stream::PutString(const char* psz)
+    {
+        auto len = strlen(psz);
+        return Write(psz, (uint32_t)len);
+    }
+
+    int Stream::PutStringW(const wchar_t* psz)
+    {
+        auto len = wcslen(psz);
+        return Write(psz, (uint32_t)(len * sizeof(wchar_t*)));
+    }
 
     void Stream::WriteString(const char* psz)
     {
