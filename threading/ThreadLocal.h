@@ -43,7 +43,7 @@ private:
     friend class Thread;
 };
 
-template <typename T, bool autoCreate>
+template <typename T, bool autoCreate = true>
 class ThreadLocal : public ThreadLocalBase
 {
 public:

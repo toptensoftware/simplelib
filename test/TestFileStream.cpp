@@ -22,7 +22,7 @@ Fact("FileStream Create Write Read")
 	String path = TempFilePath("create_write_read");
 
 	FileStream fs;
-	Assert(fs.Create(path.sz()) == 0);
+	Assert(fs.Open(path.sz(), "wb+") == 0);
 
 	const char data[] = "Hello World";
 	Assert(fs.Write(data, sizeof(data)) == 0);
@@ -44,7 +44,7 @@ Fact("FileStream Open Existing For Read")
 
 	{
 		FileStream fs;
-		fs.Create(path.sz());
+		fs.Open(path.sz(), "wb+");
 		fs.Write("Persisted", 9);
 		fs.Close();
 	}
@@ -76,7 +76,7 @@ Fact("FileStream Seek Tell Length")
 	String path = TempFilePath("seek_tell_length");
 
 	FileStream fs;
-	fs.Create(path.sz());
+	fs.Open(path.sz(), "wb+");
 	fs.Write("0123456789", 10);
 	Assert(fs.Length() == 10);
 
@@ -112,7 +112,7 @@ Fact("FileStream SetLength Truncates")
 	String path = TempFilePath("setlength_truncate");
 
 	FileStream fs;
-	fs.Create(path.sz());
+	fs.Open(path.sz(), "wb+");
 	fs.Write("0123456789", 10);
 
 	fs.Seek(5, SEEK_SET);
@@ -133,7 +133,7 @@ Fact("FileStream IsEof")
 	String path = TempFilePath("iseof");
 
 	FileStream fs;
-	fs.Create(path.sz());
+	fs.Open(path.sz(), "wb+");
 	fs.Write("Hi", 2);
 	fs.Seek(0, SEEK_SET);
 
@@ -151,7 +151,7 @@ Fact("FileStream WriteInt32 ReadInt32")
 	String path = TempFilePath("int32");
 
 	FileStream fs;
-	fs.Create(path.sz());
+	fs.Open(path.sz(), "wb+");
 	fs.WriteInt32(-12345);
 	fs.WriteInt32(67890);
 
@@ -168,7 +168,7 @@ Fact("FileStream WriteString ReadString")
 	String path = TempFilePath("string");
 
 	FileStream fs;
-	fs.Create(path.sz());
+	fs.Open(path.sz(), "wb+");
 	fs.WriteString("Hello World");
 	fs.WriteString("");
 	fs.WriteString(nullptr);
@@ -188,12 +188,12 @@ Fact("FileStream Copy Whole Stream")
 	String destPath = TempFilePath("copy_dest");
 
 	FileStream src;
-	src.Create(srcPath.sz());
+	src.Open(srcPath.sz(), "wb+");
 	src.Write("The quick brown fox", 20);
 	src.Seek(0, SEEK_SET);
 
 	FileStream dest;
-	dest.Create(destPath.sz());
+	dest.Open(destPath.sz(), "wb+");
 	Assert(Stream::Copy(dest, src) == 0);
 
 	Assert(dest.Length() == 20);
@@ -216,7 +216,7 @@ Fact("FileStream Copy With Length Smaller Than Chunk Size")
 	String destPath = TempFilePath("copy_len_dest");
 
 	FileStream src;
-	src.Create(srcPath.sz());
+	src.Open(srcPath.sz(), "wb+");
 	char bigData[5000];
 	for (int i = 0; i < 5000; i++)
 		bigData[i] = (char)(i & 0xFF);
@@ -224,7 +224,7 @@ Fact("FileStream Copy With Length Smaller Than Chunk Size")
 	src.Seek(0, SEEK_SET);
 
 	FileStream dest;
-	dest.Create(destPath.sz());
+	dest.Open(destPath.sz(), "wb+");
 	Assert(Stream::Copy(dest, src, 100) == 0);
 
 	Assert(dest.Length() == 100);
@@ -245,7 +245,7 @@ Fact("FileStream Reopen Preserves Content Across Close")
 
 	{
 		FileStream fs;
-		fs.Create(path.sz());
+		fs.Open(path.sz(), "wb+");
 		fs.WriteInt32(42);
 		fs.Close();
 	}
