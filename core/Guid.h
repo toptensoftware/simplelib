@@ -6,6 +6,11 @@
 namespace SimpleLib
 {
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+
 #pragma pack(1)
 struct Guid
 {
@@ -114,5 +119,8 @@ struct Guid
 inline Guid Guid::Null;
 #pragma pack()
 
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 }

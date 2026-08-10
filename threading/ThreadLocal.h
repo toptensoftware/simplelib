@@ -43,7 +43,7 @@ private:
     friend class Thread;
 };
 
-template <typename T>
+template <typename T, bool autoCreate>
 class ThreadLocal : public ThreadLocalBase
 {
 public:
@@ -56,12 +56,15 @@ public:
 
     // Get a per-thread object instance for this thread
     // (Creates instance if not already set)
-    T* Get(bool create = true)
+    T* Get()
     {
-    	T* p = (T*)TlsGetValue(m_slot);
-        if (!p && create)
+        T* p = (T*)TlsGetValue(m_slot);
+        if constexpr (autoCreate)
         {
-            p = Set(new T());
+            if (!p)
+            {
+                p = Set(new T());
+            }
         }
         return p;
     }
@@ -77,8 +80,11 @@ public:
     // Delete the thread data associated with the current thread
     virtual void Free() override
     {
-        T* p = (T*)TlsGetValue(m_slot);
-        delete p;
+        if constexpr (autoCreate)
+        {
+            T* p = (T*)TlsGetValue(m_slot);
+            delete p;
+        }
     }
 };  
 

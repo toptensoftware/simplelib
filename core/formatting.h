@@ -9,543 +9,551 @@
 
 namespace SimpleLib
 {
-	template <typename T>
-	struct IFormatOutput
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
+
+template <typename T>
+struct IFormatOutput
+{
+	// Minimal requirement to get Format results
+	virtual void Append(T ch) = 0;
+
+	// Optional, provide optimized overrides of the following...
+
+	virtual void Append(T ch, int count)
 	{
-		// Minimal requirement to get Format results
-		virtual void Append(T ch) = 0;
+		for (int i = 0; i < count; i++)
+			Append(ch);
+	}
 
-		// Optional, provide optimized overrides of the following...
-
-		virtual void Append(T ch, int count)
+	virtual void Append(const T* psz, int len)
+	{
+		for (int i = 0; i < len; i++)
 		{
-			for (int i = 0; i < count; i++)
-				Append(ch);
+			Append(psz[i]);
 		}
+	}
 
-		virtual void Append(const T* psz, int len)
+	virtual void Append(const T* psz, int len, int width, bool left)
+	{
+		if (len < 0)
+			len = 0;
+		if (width > len)
 		{
-			for (int i = 0; i < len; i++)
+			if (left)
 			{
-				Append(psz[i]);
-			}
-		}
-
-		virtual void Append(const T* psz, int len, int width, bool left)
-		{
-			if (len < 0)
-				len = 0;
-			if (width > len)
-			{
-				if (left)
-				{
-					Append(psz, len);
-					Append(' ', width - len);
-				}
-				else
-				{
-					Append(' ', width - len);
-					Append(psz, len);
-				}
+				Append(psz, len);
+				Append(' ', width - len);
 			}
 			else
 			{
+				Append(' ', width - len);
 				Append(psz, len);
 			}
 		}
-	};
+		else
+		{
+			Append(psz, len);
+		}
+	}
+};
 
-	template <typename T>
-	class FormatCallback : public IFormatOutput<T>
+template <typename T>
+class FormatCallback : public IFormatOutput<T>
+{
+public:
+	FormatCallback(void (*cb)(void*, T), void* arg)
 	{
-	public:
-		FormatCallback(void (*cb)(void*, T), void* arg)
-		{
-			m_cb = cb;
-			m_arg = arg;
-		}
+		m_cb = cb;
+		m_arg = arg;
+	}
 
-		virtual void Append(T ch) override
-		{
-			m_cb(m_arg, ch);
-		}
-
-		void (*m_cb)(void*, T);
-		void* m_arg;
-	};
-
-
-	template <typename T>
-	class FormatStringWriter : public IFormatOutput<T>
+	virtual void Append(T ch) override
 	{
-	public:
-		FormatStringWriter(IStringWriter<T>* sw)
-		{
-			m_sw = sw;
-		}
+		m_cb(m_arg, ch);
+	}
 
-		virtual void Append(T ch) override
-		{
-			m_sw->Write(ch);
-		}
-
-		IStringWriter<T>* m_sw;
-	};
+	void (*m_cb)(void*, T);
+	void* m_arg;
+};
 
 
-	// Number formatting helpers used by CString::Format
-	class Formatting
+template <typename T>
+class FormatStringWriter : public IFormatOutput<T>
+{
+public:
+	FormatStringWriter(IStringWriter<T>* sw)
 	{
-	public:
+		m_sw = sw;
+	}
 
-		// Supported formats:
-		// %[-][+][ ][#][0][<width>][.<precision>][l|ll]<type>
-		// [-] = left align
-		// [+] = include positive sign
-		// [ ] = display positive sign as a space
-		// [#] = include '0x' (or '0X') on hex numbers and pointers, '0' on octal numbers
-		// [0] = pad with leading zeros (if right aligned)
-		// [l] = long
-		// [ll] = long long
-		// [z] = pointer size integer 
-		// <width> = width as integer or '*' to read from arg list
-		// <precision> = precision as integer or '*' to read from arg list
-		// <type> = 'c', 's', 'i', 'd', 'u', 'x', 'X', 'o', 'p', 'f'
-		// Note: one of the goals of this method is to provide a sprint style formatter
-		//       that works exactly the same across platforms.  Old versions of CString
-		//       called the crt sprintf family of functions but differences like %s %S
-		//       and so on meant the format string had to be patched or the client had
-		//       to provide different format strings for different platforms which is a
-		//       total pain.  This might not be the perfect formatter, but at least it's
-		//       consistent.
-		template <class T>
-		static void FormatV(IFormatOutput<T>* output, const T* format, va_list args)
+	virtual void Append(T ch) override
+	{
+		m_sw->Write(ch);
+	}
+
+	IStringWriter<T>* m_sw;
+};
+
+
+// Number formatting helpers used by CString::Format
+class Formatting
+{
+public:
+
+	// Supported formats:
+	// %[-][+][ ][#][0][<width>][.<precision>][l|ll]<type>
+	// [-] = left align
+	// [+] = include positive sign
+	// [ ] = display positive sign as a space
+	// [#] = include '0x' (or '0X') on hex numbers and pointers, '0' on octal numbers
+	// [0] = pad with leading zeros (if right aligned)
+	// [l] = long
+	// [ll] = long long
+	// [z] = pointer size integer 
+	// <width> = width as integer or '*' to read from arg list
+	// <precision> = precision as integer or '*' to read from arg list
+	// <type> = 'c', 's', 'i', 'd', 'u', 'x', 'X', 'o', 'p', 'f'
+	// Note: one of the goals of this method is to provide a sprint style formatter
+	//       that works exactly the same across platforms.  Old versions of CString
+	//       called the crt sprintf family of functions but differences like %s %S
+	//       and so on meant the format string had to be patched or the client had
+	//       to provide different format strings for different platforms which is a
+	//       total pain.  This might not be the perfect formatter, but at least it's
+	//       consistent.
+	template <class T>
+	static void FormatV(IFormatOutput<T>* output, const T* format, va_list args)
+	{
+		// Temp buffer for formatting numbers into
+		T szTemp[128];
+
+		// Format string
+		const T* p = format;
+		while (*p != '\0')
 		{
-			// Temp buffer for formatting numbers into
-			T szTemp[128];
-
-			// Format string
-			const T* p = format;
-			while (*p != '\0')
+			if (*p == '%')
 			{
+				p++;
+
+				// escaped '%' with %%?
 				if (*p == '%')
 				{
+					output->Append('%');
 					p++;
+					continue;
+				}
 
-					// escaped '%' with %%?
-					if (*p == '%')
+				// Parse flags
+				bool bTypePrefix = false;
+				bool bLeft = false;
+				T chPositivePrefix = '\0';
+				bool bZeroPrefix = false;
+				bool bLong = false;
+				bool bLongLong = false;
+				bool bSizeT = false;
+
+			next_flag:						// sometimes a goto is a friend
+				if (*p == '#')
+				{
+					bTypePrefix = true;
+					p++;
+					goto next_flag;
+				}
+
+				if (*p == '-')
+				{
+					bLeft = true;
+					p++;
+					goto next_flag;
+				}
+
+				if (*p == '+')
+				{
+					chPositivePrefix = '+';
+					p++;
+					goto next_flag;
+				}
+				if (*p == ' ')
+				{
+					if (chPositivePrefix == '\0')
+						chPositivePrefix = ' ';
+					p++;
+					goto next_flag;
+				}
+
+				// Zero prefix?
+				if (*p == '0')
+				{
+					bZeroPrefix = !bLeft;
+					p++;
+				}
+
+				// Parse width
+				int iWidth = 0;
+				if (*p == '*')
+				{
+					iWidth = va_arg(args, int);
+					p++;
+				}
+				else
+				{
+					while ('0' <= *p && *p <= '9')
 					{
-						output->Append('%');
-						p++;
-						continue;
+						iWidth = iWidth * 10 + (*p++ - '0');
 					}
+				}
 
-					// Parse flags
-					bool bTypePrefix = false;
-					bool bLeft = false;
-					T chPositivePrefix = '\0';
-					bool bZeroPrefix = false;
-					bool bLong = false;
-					bool bLongLong = false;
-					bool bSizeT = false;
+				// Parse precision
+				int iPrecision = -1;
+				if (*p == '.')
+				{
+					p++;
+					bZeroPrefix = false;
 
-				next_flag:						// sometimes a goto is a friend
-					if (*p == '#')
-					{
-						bTypePrefix = true;
-						p++;
-						goto next_flag;
-					}
-
-					if (*p == '-')
-					{
-						bLeft = true;
-						p++;
-						goto next_flag;
-					}
-
-					if (*p == '+')
-					{
-						chPositivePrefix = '+';
-						p++;
-						goto next_flag;
-					}
-					if (*p == ' ')
-					{
-						if (chPositivePrefix == '\0')
-							chPositivePrefix = ' ';
-						p++;
-						goto next_flag;
-					}
-
-					// Zero prefix?
-					if (*p == '0')
-					{
-						bZeroPrefix = !bLeft;
-						p++;
-					}
-
-					// Parse width
-					int iWidth = 0;
 					if (*p == '*')
 					{
-						iWidth = va_arg(args, int);
+						iPrecision = va_arg(args, int);
 						p++;
 					}
 					else
 					{
+						iPrecision = 0;
 						while ('0' <= *p && *p <= '9')
 						{
-							iWidth = iWidth * 10 + (*p++ - '0');
+							iPrecision = iPrecision * 10 + (*p++ - '0');
 						}
 					}
+				}
 
-					// Parse precision
-					int iPrecision = -1;
-					if (*p == '.')
+				// Type modifiers 'l' and 'll'
+				if (*p == 'l')
+				{
+					if (p[1] == 'l')
 					{
-						p++;
-						bZeroPrefix = false;
-
-						if (*p == '*')
-						{
-							iPrecision = va_arg(args, int);
-							p++;
-						}
-						else
-						{
-							iPrecision = 0;
-							while ('0' <= *p && *p <= '9')
-							{
-								iPrecision = iPrecision * 10 + (*p++ - '0');
-							}
-						}
-					}
-
-					// Type modifiers 'l' and 'll'
-					if (*p == 'l')
-					{
-						if (p[1] == 'l')
-						{
-							bLongLong = true;
-							p++;
-						}
-						else
-						{
-							bLong = true;
-						}
-
+						bLongLong = true;
 						p++;
 					}
-
-					if (*p == 'z')
+					else
 					{
-						bSizeT = true;
-						p++;
+						bLong = true;
 					}
 
-					// Type specifier
-					switch (*p)
+					p++;
+				}
+
+				if (*p == 'z')
+				{
+					bSizeT = true;
+					p++;
+				}
+
+				// Type specifier
+				switch (*p)
+				{
+				case 'c':
+				{
+					T chArg = (char)va_arg(args, int);
+					output->Append(&chArg, 1, iWidth, bLeft);
+					p++;
+					break;
+				}
+
+				case 's':
+				{
+					const T* pArg = va_arg(args, const T*);
+					T temp[10];
+					if (pArg == nullptr)
 					{
-					case 'c':
+						T* d = temp;
+						for (const char* p = "(null)"; *p; d++, p++)
+						{
+							*d = *p;
+						}
+						*d++ = '\0';
+						pArg = temp;
+					}
+					int nLen = SChar<T>::Length(pArg);
+					if (nLen > iPrecision && iPrecision > 0)
+						nLen = iPrecision;
+					output->Append(pArg, nLen, iWidth, bLeft);
+					p++;
+					break;
+				}
+
+				case 'd':
+				case 'i':
+					if (bZeroPrefix)
 					{
-						T chArg = (char)va_arg(args, int);
-						output->Append(&chArg, 1, iWidth, bLeft);
-						p++;
-						break;
+						iPrecision = iWidth;
+						iWidth = 0;
 					}
 
-					case 's':
+					// Process by type...
+					if (bSizeT)
 					{
-						const T* pArg = va_arg(args, const T*);
-						T temp[10];
-						if (pArg == nullptr)
-						{
-							T* d = temp;
-							for (const char* p = "(null)"; *p; d++, p++)
-							{
-								*d = *p;
-							}
-							*d++ = '\0';
-							pArg = temp;
-						}
-						int nLen = SChar<T>::Length(pArg);
-						if (nLen > iPrecision && iPrecision > 0)
-							nLen = iPrecision;
-						output->Append(pArg, nLen, iWidth, bLeft);
-						p++;
-						break;
+						ptrdiff_t arg = va_arg(args, ptrdiff_t);
+						if (bZeroPrefix && (arg < 0 || chPositivePrefix))
+							iPrecision--;
+						output->Append(szTemp, FormatSigned<T, ptrdiff_t>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
+					}
+					else if (bLongLong)
+					{
+						long long arg = va_arg(args, long long);
+						if (bZeroPrefix && (arg < 0 || chPositivePrefix))
+							iPrecision--;
+						output->Append(szTemp, FormatSigned<T, long long>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
+					}
+					else if (bLong)
+					{
+						long arg = va_arg(args, long);
+						if (bZeroPrefix && (arg < 0 || chPositivePrefix))
+							iPrecision--;
+						output->Append(szTemp, FormatSigned<T, long>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
+					}
+					else
+					{
+						int arg = va_arg(args, int);
+						if (bZeroPrefix && (arg < 0 || chPositivePrefix))
+							iPrecision--;
+						output->Append(szTemp, FormatSigned<T, int>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
+					}
+					p++;
+					break;
+
+				case 'u':
+				case 'x':
+				case 'X':
+				case 'o':
+				{
+					if (bZeroPrefix)
+					{
+						iPrecision = iWidth;
+						iWidth = 0;
 					}
 
-					case 'd':
-					case 'i':
-						if (bZeroPrefix)
-						{
-							iPrecision = iWidth;
-							iWidth = 0;
-						}
+					// Work out base
+					int base = 10;
+					if (*p == 'o')
+						base = 8;
+					else if (*p == 'x' || *p == 'X')
+						base = 16;
 
-						// Process by type...
-						if (bSizeT)
-						{
-							ptrdiff_t arg = va_arg(args, ptrdiff_t);
-							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
-								iPrecision--;
-							output->Append(szTemp, FormatSigned<T, ptrdiff_t>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
-						}
-						else if (bLongLong)
-						{
-							long long arg = va_arg(args, long long);
-							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
-								iPrecision--;
-							output->Append(szTemp, FormatSigned<T, long long>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
-						}
-						else if (bLong)
-						{
-							long arg = va_arg(args, long);
-							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
-								iPrecision--;
-							output->Append(szTemp, FormatSigned<T, long>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
-						}
-						else
-						{
-							int arg = va_arg(args, int);
-							if (bZeroPrefix && (arg < 0 || chPositivePrefix))
-								iPrecision--;
-							output->Append(szTemp, FormatSigned<T, int>(szTemp, arg, iPrecision, chPositivePrefix), iWidth, bLeft);
-						}
-						p++;
-						break;
+					// Update case version?
+					bool upper = *p == 'X';
 
-					case 'u':
-					case 'x':
-					case 'X':
-					case 'o':
+					// Process by type...
+					if (bSizeT)
 					{
-						if (bZeroPrefix)
-						{
-							iPrecision = iWidth;
-							iWidth = 0;
-						}
-
-						// Work out base
-						int base = 10;
-						if (*p == 'o')
-							base = 8;
-						else if (*p == 'x' || *p == 'X')
-							base = 16;
-
-						// Update case version?
-						bool upper = *p == 'X';
-
-						// Process by type...
-						if (bSizeT)
-						{
-							size_t arg = va_arg(args, size_t);
-							output->Append(szTemp, FormatUnsigned<T, size_t>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
-						}
-						else if (bLongLong)
-						{
-							long long arg = va_arg(args, unsigned long long);
-							output->Append(szTemp, FormatUnsigned<T, unsigned long long>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
-						}
-						else if (bLong)
-						{
-							long arg = va_arg(args, unsigned long);
-							output->Append(szTemp, FormatUnsigned<T, unsigned long>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
-						}
-						else
-						{
-							int arg = va_arg(args, unsigned int);
-							output->Append(szTemp, FormatUnsigned<T, unsigned int>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
-						}
-						p++;
-						break;
-					}
-
-					case 'p':
-					case 'P':
-					{
-						// Pointer
-						int base = 16;
-						bool upper = *p == 'P';
 						size_t arg = va_arg(args, size_t);
-						output->Append(szTemp, FormatUnsigned<T, size_t>(szTemp, arg, base, upper, sizeof(size_t) * 2, bTypePrefix), iWidth, bLeft);
-						p++;
-						break;
+						output->Append(szTemp, FormatUnsigned<T, size_t>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
 					}
-
-					case 'f':
+					else if (bLongLong)
 					{
-						// Floating point
-						double val = va_arg(args, double);
-						output->Append(szTemp, FormatDoubleF<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
-						p++;
-						break;
+						long long arg = va_arg(args, unsigned long long);
+						output->Append(szTemp, FormatUnsigned<T, unsigned long long>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
 					}
-
-					case 'g':
+					else if (bLong)
 					{
-						// Floating point
-						double val = va_arg(args, double);
-						output->Append(szTemp, FormatDoubleG<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
-						p++;
-						break;
+						long arg = va_arg(args, unsigned long);
+						output->Append(szTemp, FormatUnsigned<T, unsigned long>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
 					}
-
-					default:
-						// Huh? what was that?
-						p++;
-						break;
+					else
+					{
+						int arg = va_arg(args, unsigned int);
+						output->Append(szTemp, FormatUnsigned<T, unsigned int>(szTemp, arg, base, upper, iPrecision, bTypePrefix), iWidth, bLeft);
 					}
+					p++;
+					break;
 				}
-				else
+
+				case 'p':
+				case 'P':
 				{
-					output->Append(*p++);
+					// Pointer
+					int base = 16;
+					bool upper = *p == 'P';
+					size_t arg = va_arg(args, size_t);
+					output->Append(szTemp, FormatUnsigned<T, size_t>(szTemp, arg, base, upper, sizeof(size_t) * 2, bTypePrefix), iWidth, bLeft);
+					p++;
+					break;
 				}
-			}
-		}
 
-
-		// Helper to reverse a string (used by integer formatting)
-		template <typename T>
-		static int ReverseChars(T* pszStart, T* pszEnd)
-		{
-			// Reverse it
-			T* start = pszStart;
-			T* end = pszEnd - 1;
-			while (end > start)
-			{
-				// swap
-				T temp = *start;
-				*start = *end;
-				*end = temp;
-
-				start++;
-				end--;
-			}
-
-			// Return the length
-			return (int)(pszEnd - pszStart);
-		}
-
-		// Format a signed integer
-		template <typename T, typename TInt>
-		static int FormatSigned(T* buf, TInt value, int padWidth, T positiveSign)
-		{
-			// Handle negative
-			bool negative = value < 0;
-
-			// Format tnumber
-			T* p = buf;
-			do
-			{
-				*p++ = '0' + (char)abs(value % 10);
-				value /= 10;
-			} while (value != 0);
-
-			while (p - buf < padWidth)
-			{
-				*p++ = '0';
-			}
-
-			// Put back the negative
-			if (negative)
-			{
-				*p++ = '-';
-			}
-			else if (positiveSign)
-			{
-				*p++ = positiveSign;
-			}
-			*p = '\0';
-
-			return ReverseChars(buf, p);
-		}
-
-		// Format an unsigned integer
-		template <typename T, typename TInt>
-		static int FormatUnsigned(T* buf, TInt value, int base, bool uppercase, int padWidth, bool prefix)
-		{
-			// Format tnumber
-			T* p = buf;
-			do
-			{
-				char ch = (char)(value % base) + '0';
-				if (ch > '9')
-					ch += (uppercase ? 'A' : 'a') - '9' - 1;
-				*p++ = ch;
-				value /= base;
-			} while (value != 0);
-
-			while (p - buf < padWidth)
-			{
-				*p++ = '0';
-			}
-
-			if (prefix)
-			{
-				if (base == 8)
-					*p++ = '0';
-				else if (base == 16)
+				case 'f':
 				{
-					*p++ = uppercase ? 'X' : 'x';
-					*p++ = '0';
+					// Floating point
+					double val = va_arg(args, double);
+					output->Append(szTemp, FormatDoubleF<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
+					p++;
+					break;
 				}
-			}
 
-			*p = '\0';
+				case 'g':
+				{
+					// Floating point
+					double val = va_arg(args, double);
+					output->Append(szTemp, FormatDoubleG<T>(szTemp, val, iPrecision < 0 ? 6 : iPrecision, chPositivePrefix), iWidth, bLeft);
+					p++;
+					break;
+				}
 
-			return ReverseChars(buf, p);
-		}
-
-		// This floating point number formatter
-		template <typename T>
-		static int FormatDoubleF(T* buf, double value, int precision, T positiveSign)
-		{
-			char szTemp[512];
-			if (positiveSign != '\0')
-			{
-				char szFormat[10] = "%+.*f";
-				szFormat[1] = (char)positiveSign;
-				sprintf(szTemp, szFormat, precision, value);
+				default:
+					// Huh? what was that?
+					p++;
+					break;
+				}
 			}
 			else
 			{
-				sprintf(szTemp, "%.*f", precision, value);
+				output->Append(*p++);
 			}
-			char* p = szTemp;
-			while (*p)
-			{
-				*buf++ = *p++;
-			}
-			*buf++ = '\0';
-			return (int)(p - szTemp);
 		}
+	}
 
-		// This floating point number formatter
-		template <typename T>
-		static int FormatDoubleG(T* buf, double value, int precision, T positiveSign)
+
+	// Helper to reverse a string (used by integer formatting)
+	template <typename T>
+	static int ReverseChars(T* pszStart, T* pszEnd)
+	{
+		// Reverse it
+		T* start = pszStart;
+		T* end = pszEnd - 1;
+		while (end > start)
 		{
-			char szTemp[512];
-			if (positiveSign != '\0')
-			{
-				char szFormat[10] = "%+.*g";
-				szFormat[1] = (char)positiveSign;
-				sprintf(szTemp, szFormat, precision, value);
-			}
-			else
-			{
-				sprintf(szTemp, "%.*g", precision, value);
-			}
-			char* p = szTemp;
-			while (*p)
-			{
-				*buf++ = *p++;
-			}
-			*buf++ = '\0';
-			return (int)(p - szTemp);
-		}
-	};
+			// swap
+			T temp = *start;
+			*start = *end;
+			*end = temp;
 
+			start++;
+			end--;
+		}
+
+		// Return the length
+		return (int)(pszEnd - pszStart);
+	}
+
+	// Format a signed integer
+	template <typename T, typename TInt>
+	static int FormatSigned(T* buf, TInt value, int padWidth, T positiveSign)
+	{
+		// Handle negative
+		bool negative = value < 0;
+
+		// Format tnumber
+		T* p = buf;
+		do
+		{
+			*p++ = '0' + (char)abs(value % 10);
+			value /= 10;
+		} while (value != 0);
+
+		while (p - buf < padWidth)
+		{
+			*p++ = '0';
+		}
+
+		// Put back the negative
+		if (negative)
+		{
+			*p++ = '-';
+		}
+		else if (positiveSign)
+		{
+			*p++ = positiveSign;
+		}
+		*p = '\0';
+
+		return ReverseChars(buf, p);
+	}
+
+	// Format an unsigned integer
+	template <typename T, typename TInt>
+	static int FormatUnsigned(T* buf, TInt value, int base, bool uppercase, int padWidth, bool prefix)
+	{
+		// Format tnumber
+		T* p = buf;
+		do
+		{
+			char ch = (char)(value % base) + '0';
+			if (ch > '9')
+				ch += (uppercase ? 'A' : 'a') - '9' - 1;
+			*p++ = ch;
+			value /= base;
+		} while (value != 0);
+
+		while (p - buf < padWidth)
+		{
+			*p++ = '0';
+		}
+
+		if (prefix)
+		{
+			if (base == 8)
+				*p++ = '0';
+			else if (base == 16)
+			{
+				*p++ = uppercase ? 'X' : 'x';
+				*p++ = '0';
+			}
+		}
+
+		*p = '\0';
+
+		return ReverseChars(buf, p);
+	}
+
+	// This floating point number formatter
+	template <typename T>
+	static int FormatDoubleF(T* buf, double value, int precision, T positiveSign)
+	{
+		char szTemp[512];
+		if (positiveSign != '\0')
+		{
+			char szFormat[10] = "%+.*f";
+			szFormat[1] = (char)positiveSign;
+			sprintf(szTemp, szFormat, precision, value);
+		}
+		else
+		{
+			sprintf(szTemp, "%.*f", precision, value);
+		}
+		char* p = szTemp;
+		while (*p)
+		{
+			*buf++ = *p++;
+		}
+		*buf++ = '\0';
+		return (int)(p - szTemp);
+	}
+
+	// This floating point number formatter
+	template <typename T>
+	static int FormatDoubleG(T* buf, double value, int precision, T positiveSign)
+	{
+		char szTemp[512];
+		if (positiveSign != '\0')
+		{
+			char szFormat[10] = "%+.*g";
+			szFormat[1] = (char)positiveSign;
+			sprintf(szTemp, szFormat, precision, value);
+		}
+		else
+		{
+			sprintf(szTemp, "%.*g", precision, value);
+		}
+		char* p = szTemp;
+		while (*p)
+		{
+			*buf++ = *p++;
+		}
+		*buf++ = '\0';
+		return (int)(p - szTemp);
+	}
+};
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 }
