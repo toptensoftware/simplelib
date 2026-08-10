@@ -28,6 +28,11 @@ public:
     {
         assert(m_file==nullptr);
 
+#ifdef _MSC_VER
+        if (shFlag == 0)
+            shFlag = _SH_DENYRW;
+#endif
+
         m_file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
         if (!m_file)
         {
@@ -40,6 +45,10 @@ public:
     // Create an instance and open the underlying file
     static FileStream* Create(const char* pszFileName, const char* pszMode, int shFlag = 0)
     {
+    #ifdef _MSC_VER
+        if (shFlag == 0)
+            shFlag = _SH_DENYRW;
+    #endif
         FILE* file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
         if (file)
             return new FileStream(file);

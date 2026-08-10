@@ -7,9 +7,23 @@ namespace SimpleLib
 
 // Implements an intrusive multi-producer, multi-consumer unbound lifo stack
 // Type `T` must have a member `T* next`
+//
+// The head is a tagged pointer (pointer + generation counter, CAS'd
+// together via 128-bit CAS) rather than a plain pointer, to avoid the ABA
+// problem: under high contention with few distinct nodes (the same handful
+// of nodes popped and pushed back repeatedly by many threads), a thread
+// can be delayed between reading a node and CASing it out, during which
+// another thread pops *and re-pushes* that same node - a plain pointer CAS
+// can't distinguish that from the original, and can succeed spuriously,
+// handing the same node out to two callers at once. The tag increments on
+// every successful CAS, so a stale compare can never match again even if
+// the pointer value cycles back.
 template <class T>
 class alignas(kCacheLineSize) MpmcStack
 {
+	using Head = AtomicTaggedPtr<T>;
+	using HeadValue = typename Head::Value;
+
 public:
 	// Constructor
 	MpmcStack()
@@ -24,7 +38,7 @@ public:
 	// Reset the list
 	void Reset()
 	{
-		m_pHead.Set(nullptr);
+		m_pHead.Set(HeadValue{ nullptr, 0 });
 		m_count.Set(0);
 	}
 
@@ -40,13 +54,13 @@ public:
 	{
 		assert(item != nullptr);
 		assert(item->next == nullptr);
-		
+
 		while (true)
 		{
-			T* oldHead = m_pHead.Get();
-			item->next = oldHead;
-			bool isFirst = oldHead == nullptr;
-			if (m_pHead.TrySet(item, oldHead))
+			HeadValue oldHead = m_pHead.Get();
+			item->next = oldHead.ptr;
+			bool isFirst = oldHead.ptr == nullptr;
+			if (m_pHead.TrySet(HeadValue{ item, oldHead.tag + 1 }, oldHead))
 			{
 				m_count.Inc();
 				return isFirst;
@@ -76,10 +90,10 @@ public:
 
 		while(true)
 		{
-			T* oldHead = m_pHead.Get();
-			last->next = oldHead;
-			bool isFirst = oldHead == nullptr;
-			if (m_pHead.TrySet(first, oldHead))
+			HeadValue oldHead = m_pHead.Get();
+			last->next = oldHead.ptr;
+			bool isFirst = oldHead.ptr == nullptr;
+			if (m_pHead.TrySet(HeadValue{ first, oldHead.tag + 1 }, oldHead))
 			{
 				m_count.Add(count);
 				return isFirst;
@@ -103,10 +117,10 @@ public:
 
 		while(true)
 		{
-			T* oldHead = m_pHead.Get();
-			last->next = oldHead;
-			bool isFirst = oldHead == nullptr;
-			if (m_pHead.TrySet(first, oldHead))
+			HeadValue oldHead = m_pHead.Get();
+			last->next = oldHead.ptr;
+			bool isFirst = oldHead.ptr == nullptr;
+			if (m_pHead.TrySet(HeadValue{ first, oldHead.tag + 1 }, oldHead))
 			{
 				m_count.Add(count);
 				return isFirst;
@@ -122,14 +136,15 @@ public:
 		while (true)
 		{
 			// Get the popped item
-			T* item = m_pHead.Get();
+			HeadValue oldHead = m_pHead.Get();
+			T* item = oldHead.ptr;
 
 			// Empty list?
 			if (item == nullptr)
 				return item;
 
 			// Update head
-			if (m_pHead.TrySet(item->next, item))
+			if (m_pHead.TrySet(HeadValue{ item->next, oldHead.tag + 1 }, oldHead))
 			{
 				nowEmpty = item->next == nullptr;
 				item->next = nullptr;
@@ -153,11 +168,11 @@ public:
 	{
 		while (true)
 		{
-			T* item = m_pHead.Get();
-			if (m_pHead.TrySet(nullptr, item))
+			HeadValue oldHead = m_pHead.Get();
+			if (m_pHead.TrySet(HeadValue{ nullptr, oldHead.tag + 1 }, oldHead))
 			{
 				m_count.Set(0);
-				return item;
+				return oldHead.ptr;
 			}
 		}
 	}
@@ -166,8 +181,8 @@ public:
 	// Implementation
 protected:
 
-	Atomic<T*> m_pHead;
-	char m_Pad1[kCacheLineSize - sizeof(Atomic<T*>)];
+	Head m_pHead;
+	char m_Pad1[kCacheLineSize - sizeof(Head)];
 	Atomic<int> m_count;
 };
 

@@ -5,26 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/test2/bin/debug/test2",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/test2",
-            "environment": [],
-            "console": "externalTerminal",
-            "MIMode": "gdb",
-            "preLaunchTask": "Build Test Cases",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
             "name": "(Windows) Launch",
             "type": "cppvsdbg",
             "request": "launch",

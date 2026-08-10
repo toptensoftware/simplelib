@@ -172,12 +172,14 @@ Fact("HighWaterHeapSet Concurrent Alloc Free Does Not Corrupt Data")
 	const int kIterations = 50000;
 	const size_t kAllocSize = 16;
 
-	// Small pool relative to the threads (each thread holds at most one
-	// allocation at a time, so worst case concurrent demand is
-	// kThreads * 32 bytes = 128 bytes, comfortably under a single bucket)
-	// but with small buckets so they fill and drain constantly - this is
-	// exactly the churn that exercises the active/reserve hand-off under
-	// real concurrency.
+	// Deliberately oversubscribed: 8 threads each wanting a 32-byte block
+	// (256 bytes worst case) against a pool with only 128 bytes of total
+	// capacity (2 buckets x 64 bytes), so buckets are constantly full,
+	// draining, and cycling between active/reserve/exclusive-local-owner
+	// under heavy contention - the specific pattern that used to trigger
+	// an ABA race in MpmcStack (see the dedicated MpmcStack tests). Threads
+	// that can't get a block just spin-retry (Alloc() is non-blocking), so
+	// this self-resolves as others free their blocks.
 	HighWaterHeapSet pool(2, 64);
 
 	std::atomic<bool> corrupted{ false };

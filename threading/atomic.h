@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string.h>
 #include "common.h"
     
 namespace SimpleLib
@@ -9,6 +10,7 @@ namespace SimpleLib
 #if defined(_WIN32)
 
 #include <Windows.h>
+#include <intrin.h>
 
 #pragma comment(lib, "synchronization.lib")
 
@@ -20,6 +22,19 @@ inline size_t atomicCompareExchange(volatile size_t* pval, size_t val, size_t co
 inline uint32_t atomicCompareExchange(volatile uint32_t* pval, uint32_t val, uint32_t compare)
 {
     return (uint32_t)InterlockedCompareExchange((volatile LONG*)pval, (LONG)val, (LONG)compare);
+}
+
+// 128-bit (double-width) CAS, used for ABA-safe tagged pointers (see
+// AtomicTaggedPtr below). Requires 16-byte alignment and a CPU supporting
+// CMPXCHG16B (every x64 CPU in practice). `pval128` is treated as two
+// consecutive 64-bit words {low, high}. On both success and failure,
+// *pval128 is left holding the actual current value - that's what makes
+// this usable for a lock-free 128-bit load too (CAS with exchange ==
+// comparand: a no-op if it happens to match, and either way the compare
+// buffer is updated to the true current value).
+inline bool atomicCompareExchange128(volatile long long* pval128, long long exchangeHigh, long long exchangeLow, long long* comparand /* [2]: {low, high}, updated in place */)
+{
+    return _InterlockedCompareExchange128(pval128, exchangeHigh, exchangeLow, comparand) != 0;
 }
 
 inline size_t atomicExchange(volatile size_t* pval, size_t val)
@@ -148,6 +163,23 @@ inline uint32_t atomicCompareExchange(volatile uint32_t* pval, uint32_t val, uin
 {
     __atomic_compare_exchange_n(pval, &compare, val, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
     return compare;
+}
+
+// 128-bit (double-width) CAS, used for ABA-safe tagged pointers (see
+// AtomicTaggedPtr below). Requires 16-byte alignment and -mcx16 (CMPXCHG16B)
+// on x86-64; __int128 is a GCC/Clang extension available on 64-bit targets.
+typedef unsigned __int128 uint128_t;
+
+inline bool atomicCompareExchange128(volatile uint128_t* pval128, uint128_t val, uint128_t compare, uint128_t* actual)
+{
+    bool success = __atomic_compare_exchange_n(pval128, &compare, val, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    *actual = compare; // updated to the true current value on failure; on success it's unchanged (still the value we matched)
+    return success;
+}
+
+inline uint128_t atomicLoad128(volatile uint128_t* pval128)
+{
+    return __atomic_load_n(pval128, __ATOMIC_SEQ_CST);
 }
 
 inline size_t atomicExchange(volatile size_t* pval, size_t val)
@@ -363,6 +395,78 @@ public:
         futexWakeAll(&m_val);
     }
 
+};
+
+
+// A pointer paired with a monotonically incrementing generation tag, CAS'd
+// together as a single 128-bit value. Plain pointer CAS can't tell "the
+// same node I originally saw" from "that address, again, because it was
+// popped and pushed back onto the stack while I was delayed between
+// reading it and executing my CAS" (the ABA problem) - the tag changes on
+// every successful TrySet, so a stale compare can never spuriously match
+// even if the pointer cycles back to a previous value. Used for
+// MpmcStack's head pointer, which reuses the same handful of nodes under
+// high contention.
+template <typename T>
+class AtomicTaggedPtr
+{
+public:
+    struct Value
+    {
+        T* ptr = nullptr;
+        uint64_t tag = 0;
+
+        bool operator==(const Value& other) const { return ptr == other.ptr && tag == other.tag; }
+        bool operator!=(const Value& other) const { return !(*this == other); }
+    };
+
+    static_assert(sizeof(Value) == 16, "Value must pack to exactly 16 bytes for 128-bit CAS");
+
+    AtomicTaggedPtr() = default;
+    AtomicTaggedPtr(const AtomicTaggedPtr&) = delete;
+    AtomicTaggedPtr& operator=(const AtomicTaggedPtr&) = delete;
+
+    Value Get() const
+    {
+#if defined(_WIN32)
+        long long cmp[2] = { 0, 0 };
+        atomicCompareExchange128((volatile long long*)&m_val, 0, 0, cmp);
+        Value v;
+        memcpy(&v, cmp, sizeof(v));
+        return v;
+#else
+        uint128_t raw = atomicLoad128((volatile uint128_t*)&m_val);
+        Value v;
+        memcpy(&v, &raw, sizeof(v));
+        return v;
+#endif
+    }
+
+    // Returns true if the value was `compare` and has been changed to `val`
+    bool TrySet(Value val, Value compare)
+    {
+#if defined(_WIN32)
+        long long ex[2], cmp[2];
+        memcpy(ex, &val, sizeof(ex));
+        memcpy(cmp, &compare, sizeof(cmp));
+        return atomicCompareExchange128((volatile long long*)&m_val, ex[1], ex[0], cmp);
+#else
+        uint128_t ex, cmp, actual;
+        memcpy(&ex, &val, sizeof(ex));
+        memcpy(&cmp, &compare, sizeof(cmp));
+        return atomicCompareExchange128((volatile uint128_t*)&m_val, ex, cmp, &actual);
+#endif
+    }
+
+    // Non-atomic - only safe when no other thread can be concurrently
+    // accessing this instance (eg: during Reset())
+    void Set(Value val)
+    {
+        m_val = val;
+    }
+
+private:
+    alignas(16) Value m_val;
 };
 
 

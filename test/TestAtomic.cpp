@@ -156,3 +156,109 @@ Fact("Atomic Wait WakeAll Wakes Multiple Waiters")
 
 	Assert(woken == 4);
 }
+
+Fact("AtomicTaggedPtr Get Reflects Initial State")
+{
+	AtomicTaggedPtr<int> p;
+	auto v = p.Get();
+	Assert(v.ptr == nullptr);
+	Assert(v.tag == 0);
+}
+
+Fact("AtomicTaggedPtr TrySet Succeeds When Value Matches")
+{
+	AtomicTaggedPtr<int> p;
+	int x = 1;
+
+	auto old = p.Get();
+	Assert(p.TrySet({ &x, old.tag + 1 }, old));
+
+	auto now = p.Get();
+	Assert(now.ptr == &x);
+	Assert(now.tag == old.tag + 1);
+}
+
+Fact("AtomicTaggedPtr TrySet Fails When Pointer Differs")
+{
+	AtomicTaggedPtr<int> p;
+	int x = 1, y = 2;
+
+	AtomicTaggedPtr<int>::Value stale{ &x, 0 };	// never actually set
+	Assert(!p.TrySet({ &y, 1 }, stale));
+	Assert(p.Get().ptr == nullptr);	// unchanged
+}
+
+Fact("AtomicTaggedPtr TrySet Fails On Stale Tag Even When Pointer Matches")
+{
+	// This is the whole point of the tag: after the pointer cycles back to
+	// a value a delayed thread already saw (pop then re-push, same
+	// address), a compare using the OLD tag must not match the new state,
+	// even though the pointer half is identical - this is exactly what
+	// defeats the ABA race that plain pointer CAS can't.
+	AtomicTaggedPtr<int> p;
+	int x = 1;
+
+	auto gen0 = p.Get();							// {nullptr, 0}
+	Assert(p.TrySet({ &x, gen0.tag + 1 }, gen0));	// -> {&x, 1}
+
+	auto gen1 = p.Get();
+	Assert(p.TrySet({ nullptr, gen1.tag + 1 }, gen1));	// -> {nullptr, 2}
+
+	auto gen2 = p.Get();
+	Assert(p.TrySet({ &x, gen2.tag + 1 }, gen2));	// -> {&x, 3} - pointer cycled back to &x
+
+	// A thread holding the STALE {&x, 1} snapshot from earlier must fail,
+	// even though the pointer half matches the current value
+	Assert(!p.TrySet({ nullptr, 99 }, gen0));
+	Assert(p.Get().ptr == &x);
+	Assert(p.Get().tag == 3);
+}
+
+Fact("AtomicTaggedPtr Set Is Non Atomic Overwrite")
+{
+	AtomicTaggedPtr<int> p;
+	int x = 1;
+	p.Set({ &x, 5 });
+
+	auto v = p.Get();
+	Assert(v.ptr == &x);
+	Assert(v.tag == 5);
+}
+
+Fact("AtomicTaggedPtr Concurrent TrySet Never Loses An Update")
+{
+	// Many threads race to increment the tag from a known starting value;
+	// exactly one TrySet should succeed per generation, so after N total
+	// successful attempts the tag must have advanced by exactly N with no
+	// lost updates.
+	AtomicTaggedPtr<int> p;
+	int x = 1;
+	p.Set({ &x, 0 });
+
+	const int kThreads = 8;
+	const int kIncrementsPerThread = 20000;
+	std::atomic<int> totalSucceeded{ 0 };
+
+	std::thread threads[kThreads];
+	for (int t = 0; t < kThreads; t++)
+	{
+		threads[t] = std::thread([&]() {
+			int done = 0;
+			while (done < kIncrementsPerThread)
+			{
+				auto cur = p.Get();
+				if (p.TrySet({ &x, cur.tag + 1 }, cur))
+				{
+					done++;
+					totalSucceeded++;
+				}
+			}
+		});
+	}
+	for (auto& th : threads)
+		th.join();
+
+	Assert(totalSucceeded == kThreads * kIncrementsPerThread);
+	Assert(p.Get().tag == (uint64_t)(kThreads * kIncrementsPerThread));
+	Assert(p.Get().ptr == &x);
+}

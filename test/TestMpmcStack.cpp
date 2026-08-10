@@ -615,3 +615,84 @@ Fact("MpmcStack Two Stacks Sharing Nodes Never Double Checks Out A Node")
 
 	Assert(!doubleCheckout);
 }
+
+Fact("MpmcStack Mixed Push PushMany And Pop Never Double Checks Out A Node")
+{
+	// m_activeBuckets in HighWaterHeapSet receives BOTH single-item Push()
+	// (from the reserve-fallback path) AND multi-item PushMany() (from the
+	// tried-buckets paths) concurrently, while also being Pop()'d
+	// concurrently. Every other test here only exercises two of these
+	// three operations at once on a shared stack - this mixes all three.
+	struct GuardedNode
+	{
+		GuardedNode* next = nullptr;
+		std::atomic<int> owned{ 0 };
+	};
+
+	const int kNodeCount = 3;
+	const int kThreads = 8;
+	const int kIterationsPerThread = 60000;
+
+	MpmcStack<GuardedNode> s;
+	std::vector<GuardedNode> nodes(kNodeCount);
+	for (auto& n : nodes)
+		s.Push(&n);
+
+	std::atomic<bool> doubleCheckout{ false };
+
+	std::thread threads[kThreads];
+	for (int t = 0; t < kThreads; t++)
+	{
+		threads[t] = std::thread([&, t]() {
+			bool useSingle = (t % 2) == 0;
+			for (int i = 0; i < kIterationsPerThread; i++)
+			{
+				// Pop up to 2 nodes so PushMany has something to chain
+				GuardedNode* a = s.Pop();
+				if (!a)
+					continue;
+				int old = a->owned.exchange(1);
+				if (old != 0)
+					doubleCheckout = true;
+
+				GuardedNode* b = s.Pop();
+				if (b)
+				{
+					old = b->owned.exchange(1);
+					if (old != 0)
+						doubleCheckout = true;
+				}
+
+				std::this_thread::yield();
+
+				old = a->owned.exchange(0);
+				if (old != 1)
+					doubleCheckout = true;
+				if (b)
+				{
+					old = b->owned.exchange(0);
+					if (old != 1)
+						doubleCheckout = true;
+				}
+
+				if (useSingle || !b)
+				{
+					s.Push(a);
+					if (b)
+						s.Push(b);
+				}
+				else
+				{
+					a->next = b;
+					b->next = nullptr;
+					s.PushMany(a);
+				}
+			}
+		});
+	}
+
+	for (auto& th : threads)
+		th.join();
+
+	Assert(!doubleCheckout);
+}
