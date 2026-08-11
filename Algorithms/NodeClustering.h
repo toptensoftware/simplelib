@@ -15,6 +15,11 @@ public:
 
 	~NodeClustering()
 	{
+		// Free whichever ClusterInfo instances survived to the end without
+		// being absorbed by a merge (see MergeClusters, which frees the
+		// ones that do get absorbed).
+		for (auto iter = m_allClusters.Iterate(); iter.Next(); )
+			delete iter.Get();
 	}
 
 	// Client supplied nodes that need to be clustered
@@ -37,7 +42,7 @@ public:
 		List<Cluster*> succs;
 
 		// Number of precedent clusters
-		int predCount;
+		int predCount = 0;
 	};
 
 	class Plan
@@ -68,15 +73,15 @@ public:
 		// Build initial clusters
 		auto sinkCluster = BuildInitialClusters(sinkNodeInfo, nullptr);
 
-		// Find all leaf clusters
-		Set<ClusterInfo*> leaves;
-		FindLeafClusters(leaves, sinkCluster);
-
 		// Compute top levels
 		ComputeTopLevel(sinkCluster);
 
-		// Compute bottom levels
-		for (auto iter = leaves.Iterate(); iter.Next();)
+		// Compute bottom levels. ComputeBottomLevel is memoized (guarded by
+		// bottomLevel < 0), so it's safe and cheap to just kick it off from
+		// every cluster - m_allClusters is exactly the live cluster set at
+		// this point, no need to separately hunt for "leaf" (root) clusters
+		// to seed from.
+		for (auto iter = m_allClusters.Iterate(); iter.Next();)
 			ComputeBottomLevel(iter.Get());
 
 		// Build a list of all edges sorted by summed top/bottom level
@@ -130,9 +135,13 @@ public:
 			}
 		}
 
-		// Create the plan
+		// Create the plan.
+		// Note: sinkCluster may have been merged (and freed) into another
+		// cluster during the merge pass above - sinkNodeInfo->cluster is
+		// kept up to date by every merge, so use that instead of the
+		// possibly-stale sinkCluster pointer.
 		Plan* plan = new Plan();
-		Finalize(plan, sinkCluster);
+		Finalize(plan, sinkNodeInfo->cluster);
 
 		return plan;
 	}
@@ -160,7 +169,7 @@ protected:
 		Set<ClusterInfo*> preds;
 		Set<ClusterInfo*> succs;
 		Set<NodeInfo*> nodes;
-		int topLevel = 0;
+		int topLevel = -1;
 		int bottomLevel = -1;
 
 		void AddNode(NodeInfo* pNode)
@@ -204,6 +213,18 @@ protected:
 
 	Map<INode*, OwnedPtr<NodeInfo>> m_nodeInfos;
 	Set<ClusterInfo*> m_dirtyClusters;
+	Set<ClusterInfo*> m_allClusters;
+
+	// Scratch collections for CanReach, reused across calls (it's called
+	// extremely frequently from ReadyWidth) to avoid repeatedly
+	// allocating/freeing their internal storage - Clear() resets contents
+	// but keeps the underlying capacity
+	Set<ClusterInfo*> m_canReachVisited;
+	List<ClusterInfo*> m_canReachStack;
+
+	// Same, for IsMergeCyclic (called once per candidate merge edge)
+	Set<ClusterInfo*> m_mergeCyclicVisited;
+	List<ClusterInfo*> m_mergeCyclicStack;
 
 	NodeInfo* GetNodeInfo(INode* node)
 	{
@@ -211,11 +232,16 @@ protected:
 		NodeInfo* ni = m_nodeInfos.Get(node, nullptr);
 		if (ni != nullptr)
 		{
-			// If this trips it means there's a circular reference
-			if (ni->node == node)
+			// ni->node is only set once this node's precedents have all
+			// finished being processed (see below). If it's still null here,
+			// we've recursed back into a node that's still being built
+			// further up the call stack - a genuine circular reference.
+			// Otherwise, this is just a diamond/shared-precedent (fan-in)
+			// node that's already been fully built - not a cycle.
+			if (ni->node == nullptr)
 			{
 				// Circular?
-				assert(ni->node == node);
+				assert(ni->node == nullptr);
 				return nullptr;
 			}
 
@@ -257,7 +283,16 @@ protected:
 		}
 
 		// Which cluster?
-		ClusterInfo* pCluster = into == nullptr ? new ClusterInfo() : into;
+		ClusterInfo* pCluster;
+		if (into == nullptr)
+		{
+			pCluster = new ClusterInfo();
+			m_allClusters.Add(pCluster);
+		}
+		else
+		{
+			pCluster = into;
+		}
 
 		// Add this node to the cluster
 		pCluster->AddNode(node);
@@ -288,19 +323,6 @@ protected:
 
 		// Return the cluster
 		return pCluster;
-	}
-
-	void FindLeafClusters(Set<ClusterInfo*>& leaves, ClusterInfo* cluster)
-	{
-		if (cluster->preds.IsEmpty())
-		{
-			leaves.Add(cluster);
-		}
-		else
-		{
-			for (auto iter = cluster->preds.Iterate(); iter.Next(); )
-				FindLeafClusters(leaves, iter.Get());
-		}
 	}
 
 	int ComputeTopLevel(ClusterInfo* cluster)
@@ -355,8 +377,8 @@ protected:
 	// of merges can make the *cluster* graph cyclic — classic pitfall)
 	bool IsMergeCyclic(ClusterInfo* A, ClusterInfo* B)
 	{
-		Set<ClusterInfo*> visited;
-		List<ClusterInfo*> stack;
+		m_mergeCyclicVisited.Clear();
+		m_mergeCyclicStack.Clear();
 
 		// Start from A's dependents, excluding the direct A->B edge(s).
 		// If B is still reachable via some OTHER path, contracting A and B
@@ -366,28 +388,43 @@ protected:
 		{
 			ClusterInfo* s = iter.Get();
 			if (s != B)
-				stack.Push(s);
+				m_mergeCyclicStack.Push(s);
 		}
 
-		while (!stack.IsEmpty())
+		while (!m_mergeCyclicStack.IsEmpty())
 		{
-			ClusterInfo* c = stack.Pop();
+			ClusterInfo* c = m_mergeCyclicStack.Pop();
 			if (c == B)
 				return true;		// alternate path found -> cycle
 
-			if (visited.Contains(c))
+			if (m_mergeCyclicVisited.Contains(c))
 				continue;
-			visited.Add(c);
+			m_mergeCyclicVisited.Add(c);
 
-			stack.AddMany(c->succs);
+			m_mergeCyclicStack.AddMany(c->succs);
 		}
 		return false;	// no alternate path -> safe to merge
 	}
+
+	// Above this many precedents, the exact O(k^2) ancestor check below
+	// (each check itself a graph walk) gets too expensive to run on every
+	// candidate edge - fall back to the cheap approximation instead.
+	static const int readyWidthPrecisionLimit = 12;
 
 	// How many mutually-independent precedent clusters
 	// feed this cluster (i.e. could genuinely run concurrently)
 	int ReadyWidth(ClusterInfo* cluster)
 	{
+		int predCount = cluster->preds.GetCount();
+		if (predCount > readyWidthPrecisionLimit)
+		{
+			// Cheap approximation: just count distinct pred clusters,
+			// without filtering out ones that are transitively ancestors
+			// of another (may overcount width for large fan-in points,
+			// but stays cheap where it matters most)
+			return predCount;
+		}
+
 		Set<ClusterInfo*> independent;
 		for (auto i = cluster->preds.Iterate(); i.Next(); )
 		{
@@ -409,26 +446,23 @@ protected:
 		}
 
 		return independent.GetCount();
-
-		// cheap approximation: skip the inner ancestor check and just
-		// count distinct pred clusters if perf matters more than precision
 	}
 
 
 	bool CanReach(ClusterInfo* p, ClusterInfo* q)
 	{
-		Set<ClusterInfo*> visited;
-		List<ClusterInfo*> stack;
-		stack.Push(p);
-		while (!stack.IsEmpty())
+		m_canReachVisited.Clear();
+		m_canReachStack.Clear();
+		m_canReachStack.Push(p);
+		while (!m_canReachStack.IsEmpty())
 		{
-			ClusterInfo* c = stack.Pop();
+			ClusterInfo* c = m_canReachStack.Pop();
 			if (c == q)
 				return true;
-			if (visited.Contains(c))
+			if (m_canReachVisited.Contains(c))
 				continue;
-			visited.Add(c);
-			stack.AddMany(c->succs);
+			m_canReachVisited.Add(c);
+			m_canReachStack.AddMany(c->succs);
 		}
 		return false;
 	}
@@ -454,7 +488,21 @@ protected:
 		ClusterInfo* B = (ClusterInfo*)v->cluster;
 
 		int mergedWeight = A->weight + B->weight;
+
+		// The merged cluster inherits ALL of B's precedents, not just A -
+		// under the runtime's atomic per-cluster dispatch (a cluster only
+		// starts once every one of its precedent clusters has completed),
+		// it can't start until every one of them is done, not just A.
 		int newTopLevel = A->topLevel;
+		for (auto iter = B->preds.Iterate(); iter.Next(); )
+		{
+			ClusterInfo* pred = iter.Get();
+			if (pred == A)
+				continue;
+			int w = pred->topLevel + pred->weight + dispatchOverhead;
+			if (w > newTopLevel)
+				newTopLevel = w;
+		}
 
 		int newBottomLevel = 0;
 		for (auto iter = B->succs.Iterate(); iter.Next(); )
@@ -507,7 +555,19 @@ protected:
 		target->succs.Remove(source);
 		m_dirtyClusters.Add(target);
 
+		// target's weight just changed, which every one of its successors'
+		// topLevel depends on (pred->weight in UpdateTopLevel) - but the
+		// forward-pass propagation in RecomputeLevels only re-visits a
+		// cluster's successors when that cluster's own topLevel changes,
+		// not when its weight does. A successor untouched by the fixups
+		// above (i.e. one target already had before this merge, unrelated
+		// to source) would otherwise silently keep a stale topLevel. Mark
+		// them all dirty explicitly so they get recomputed too.
+		for (auto iter = target->succs.Iterate(); iter.Next(); )
+			m_dirtyClusters.Add(iter.Get());
+
 		// Remove and delete the no longer used cluster
+		m_allClusters.Remove(source);
 		delete source;
 	}
 
@@ -652,20 +712,6 @@ protected:
 
 		assert(pCluster->nodes.GetCount() == sorted.GetCount());
 		return sorted;
-	}
-
-	void TryMergeNodes(NodeInfo* target, NodeInfo* source)
-	{
-		// Already in same cluster?
-		if (target->cluster == source->cluster)
-			return;
-
-		// Don't create cycles
-		if (IsMergeCyclic((ClusterInfo*)target->cluster, (ClusterInfo*)source->cluster))
-			return;
-
-		// Merge
-		MergeClusters((ClusterInfo*)target->cluster, (ClusterInfo*)source->cluster);
 	}
 
 	Cluster* Finalize(Plan* plan, ClusterInfo* cluster)

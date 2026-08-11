@@ -65,7 +65,17 @@ namespace SimpleLib
 		template <typename T>
 		static uint32_t Hash(T* a)   // catches all pointer types via a separate template overload
 		{
-			return Hash((size_t)a);
+			// Pointers aren't arbitrary bit patterns like the general
+			// integer case above: heap allocations are alignment-rounded
+			// (low bits are always zero) and, within one process, the high
+			// bits are typically constant (single ASLR base) - the real
+			// entropy lives in a fairly narrow middle band. A single
+			// multiplicative (golden ratio) hash after dropping the
+			// known-zero alignment bits spreads that well without needing
+			// hash64's full general-purpose avalanche mixer.
+			uint64_t x = (uint64_t)a >> 4;
+			x *= 0x9E3779B97F4A7C15ULL;
+			return (uint32_t)(x >> 32);
 		}
 	};
 
