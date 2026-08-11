@@ -193,11 +193,11 @@ protected:
 		NodeInfo* from;
 		NodeInfo* to;
 
-		static int __cdecl CompareByLevel(OwnedPtr<Edge> const& a, OwnedPtr<Edge> const& b)
+		static int __cdecl CompareByLevel(Edge* a, Edge* b)
 		{
 			// descending order
-			return (((ClusterInfo*)b->from->cluster)->bottomLevel + ((ClusterInfo*)b->to->cluster)->topLevel) -
-				(((ClusterInfo*)a->from->cluster)->bottomLevel + ((ClusterInfo*)a->to->cluster)->topLevel);
+			return (b->from->cluster->bottomLevel + b->to->cluster->topLevel) -
+				(a->from->cluster->bottomLevel + a->to->cluster->topLevel);
 		}
 
 	};
