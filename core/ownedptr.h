@@ -76,7 +76,15 @@ namespace SimpleLib
 			return _ptr != nullptr;
 		}
 
-		using TSemantics = SValue<T*>; 
+
+		class TSemantics
+		{
+		public:
+			typedef T* TArg;
+			typedef OwnedPtr<T> TStorage;
+
+			static T* Detach(OwnedPtr<T>& storage) { return storage.Detach(); }
+		};
 
 	private:
 		T* _ptr	;

@@ -13,6 +13,7 @@ class Set
 {
     typedef typename get_semantics<T>::TSemantics TSemantics;
     typedef typename TSemantics::TArg TArg;
+    typedef typename TSemantics::TStorage TStorage;
 public: 
     // Constructor
     Set()
@@ -55,7 +56,7 @@ public:
     }
 
     // Set a key to a value, replaces if already exists
-    void Add(const TArg& Key)
+    void Add(TArg Key)
     {
         void* pValue;
         void* pKey;
@@ -63,8 +64,8 @@ public:
         if (core.Add(&Key, true, pKey, pValue, &bExisted))
         {
             if (bExisted)
-                Destructor((T*)pKey);
-            Constructor((T*)pKey, Key);
+                Destructor((TStorage*)pKey);
+            Constructor((TStorage*)pKey, Key);
         }
     }
 
@@ -79,13 +80,13 @@ public:
 
 
     // Remove an item from the Set
-    bool Remove(const TArg& Key)
+    bool Remove(TArg Key)
     {
         void* pOldKey;
         void* pOldValue;
         if (core.Remove(&Key, pOldKey, pOldValue))
         {
-            Destructor((T*)pOldKey);
+            Destructor((TStorage*)pOldKey);
             return true;
         }
         return false;
@@ -101,7 +102,7 @@ public:
             void* pValue;
             if (core.get_table_entry(i, pKey, pValue))
             {
-                Destructor((T*)pKey);
+                Destructor((TStorage*)pKey);
             }
         }
         core.Clear();
@@ -110,7 +111,7 @@ public:
     class Iter
     {
     public:
-        const T& Get() { return *_key; };
+        const TArg Get() { return *_key; };
 
         bool Next() { return _owner->GetNext(*this); }
 
@@ -131,7 +132,7 @@ public:
             _key = other._key;
         }
 
-        const T* _key = nullptr;
+        const TStorage* _key = nullptr;
         const Set* _owner;
         int _pos = -1;
         int _version = 0;
@@ -167,7 +168,7 @@ public:
                 void* value;
                 if (core.get_table_entry(iter._pos, key, value))
                 {
-                    iter._key = (T*)key;
+                    iter._key = (TStorage*)key;
                     return true;
                 }
                 iter._pos++;
@@ -182,7 +183,7 @@ public:
                 void* value;
                 if (core.get_table_entry(iter._pos, key, value))
                 {
-                    iter._key = (T*)key;
+                    iter._key = (TStorage*)key;
                     return true;
                 }
                 iter._pos--;
@@ -192,7 +193,7 @@ public:
     }
 
     // Check if a Set contains a key
-    bool Contains(const TArg& Key) const
+    bool Contains(TArg Key) const
     {
         return core.Find(&Key) != nullptr;
     }
@@ -234,7 +235,7 @@ private:
     {
     public:
         Core() :
-            HashCore(sizeof(T), 0)
+            HashCore(sizeof(TStorage), 0)
         {
         };
         virtual ~Core()
@@ -255,11 +256,11 @@ private:
         }
         virtual uint32_t HashKey(const void* a) const override
         {
-            return TCompare::Hash(*(const T*)a);
+            return TCompare::Hash(*(const TStorage*)a);
         }
         virtual bool KeyEq(const void* a, const void* b) const override
         {
-            return TCompare::AreEqual(*(const T*)a, *(const T*)b);
+            return TCompare::AreEqual(*(const TStorage*)a, *(const TStorage*)b);
         }
     };
     Core core;

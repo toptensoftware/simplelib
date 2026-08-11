@@ -13,8 +13,10 @@ class Map
 {
     typedef typename get_semantics<TKey>::TSemantics TKeySemantics;
     typedef typename TKeySemantics::TArg TKeyArg;
+    typedef typename TKeySemantics::TStorage TKeyStorage;
     typedef typename get_semantics<TValue>::TSemantics TValueSemantics;
     typedef typename TValueSemantics::TArg TValueArg;
+    typedef typename TValueSemantics::TStorage TValueStorage;
 public: 
     // Constructor
     Map()
@@ -56,26 +58,26 @@ public:
     }
 
     // Add a new key to map, asserts if already exists
-    void Add(const TKeyArg& Key, const TValueArg& Value)
+    void Add(TKeyArg Key, TValueArg Value)
     {
         AddInternal(Key, Value, false);
     }
 
     // Set a key to a value, replaces if already exists
-    void Set(const TKeyArg& Key, const TValueArg& Value)
+    void Set(TKeyArg Key, TValueArg Value)
     {
         AddInternal(Key, Value, true);
     }
 
     // Remove an item from the map
-    bool Remove(const TKeyArg& Key)
+    bool Remove(TKeyArg Key)
     {
         void* pOldKey;
         void* pOldValue;
         if (core.Remove(&Key, pOldKey, pOldValue))
         {
-            Destructor((TKey*)pOldKey);
-            Destructor((TValue*)pOldValue);
+            Destructor((TKeyStorage*)pOldKey);
+            Destructor((TValueStorage*)pOldValue);
             return true;
         }
         return false;
@@ -91,8 +93,8 @@ public:
             void* pValue;
             if (core.get_table_entry(i, pKey, pValue))
             {
-                Destructor((TKey*)pKey);
-                Destructor((TValue*)pValue);
+                Destructor((TKeyStorage*)pKey);
+                Destructor((TValueStorage*)pValue);
             }
         }
         core.Clear();
@@ -101,8 +103,8 @@ public:
     class Iter
     {
     public:
-        const TKey& GetKey() { return *_key; };
-        const TValue& GetValue() { return *_value; }
+        TKeyArg GetKey() { return *_key; };
+        TValueArg GetValue() { return *_value; }
 
         bool Next() { return _owner->GetNext(*this); }
 
@@ -124,8 +126,8 @@ public:
             _value = other._value;
         }
 
-        const TKey* _key = nullptr;
-        const TValue* _value = nullptr;
+        const TKeyStorage* _key = nullptr;
+        const TValueStorage* _value = nullptr;
         Map* _owner;
         int _pos = -1;
         int _version = 0;
@@ -161,8 +163,8 @@ public:
                 void* value;
                 if (core.get_table_entry(iter._pos, key, value))
                 {
-                    iter._key = (TKey*)key;
-                    iter._value = (TValue*)value;
+                    iter._key = (TKeyStorage*)key;
+                    iter._value = (TValueStorage*)value;
                     return true;
                 }
                 iter._pos++;
@@ -177,8 +179,8 @@ public:
                 void* value;
                 if (core.get_table_entry(iter._pos, key, value))
                 {
-                    iter._key = (TKey*)key;
-                    iter._value = (TValue*)value;
+                    iter._key = (TKeyStorage*)key;
+                    iter._value = (TValueStorage*)value;
                     return true;
                 }
                 iter._pos--;
@@ -188,9 +190,9 @@ public:
     }
 
 
-    List<TKey> GetKeys()
+    List<TKeyArg> GetKeys()
     {
-        List<TKey> r;
+        List<TKeyArg> r;
         for (auto iter = Iterate(); iter.Next(); )
         {
             r.Add(iter.GetKey());
@@ -198,9 +200,9 @@ public:
         return r;
     }
 
-    List<TValue> GetValues()
+    List<TValueArg> GetValues()
     {
-        List<TValue> r;
+        List<TValueArg> r;
         for (auto iter = Iterate(); iter.Next(); )
         {
             r.Add(iter.GetValue());
@@ -210,23 +212,23 @@ public:
 
 
     // Get an item from the map, assert if not found
-    const TValue& Get(const TKeyArg& Key) const
+    TValueArg Get(TKeyArg Key) const
     {
-        const TValue* val = (const TValue*)core.Find(&Key);
+        const TValueStorage* val = (const TValueStorage*)core.Find(&Key);
         assert(val != nullptr);
         return *val;
     }
 
     // Shortcut to above
-    const TValue& operator[](const TKeyArg& key) const
+    TValueArg operator[](TKeyArg key) const
     {
         return Get(key);
     }
 
     // Get an item from the map, return default if doesn't exist
-    const TValue& Get(const TKeyArg& Key, const TValueArg& Default) const
+    TValueArg Get(TKeyArg Key, TValueArg Default) const
     {
-        const TValue* val = (const TValue*)core.Find(&Key);
+        const TValueStorage* val = (const TValueStorage*)core.Find(&Key);
         if (val)
         {
             return *val;
@@ -235,20 +237,19 @@ public:
     }
 
     // Find an item in the map and return true/false if found or not
-    bool TryGetValue(const TKeyArg& Key, TValue& Value) const
+    bool TryGetValue(TKeyArg Key, TValueArg& Value) const
     {
-        const TValue* val = (const TValue*)core.Find(&Key);
+        const TValueStorage* val = (const TValueStorage*)core.Find(&Key);
         if (val)
         {
-            Destructor(&Value);
-            Constructor(&Value, *val);
+            Value = *val;
             return true;
         }
         return false;
     }
 
     // Check if a map contains a key
-    bool ContainsKey(const TKeyArg& Key) const
+    bool ContainsKey(TKeyArg Key) const
     {
         return core.Find(&Key) != nullptr;
     }
@@ -259,7 +260,7 @@ private:
     {
     public:
         Core() :
-            HashCore(sizeof(TKey), sizeof(TValue))
+            HashCore(sizeof(TKeyStorage), sizeof(TValueStorage))
         {
         };
         virtual ~Core()
@@ -280,18 +281,18 @@ private:
         }
         virtual uint32_t HashKey(const void* a) const override
         {
-            return TKeyCompare::Hash(*(const TKey*)a);
+            return TKeyCompare::Hash(*(const TKeyStorage*)a);
         }
         virtual bool KeyEq(const void* a, const void* b) const override
         {
-            return TKeyCompare::AreEqual(*(const TKey*)a, *(const TKey*)b);
+            return TKeyCompare::AreEqual(*(const TKeyStorage*)a, *(const TKeyStorage*)b);
         }
     };
     Core core;
 
 private:
     // Internal helper to add item to map
-    void AddInternal(const TKeyArg& Key, const TValueArg& Value, bool replace)
+    void AddInternal(TKeyArg Key, TValueArg Value, bool replace)
     {
         void* pValue;
         void* pKey;
@@ -300,11 +301,11 @@ private:
         {
             if (bExisted)
             {
-                Destructor((TKey*)pKey);
-                Destructor((TValue*)pValue);
+                Destructor((TKeyStorage*)pKey);
+                Destructor((TValueStorage*)pValue);
             }
-            Constructor((TKey*)pKey, Key);
-            Constructor((TValue*)pValue, Value);
+            Constructor((TKeyStorage*)pKey, Key);
+            Constructor((TValueStorage*)pValue, Value);
         }
     }
 };

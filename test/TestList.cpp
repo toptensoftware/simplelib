@@ -16,12 +16,12 @@ public:
 	inline static int s_iInstances = 0;
 };
 
-static int CompareInts(const int& a, const int& b)
+static int CompareInts(int a, int b)
 {
 	return a > b ? 1 : a < b ? -1 : 0;
 }
 
-static int CompareIntsWithContext(const int& a, const int& b, void* pUser)
+static int CompareIntsWithContext(int a, int b, void* pUser)
 {
 	int iSign = *(int*)pUser;
 	return (a > b ? 1 : a < b ? -1 : 0) * iSign;

@@ -20,6 +20,7 @@ class List
 {
 	typedef typename get_semantics<T>::TSemantics TSemantics;
 	typedef typename TSemantics::TArg TArg;
+	typedef typename TSemantics::TStorage TStorage;
 
 	public:
 	// Constructor
@@ -31,8 +32,8 @@ class List
 	virtual ~List()
 	{
 		Clear();
-		if (m_pData)
-			free(m_pData);
+		if (m_data)
+			free(m_data);
 	}
 
 	// No copy
@@ -42,13 +43,13 @@ class List
 	// Move
 	List(List&& other)
 	{
-		m_iCount = other.m_iCount;
-		m_iCapacity = other.m_iCapacity;
-		m_pData = other.m_pData;
+		m_count = other.m_count;
+		m_capacity = other.m_capacity;
+		m_data = other.m_data;
 
-		other.m_pData = nullptr;
-		other.m_iCapacity = 0;
-		other.m_iCount = 0;
+		other.m_data = nullptr;
+		other.m_capacity = 0;
+		other.m_count = 0;
 	}
 
 	// Move
@@ -57,15 +58,15 @@ class List
 		if (this == &other)
 			return *this;
 
-		delete[] m_pData;
+		delete[] m_data;
 
-		m_iCount = other.m_iCount;
-		m_iCapacity = other.m_iCapacity;
-		m_pData = other.m_pData;
+		m_count = other.m_count;
+		m_capacity = other.m_capacity;
+		m_data = other.m_data;
 
-		other.m_pData = nullptr;
-		other.m_iCapacity = 0;
-		other.m_iCount = 0;
+		other.m_data = nullptr;
+		other.m_capacity = 0;
+		other.m_count = 0;
 
 		return *this;    
 	}
@@ -74,7 +75,7 @@ class List
 	void SetCapacity(int iRequiredCapacity)
 	{
 		// Quit if already big enough
-		if (iRequiredCapacity <= m_iCapacity)
+		if (iRequiredCapacity <= m_capacity)
 			return;
 
 		// Work out how big to make it
@@ -82,26 +83,26 @@ class List
 		if (iNewCapacity < 16)
 			iNewCapacity = 16;
 
-		if (m_pData)
+		if (m_data)
 		{
 			// Reallocate memory
-			assert(m_iCapacity != 0);
-			m_pData = (T*)realloc((void*)m_pData, iNewCapacity * sizeof(T));
+			assert(m_capacity != 0);
+			m_data = (TStorage*)realloc((void*)m_data, iNewCapacity * sizeof(TStorage));
 		}
 		else
 		{
 			// Allocate memory
-			assert(m_iCapacity == 0);
-			m_pData = (T*)malloc(iNewCapacity * sizeof(T));
+			assert(m_capacity == 0);
+			m_data = (TStorage*)malloc(iNewCapacity * sizeof(TStorage));
 		}
 
 		// Store new capacity
-		m_iCapacity = iNewCapacity;
+		m_capacity = iNewCapacity;
 	}
 
 	// Set the number of elements, adding default-constructed elements or
 	// popping existing ones as needed
-	void SetCount(int iRequiredCount, const T& val)
+	void SetCount(int iRequiredCount, TArg val)
 	{
 		SetCapacity(iRequiredCount);
 		while (GetCount() < iRequiredCount)
@@ -114,26 +115,26 @@ class List
 	void FreeExtra()
 	{
 		// Quit if no extra memory allocated
-		if (m_iCapacity == m_iCount)
+		if (m_capacity == m_count)
 			return;
 
 		// Free or realloc memory...
-		if (m_iCount == 0)
+		if (m_count == 0)
 		{
-			free(m_pData);
-			m_pData = nullptr;
+			free(m_data);
+			m_data = nullptr;
 		}
 		else
 		{
-			m_pData = (T*)realloc(m_pData, m_iCount * sizeof(T));
+			m_data = (TStorage*)realloc(m_data, m_count * sizeof(TStorage));
 		}
 
 		// Store new capacity
-		m_iCapacity = m_iCount;
+		m_capacity = m_count;
 	}
 
 	// InsertAt
-	void InsertAt(int iPosition, const TArg& val)
+	void InsertAt(int iPosition, TArg val)
 	{
 		InsertAtInternal(iPosition, &val, 1);
 	}
@@ -167,12 +168,12 @@ class List
 
 
 	// ReplaceAt
-	void ReplaceAt(int iPosition, const TArg& val)
+	void ReplaceAt(int iPosition, TArg val)
 	{
 		assert(iPosition >= 0 && iPosition < GetCount());
 
-		Destructor(m_pData + iPosition);
-		Constructor(m_pData + iPosition, val);
+		Destructor(m_data + iPosition);
+		Constructor(m_data + iPosition, val);
 	}
 
 	// Swap two elements in the collection
@@ -186,11 +187,11 @@ class List
 			return;
 
 		// Swap it
-		T temp = m_pData[iPosA];
-		Destructor(m_pData + iPosA);
-		Constructor(m_pData + iPosA, m_pData[iPosB]);
-		Destructor(m_pData + iPosB);
-		Constructor(m_pData + iPosB, temp);
+		TStorage temp = m_data[iPosA];
+		Destructor(m_data + iPosA);
+		Constructor(m_data + iPosA, m_data[iPosB]);
+		Destructor(m_data + iPosB);
+		Constructor(m_data + iPosB, temp);
 	}
 
 	// Move an element from one position to another
@@ -203,33 +204,33 @@ class List
 		if (iFrom == iTo)
 			return;
 
-		T temp = m_pData[iFrom];
-		Destructor(m_pData + iFrom);
+		TStorage temp = m_data[iFrom];
+		Destructor(m_data + iFrom);
 		if (iTo < iFrom)
 		{
-			memmove(VECDATAPTR(iTo + 1), VECDATAPTR(iTo), (iFrom - iTo) * sizeof(T));
+			memmove(m_data + iTo + 1, m_data + iTo, (iFrom - iTo) * sizeof(TStorage));
 		}
 		else
 		{
-			memmove(VECDATAPTR(iFrom), VECDATAPTR(iFrom + 1), (iTo - iFrom) * sizeof(T));
+			memmove(m_data + iFrom, m_data + iFrom + 1, (iTo - iFrom) * sizeof(TStorage));
 		}
-		Constructor(m_pData + iTo, temp);
+		Constructor(m_data + iTo, temp);
 	}
 
 	// Add
-	int Add(const TArg& val)
+	int Add(TArg val)
 	{
 		// Grow if necessary
-		if (m_iCount + 1 > m_iCapacity)
-			SetCapacity(m_iCount + 1);
+		if (m_count + 1 > m_capacity)
+			SetCapacity(m_count + 1);
 
-		Constructor(m_pData + m_iCount, val);
-		m_iCount++;
-		return m_iCount - 1;
+		Constructor(m_data + m_count, val);
+		m_count++;
+		return m_count - 1;
 	}
 
 	// Remove a particular item
-	int Remove(const TArg& val)
+	int Remove(TArg val)
 	{
 		int iPos = IndexOf(val);
 		if (iPos >= 0)
@@ -243,30 +244,30 @@ class List
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
 
-		Destructor(m_pData + iPosition);
+		Destructor(m_data + iPosition);
 
 		// Shuffle memory
 		if (iPosition < GetCount() - 1)
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iCount - iPosition - 1) * sizeof(T));
+			memmove(m_data + iPosition, m_data + iPosition + 1, (m_count - iPosition - 1) * sizeof(TStorage));
 
 		// Update count
-		m_iCount--;
+		m_count--;
 	}
 
-	T DetachAt(int iPosition)
+	TArg DetachAt(int iPosition)
 	{
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
 
-		// Copy as T
-		T val = move(m_pData[iPosition]);
+		// Copy as TStorage
+		TArg val = TSemantics::Detach(m_data[iPosition]);
 
 		// Shuffle memory
 		if (iPosition < GetCount() - 1)
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + 1), (m_iCount - iPosition - 1) * sizeof(T));
+			memmove(m_data + iPosition, m_data + iPosition + 1, (m_count - iPosition - 1) * sizeof(TStorage));
 
 		// Update count
-		m_iCount--;
+		m_count--;
 
 		return val;
 	}
@@ -281,62 +282,62 @@ class List
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
 		assert(iPosition + iCount - 1 < GetCount());
-		assert(m_iCount - iCount >= 0);
+		assert(m_count - iCount >= 0);
 
 		for (int i = 0; i < iCount; i++)
 		{
-			Destructor(m_pData + iPosition + i);
+			Destructor(m_data + iPosition + i);
 		}
 
 		// Shuffle emory
 		if (iPosition + iCount < GetCount())
-			memmove(VECDATAPTR(iPosition), VECDATAPTR(iPosition + iCount), (m_iCount - (size_t)iPosition - (size_t)iCount) * sizeof(T));
+			memmove(m_data + iPosition, m_data + iPosition + iCount, (m_count - (size_t)iPosition - (size_t)iCount) * sizeof(TStorage));
 
 		// Update count
-		m_iCount -= iCount;
+		m_count -= iCount;
 	}
 
 	// RemoveAll
 	void Clear()
 	{
-		if (m_iCount)
+		if (m_count)
 		{
-			RemoveAt(0, m_iCount);
-			m_iCount = 0;
+			RemoveAt(0, m_count);
+			m_count = 0;
 		}
 	}
 
 	// GetAt
-	T& GetAt(int iPosition) const
+	TArg GetAt(int iPosition) const
 	{
 		assert(iPosition >= 0);
 		assert(iPosition < GetCount());
 
-		return m_pData[iPosition];
+		return m_data[iPosition];
 	}
 
 	// operator[]
-	T& operator[](int iPosition) const
+	TArg operator[](int iPosition) const
 	{
 		return GetAt(iPosition);
 	}
 
 	// GetBuffer
-	T* GetBuffer() const
+	TStorage* GetBuffer() const
 	{
-		return m_pData;
+		return m_data;
 	}
 
 	// GetCount
 	int GetCount() const
 	{
-		return m_iCount;
+		return m_count;
 	}
 
     class Iter
     {
     public:
-        const T& Get() { return *_value; };
+        TArg Get() { return *_value; };
 
         bool Next() { return _owner->GetNext(*this); }
 
@@ -355,7 +356,7 @@ class List
             _value = other._value;
         }
 
-        const T* _value = nullptr;
+        const TStorage* _value = nullptr;
         const List* _owner;
         int _pos = -1;
         bool _forward = true;
@@ -370,7 +371,7 @@ class List
     Iter IterateReverse() const
     {
         Iter iter(this, false);
-        iter._pos = m_iCount;
+        iter._pos = m_count;
         return iter;
     }
 
@@ -379,7 +380,7 @@ class List
         if (iter._forward)
         {
             iter._pos++;
-            if (iter._pos >= m_iCount)
+            if (iter._pos >= m_count)
                 return false;
         }
         else
@@ -389,13 +390,13 @@ class List
                 return false;
         }
 
-		iter._value = m_pData + iter._pos;
+		iter._value = m_data + iter._pos;
         return true;
     }
 
 	struct sort_ctx_s
 	{
-		int (*callback)(const T& a, const T& b, void* user);
+		int (*callback)(TArg a, TArg b, void* user);
 		void* user;
 	};
 
@@ -406,24 +407,24 @@ class List
 #endif
 	{
 		sort_ctx_s& ctx = *(sort_ctx_s*)pvctx;
-		return ctx.callback(*(T*)a, *(T*)b, ctx.user);
+		return ctx.callback(*(TStorage*)a, *(TStorage*)b, ctx.user);
 	}
 
-	void Sort(int (*callback)(const T& a, const T& b, void* user), void* user)
+	void Sort(int (*callback)(TArg a, TArg b, void* user), void* user)
 	{
 		sort_ctx_s ctx;
 		ctx.callback = callback;
 		ctx.user = user;
 		#ifdef _MSC_VER
-		qsort_s(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
+		qsort_s(m_data, m_count, sizeof(TStorage), sort_function_s, &ctx);
 		#else
-		qsort_r(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
+		qsort_r(m_data, m_count, sizeof(TStorage), sort_function_s, &ctx);
 		#endif
 	}
 
 	struct sort_ctx
 	{
-		int (*callback)(const T& a, const T& b);
+		int (*callback)(TArg a, TArg b);
 	};
 
 #ifdef _MSC_VER
@@ -433,17 +434,17 @@ class List
 #endif
 	{
 		sort_ctx& ctx = *(sort_ctx*)pvctx;
-		return ctx.callback(*(T*)a, *(T*)b);
+		return ctx.callback(*(TStorage*)a, *(TStorage*)b);
 	}
 
-	void Sort(int (*callback)(const T& a, const T& b))
+	void Sort(int (*callback)(TArg a, TArg b))
 	{
 		sort_ctx ctx;
 		ctx.callback = callback;
 		#ifdef _MSC_VER
-		qsort_s(m_pData, m_iCount, sizeof(T), sort_function, &ctx);
+		qsort_s(m_data, m_count, sizeof(TStorage), sort_function, &ctx);
 		#else
-		qsort_r(m_pData, m_iCount, sizeof(T), sort_function, &ctx);
+		qsort_r(m_data, m_count, sizeof(TStorage), sort_function, &ctx);
 		#endif
 	}
 
@@ -451,19 +452,19 @@ class List
 	template <typename TCompare = SDefaultCompare>
 	void Sort()
 	{
-		Sort([](const T& a, const T& b) {
+		Sort([](TArg a, TArg b) {
 			return TCompare::Compare(a, b);
 		});
 	}
 
 	// Find index of an item(linear)
 	template <typename TCompare = SDefaultCompare>
-	int IndexOf(const TArg& val, int iStartAfter = -1) const
+	int IndexOf(TArg val, int iStartAfter = -1) const
 	{
 		// Find an item
-		for (int i = iStartAfter + 1; i < m_iCount; i++)
+		for (int i = iStartAfter + 1; i < m_count; i++)
 		{
-			if (TCompare::AreEqual(m_pData[i], val))
+			if (TCompare::AreEqual(m_data[i], val))
 				return i;
 		}
 
@@ -472,7 +473,7 @@ class List
 	}
 
 	// Check if the list contains an item
-	bool Contains(const TArg& val) const
+	bool Contains(TArg val) const
 	{
 		return IndexOf(val) >= 0;
 	}
@@ -483,7 +484,7 @@ class List
 		return GetCount() == 0;
 	}
 
-	List Filter(Delegate<bool(const T& val)> predicate)
+	List Filter(Delegate<bool(TArg val)> predicate)
 	{
 		List r;
 		for (int i=0; i<GetCount(); i++)
@@ -499,7 +500,7 @@ class List
 	// isn't deducible from a lambda argument, so it must be specified
 	// explicitly at the call site, eg: list.Map<TResult>(fn)
 	template <typename TResult>
-	List<TResult> Map(Delegate<TResult(const T& val)> mapper)
+	List<TResult> Map(Delegate<TResult(TArg val)> mapper)
 	{
 		List<TResult> r;
 		for (int i=0; i<GetCount(); i++)
@@ -510,7 +511,7 @@ class List
 	}
 
 	// Push
-	void Push(const TArg& val)
+	void Push(TArg val)
 	{
 		Add(val);
 	}
@@ -518,62 +519,51 @@ class List
 	// Pop
 	TArg Pop()
 	{
-		assert(!IsEmpty());
-		T temp = GetAt(GetCount() - 1);
-		RemoveAt(GetCount() - 1);
-		return temp;
+		return DetachAt(GetCount() - 1);
 	}
 
 	// Pop
 	bool TryPop(TArg& val)
 	{
-		if (m_iCount == 0)
+		if (m_count == 0)
 			return false;
 
-		// Update count
-		m_iCount--;
-
-		val = m_pData[m_iCount];
-
-		Destructor(m_pData + m_iCount);
-
+		val = Pop();
 		return true;
 	}
 
 	// Tail
-	T& Tail() const
+	TArg Tail() const
 	{
-		assert(!IsEmpty());
 		return GetAt(GetCount() - 1);
 	}
 
 	// TryTail
 	bool TryTail(TArg& val) const
 	{
-		if (IsEmpty())
+		if (m_count == 0)
 			return false;
 		val = Tail();
 		return true;
 	}
 
 	// Head
-	T& Head() const
+	TArg Head() const
 	{
-		assert(!IsEmpty());
 		return GetAt(0);
 	}
 
 	// TryHead
 	bool TryHead(TArg& val) const
 	{
-		if (IsEmpty())
+		if (m_count == 0)
 			return false;
 		val = Head();
 		return true;
 	}
 
 	// Enqueue
-	void Enqueue(const TArg& val)
+	void Enqueue(TArg val)
 	{
 		Add(val);
 	}
@@ -581,16 +571,13 @@ class List
 	// Remove and return the first item in the list
 	TArg Dequeue()
 	{
-		assert(!IsEmpty());
-		T temp = GetAt(0);
-		RemoveAt(0);
-		return temp;
+		return DetachAt(0);
 	}
 
 	// Remove and return the first item in the list
 	bool TryDequeue(TArg& val)
 	{
-		if (IsEmpty())
+		if (m_count == 0)
 			return false;
 
 		val = Dequeue();
@@ -598,12 +585,12 @@ class List
 	}
 
 protected:
-	int		m_iCount = 0;
-	int		m_iCapacity = 0;
-	T* 		m_pData = nullptr;
+	int	m_count = 0;
+	int	m_capacity = 0;
+	TStorage* m_data = nullptr;
 
 	// Insert at a position
-	void InsertAtInternal(int iPosition, const T* pVal, int iCount)
+	void InsertAtInternal(int iPosition, const TStorage* pVal, int iCount)
 	{
 		if (iCount < 1)
 			return;
@@ -612,23 +599,21 @@ protected:
 		assert(iPosition <= GetCount());
 
 		// Make sure have room
-		SetCapacity(m_iCount + iCount);
+		SetCapacity(m_count + iCount);
 
 		// Shuffle memory
-		if (iPosition < m_iCount)
-			memmove(VECDATAPTR(iPosition + iCount), VECDATAPTR(iPosition), (m_iCount - iPosition) * sizeof(T));
+		if (iPosition < m_count)
+			memmove(m_data + iPosition + iCount, m_data + iPosition, (m_count - iPosition) * sizeof(TStorage));
 
 		// Store pointer
 		for (int i = 0; i < iCount; i++)
 		{
-			Constructor(m_pData + iPosition + i, *(pVal + i));
+			Constructor(m_data + iPosition + i, *(pVal + i));
 		}
 
 		// Update count
-		m_iCount += iCount;
+		m_count += iCount;
 	}
-
-	void* VECDATAPTR(int index) { return (void*)(((char*)m_pData) + sizeof(m_pData[0]) * (index)); }
 
 };
 
