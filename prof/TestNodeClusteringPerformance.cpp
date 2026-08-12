@@ -25,6 +25,7 @@ namespace
 	class PerfClustering : public NodeClustering<PerfNode>
 	{
 	public:
+		PerfClustering() : NodeClustering(50, 4) {}
 		bool ShouldKeepNodeWithPrecedents(PerfNode* node) override { return false; }
 		bool ShouldExecuteNode(PerfNode* node) override { return true; }
 		int GetNodeWeight(PerfNode* node) override { return node->m_weight; }

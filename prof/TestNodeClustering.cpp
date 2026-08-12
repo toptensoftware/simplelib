@@ -31,6 +31,7 @@ namespace
 	class TestClustering : public NodeClustering<TestNode>
 	{
 	public:
+		TestClustering() : NodeClustering(50, 4) {}
 		bool ShouldKeepNodeWithPrecedents(TestNode* node) override { return node->m_keepWithPrecedents; }
 		bool ShouldExecuteNode(TestNode* node) override { return node->m_shouldExecute; }
 		int GetNodeWeight(TestNode* node) override { return node->m_weight; }

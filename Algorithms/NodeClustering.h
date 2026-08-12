@@ -11,7 +11,9 @@ template <class TNode>
 class NodeClustering
 {
 public:
-	NodeClustering()
+	NodeClustering(int dispatchOverhead, int workerCount) :
+		m_dispatchOverhead(dispatchOverhead),
+		m_workerCount(workerCount)
 	{
 
 	}
@@ -135,15 +137,15 @@ public:
 			int costIfSeparate = CriticalPathIfSeparate(u, v);
 			int costIfMerged = CriticalPathIfMerged(u, v);
 
-			if (width > workerCount)
+			if (width > m_workerCount)
 			{
-				int overSubscription = width - workerCount;
+				int overSubscription = width - m_workerCount;
 
 				// widthDiscount grows with oversubscription but should be
 				// damped (e.g. sqrt or log), not linear — some queuing slack
 				// is still useful for load-balancing short/long task variance,
 				// per the earlier caveat. Tune against DISPATCH_OVERHEAD.
-				costIfSeparate -= dispatchOverhead * (int)(log2(overSubscription + 1));
+				costIfSeparate -= m_dispatchOverhead * (int)(log2(overSubscription + 1));
 			}
 
 			if (costIfMerged <= costIfSeparate)
@@ -180,6 +182,10 @@ public:
 
 
 protected:
+
+	int m_dispatchOverhead = 50;
+	int m_workerCount = 4;
+
 
 	class ClusterInfo;
 
@@ -370,7 +376,7 @@ protected:
 				for (auto iter = cluster->preds.Iterate(); iter.Next(); )
 				{
 					ClusterInfo* pred = iter.Get();
-					int w = ComputeTopLevel(pred) + pred->weight + dispatchOverhead;
+					int w = ComputeTopLevel(pred) + pred->weight + m_dispatchOverhead;
 					if (w > cluster->topLevel)
 						cluster->topLevel = w;
 				}
@@ -390,7 +396,7 @@ protected:
 			for (auto iter = cluster->succs.Iterate(); iter.Next(); )
 			{
 				ClusterInfo* succ = iter.Get();
-				int w = ComputeBottomLevel(succ) + dispatchOverhead;
+				int w = ComputeBottomLevel(succ) + m_dispatchOverhead;
 				if (w > cluster->bottomLevel)
 					cluster->bottomLevel = w;
 			}
@@ -399,9 +405,6 @@ protected:
 		}
 		return cluster->bottomLevel;
 	}
-
-	int dispatchOverhead = 50;
-	int workerCount = 4;
 
 	// mergeIsCyclic — does contracting A and B create a cycle in the
 	// cluster graph? (original node DAG is acyclic, but a bad sequence
@@ -507,7 +510,7 @@ protected:
 	{
 		ClusterInfo* A = (ClusterInfo*)u->cluster;
 		ClusterInfo* B = (ClusterInfo*)v->cluster;
-		return A->topLevel + A->weight + dispatchOverhead + B->bottomLevel;
+		return A->topLevel + A->weight + m_dispatchOverhead + B->bottomLevel;
 	}
 
 	// criticalPathIfMerged — simulate the merge locally without
@@ -530,7 +533,7 @@ protected:
 			ClusterInfo* pred = iter.Get();
 			if (pred == A)
 				continue;
-			int w = pred->topLevel + pred->weight + dispatchOverhead;
+			int w = pred->topLevel + pred->weight + m_dispatchOverhead;
 			if (w > newTopLevel)
 				newTopLevel = w;
 		}
@@ -539,7 +542,7 @@ protected:
 		for (auto iter = B->succs.Iterate(); iter.Next(); )
 		{
 			ClusterInfo* dep = iter.Get();
-			int w = dep->bottomLevel + dispatchOverhead;
+			int w = dep->bottomLevel + m_dispatchOverhead;
 			if (w > newBottomLevel)
 				newBottomLevel = w;
 		}
@@ -675,7 +678,7 @@ protected:
 		for (auto iter = cluster->preds.Iterate(); iter.Next(); )
 		{
 			ClusterInfo* pred = iter.Get();
-			int w = pred->topLevel + pred->weight + dispatchOverhead;
+			int w = pred->topLevel + pred->weight + m_dispatchOverhead;
 			if (w > cluster->topLevel)
 				cluster->topLevel = w;
 		}
@@ -689,7 +692,7 @@ protected:
 		for (auto iter = cluster->succs.Iterate(); iter.Next(); )
 		{
 			ClusterInfo* dep = iter.Get();
-			int w = dep->bottomLevel + dispatchOverhead;
+			int w = dep->bottomLevel + m_dispatchOverhead;
 			if (w > cluster->bottomLevel)
 				cluster->bottomLevel = w;
 		}
