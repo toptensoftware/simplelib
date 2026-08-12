@@ -46,6 +46,52 @@ namespace
 			total += plan->clusters[i]->nodes.GetCount();
 		return total;
 	}
+
+	// Finds which cluster in a plan a given node ended up in
+	TestClustering::Cluster* FindClusterContaining(TestClustering::Plan* plan, TestNode* n)
+	{
+		for (int i = 0; i < plan->clusters.GetCount(); i++)
+		{
+			auto* c = plan->clusters[i];
+			for (int j = 0; j < c->nodes.GetCount(); j++)
+				if (c->nodes[j] == n)
+					return c;
+		}
+		return nullptr;
+	}
+
+	// Verifies the plan's cluster-level dependency graph is genuinely
+	// acyclic (Kahn's algorithm, using only predCount + succs - everything
+	// Plan/Cluster actually expose)
+	bool IsPlanAcyclic(TestClustering::Plan* plan)
+	{
+		Map<TestClustering::Cluster*, int> remaining;
+		List<TestClustering::Cluster*> ready;
+		for (int i = 0; i < plan->clusters.GetCount(); i++)
+		{
+			auto* c = plan->clusters[i];
+			remaining.Set(c, c->predCount);
+			if (c->predCount == 0)
+				ready.Add(c);
+		}
+
+		int processed = 0;
+		while (!ready.IsEmpty())
+		{
+			auto* c = ready.Dequeue();
+			processed++;
+			for (int i = 0; i < c->succs.GetCount(); i++)
+			{
+				auto* s = c->succs[i];
+				int r = remaining.Get(s, -1) - 1;
+				remaining.Set(s, r);
+				if (r == 0)
+					ready.Add(s);
+			}
+		}
+
+		return processed == plan->clusters.GetCount();
+	}
 }
 
 Fact("NodeClustering Single Node")
@@ -367,6 +413,98 @@ Fact("NodeClustering Plan Orders Leaf Clusters First And Reports leafClusterCoun
 		else
 			Assert(plan->clusters[i]->predCount > 0);
 	}
+
+	delete plan;
+}
+
+Fact("NodeClustering Never Produces A Cyclic Plan At A Diamond Shortcut")
+{
+	// A -> B direct, and A -> C -> B as an alternate route. Directly
+	// merging A and B would fold the A->C->B path into a cycle (A and B
+	// dispatching atomically while depending on each other). Whatever
+	// sequence of merges the algorithm actually picks, the resulting
+	// cluster-level graph must remain acyclic and must still cover every
+	// node exactly once.
+	TestNode a(0);
+	TestNode c(1);
+	TestNode b(1);
+	c.AddPrecedent(&a);
+	b.AddPrecedent(&a);
+	b.AddPrecedent(&c);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&b);
+	Assert(plan != nullptr);
+	Assert(CountPlanNodes(plan) == 3);
+	Assert(IsPlanAcyclic(plan));
+	delete plan;
+}
+
+Fact("NodeClustering KeepWithPrecedents Does Not Force-Merge A Shared Precedent")
+{
+	// Sink wants to stay grouped with its precedents, but only p2 is
+	// structurally eligible (its only successor is Sink). p1 and p3 also
+	// each feed a second node (y1/y3), so per the documented safety
+	// precondition they must NOT be force-merged just because the flag is
+	// set - they have to go through the normal weighted decision like any
+	// other fan-in. p1/p3 are heavy chains and p2/sink are cheap, so the
+	// weighted decision should keep the heavy branches split (mirroring
+	// "NodeClustering Keeps Independent Heavy Branches Separate At A
+	// Shared Sink") - but the one thing that must hold regardless of the
+	// weighted outcome is that sink's cluster is NOT the full 10-node blob
+	// a buggy force-merge (ignoring the single-successor precondition)
+	// would produce.
+	List<OwnedPtr<TestNode>> allNodes;
+	auto makeChainNodes = [&](int len) -> TestNode*
+	{
+		TestNode* prev = nullptr;
+		for (int i = 0; i < len; i++)
+		{
+			TestNode* n = new TestNode(500);
+			allNodes.Add(n);
+			if (prev)
+				n->AddPrecedent(prev);
+			prev = n;
+		}
+		return prev;
+	};
+
+	TestNode* p1 = makeChainNodes(3);
+	TestNode* p2 = makeChainNodes(3);
+	TestNode* p3 = makeChainNodes(3);
+
+	TestNode* sink = new TestNode(5, true); // KeepWithPrecedents
+	allNodes.Add(sink);
+	sink->AddPrecedent(p1);
+	sink->AddPrecedent(p2);
+	sink->AddPrecedent(p3);
+
+	TestNode* y1 = new TestNode(1);
+	allNodes.Add(y1);
+	y1->AddPrecedent(p1);
+
+	TestNode* y3 = new TestNode(1);
+	allNodes.Add(y3);
+	y3->AddPrecedent(p3);
+
+	TestNode* superSink = new TestNode(1);
+	allNodes.Add(superSink);
+	superSink->AddPrecedent(sink);
+	superSink->AddPrecedent(y1);
+	superSink->AddPrecedent(y3);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(superSink);
+	Assert(plan != nullptr);
+	Assert(CountPlanNodes(plan) == allNodes.GetCount());
+	Assert(IsPlanAcyclic(plan));
+
+	// p2 (single-successor precondition holds) must have force-merged with
+	// sink; p1/p3 (each also feed y1/y3, breaking the precondition) must
+	// not have - sink's cluster must be exactly {sink, p2's 3 nodes} = 4
+	// nodes, not the full 10-node blob a buggy force-merge would produce
+	auto* sinkCluster = FindClusterContaining(plan, sink);
+	Assert(sinkCluster->nodes.GetCount() == 4);
 
 	delete plan;
 }

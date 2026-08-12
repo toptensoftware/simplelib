@@ -1,6 +1,7 @@
 #pragma once
 
 #include <math.h>
+#include "../Threading/Atomic.h"
 
 namespace SimpleLib
 {
