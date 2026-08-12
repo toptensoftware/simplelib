@@ -40,7 +40,8 @@ public:
         m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, 0, &dwId);
         m_id = dwId;
 
-		SetPriority(m_priority);
+		if (m_priority != ThreadPriority::Normal)
+			SetPriority(m_priority);
 		if (!m_description.IsEmpty())
 			SetDescription(m_description);
 	}
