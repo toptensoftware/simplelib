@@ -81,6 +81,8 @@ public:
 
 	Plan* Clusterize(TNode* sinkNode)
 	{
+		assert(sinkNode != nullptr);
+		
 		// Build node info for the entire DAG
 		auto sinkNodeInfo = GetNodeInfo(sinkNode);
 		if (!sinkNodeInfo)
