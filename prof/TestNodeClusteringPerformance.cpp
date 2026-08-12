@@ -7,21 +7,29 @@ using namespace SimpleLib;
 
 namespace
 {
-	class PerfNode : public NodeClustering::INode
+	// Plain data node - no longer implements an interface, the algorithm
+	// now queries it via the virtual methods on PerfClustering below.
+	class PerfNode
 	{
 	public:
 		PerfNode(int weight) : m_weight(weight) {}
 
 		void AddPrecedent(PerfNode* p) { m_precedents.Add(p); }
 
-		bool KeepWithPrecedents() override { return false; }
-		int GetWeight() override { return m_weight; }
-		int GetPrecedentCount() override { return m_precedents.GetCount(); }
-		NodeClustering::INode* GetPrecedent(int index) override { return m_precedents[index]; }
-
-	private:
 		int m_weight;
 		List<PerfNode*> m_precedents;
+	};
+
+	// Test-specific clustering algorithm, wiring the algorithm's virtual
+	// callbacks up to PerfNode's plain data members
+	class PerfClustering : public NodeClustering<PerfNode>
+	{
+	public:
+		bool ShouldKeepNodeWithPrecedents(PerfNode* node) override { return false; }
+		bool ShouldExecuteNode(PerfNode* node) override { return true; }
+		int GetNodeWeight(PerfNode* node) override { return node->m_weight; }
+		int GetNodePrecedentCount(PerfNode* node) override { return node->m_precedents.GetCount(); }
+		PerfNode* GetNodePrecedent(PerfNode* node, int index) override { return node->m_precedents[index]; }
 	};
 
 	// Small deterministic PRNG (xorshift32) so the generated graph - and
@@ -145,13 +153,13 @@ Fact("NodeClustering Performance")
 		for (int i = 0; i < allNodes.GetCount(); i++)
 		{
 			PerfNode* n = allNodes[i];
-			int pc = n->GetPrecedentCount();
+			int pc = n->m_precedents.GetCount();
 			totalEdges += pc;
 			if (pc == 0) roots++;
 			if (pc > 1) fanins++;
 			for (int j = 0; j < pc; j++)
 			{
-				PerfNode* p = (PerfNode*)n->GetPrecedent(j);
+				PerfNode* p = n->m_precedents[j];
 				useCount.Set(p, useCount.Get(p, 0) + 1);
 			}
 		}
@@ -163,7 +171,7 @@ Fact("NodeClustering Performance")
 
 	for (int i = 0; i < iterations; i++)
 	{
-		NodeClustering nc;
+		PerfClustering nc;
 
 		auto start = std::chrono::high_resolution_clock::now();
 		auto plan = nc.Clusterize(sink);

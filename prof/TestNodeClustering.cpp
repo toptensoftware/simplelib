@@ -5,13 +5,13 @@ using namespace SimpleLib;
 
 namespace
 {
-	// Simple INode implementation for tests - owns its own list of
-	// precedents so graphs can be wired up directly in each test.
-	class TestNode : public NodeClustering::INode
+	// Plain data node - no longer implements an interface, the algorithm
+	// now queries it via the virtual methods on TestClustering below.
+	class TestNode
 	{
 	public:
-		TestNode(int weight, bool keepWithPrecedents = false)
-			: m_weight(weight), m_keepWithPrecedents(keepWithPrecedents)
+		TestNode(int weight, bool keepWithPrecedents = false, bool shouldExecute = true)
+			: m_weight(weight), m_keepWithPrecedents(keepWithPrecedents), m_shouldExecute(shouldExecute)
 		{
 		}
 
@@ -20,19 +20,26 @@ namespace
 			m_precedents.Add(p);
 		}
 
-		bool KeepWithPrecedents() override { return m_keepWithPrecedents; }
-		int GetWeight() override { return m_weight; }
-		int GetPrecedentCount() override { return m_precedents.GetCount(); }
-		NodeClustering::INode* GetPrecedent(int index) override { return m_precedents[index]; }
-
-	private:
 		int m_weight;
 		bool m_keepWithPrecedents;
+		bool m_shouldExecute;
 		List<TestNode*> m_precedents;
 	};
 
+	// Test-specific clustering algorithm, wiring the algorithm's virtual
+	// callbacks up to TestNode's plain data members
+	class TestClustering : public NodeClustering<TestNode>
+	{
+	public:
+		bool ShouldKeepNodeWithPrecedents(TestNode* node) override { return node->m_keepWithPrecedents; }
+		bool ShouldExecuteNode(TestNode* node) override { return node->m_shouldExecute; }
+		int GetNodeWeight(TestNode* node) override { return node->m_weight; }
+		int GetNodePrecedentCount(TestNode* node) override { return node->m_precedents.GetCount(); }
+		TestNode* GetNodePrecedent(TestNode* node, int index) override { return node->m_precedents[index]; }
+	};
+
 	// Returns the total number of nodes across every cluster in a plan
-	int CountPlanNodes(NodeClustering::Plan* plan)
+	int CountPlanNodes(TestClustering::Plan* plan)
 	{
 		int total = 0;
 		for (int i = 0; i < plan->clusters.GetCount(); i++)
@@ -45,7 +52,7 @@ Fact("NodeClustering Single Node")
 {
 	TestNode a(10);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&a);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
@@ -64,7 +71,7 @@ Fact("NodeClustering Simple Chain Always Merges")
 	b.AddPrecedent(&a);
 	c.AddPrecedent(&b);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&c);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
@@ -86,7 +93,7 @@ Fact("NodeClustering Diamond Shared Precedent Is Not A Cycle")
 	r.AddPrecedent(&a);
 	r.AddPrecedent(&b);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&r);
 	Assert(plan != nullptr);
 	Assert(CountPlanNodes(plan) == 4);
@@ -102,7 +109,7 @@ Fact("NodeClustering Detects True Cycle")
 	a.AddPrecedent(&b);
 	b.AddPrecedent(&a);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&a);
 	Assert(plan == nullptr);
 }
@@ -136,7 +143,7 @@ Fact("NodeClustering Preserves All Nodes Across A Wider Graph")
 	sink->AddPrecedent(tail1);
 	sink->AddPrecedent(tail2);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(sink);
 	Assert(plan != nullptr);
 	Assert(CountPlanNodes(plan) == allNodes.GetCount());
@@ -176,7 +183,7 @@ Fact("NodeClustering Keeps Independent Heavy Branches Separate At A Shared Sink"
 	sink->AddPrecedent(tail1);
 	sink->AddPrecedent(tail2);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(sink);
 	Assert(plan != nullptr);
 	Assert(CountPlanNodes(plan) == allNodes.GetCount());
@@ -220,7 +227,7 @@ Fact("NodeClustering Weight Changes Propagate Through Unrelated Fan-Out Siblings
 	sink.AddPrecedent(&y);
 	sink.AddPrecedent(&z);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&sink);
 	Assert(plan != nullptr);
 	Assert(CountPlanNodes(plan) == 4);
@@ -235,7 +242,7 @@ Fact("NodeClustering Nodes Within A Cluster Are Topologically Ordered")
 	b.AddPrecedent(&a);
 	c.AddPrecedent(&b);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&c);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
@@ -258,10 +265,108 @@ Fact("NodeClustering KeepWithPrecedents Merges Single-Dependent Precedents")
 	m.AddPrecedent(&p1);
 	m.AddPrecedent(&p2);
 
-	NodeClustering nc;
+	TestClustering nc;
 	auto plan = nc.Clusterize(&m);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
 	Assert(plan->clusters[0]->nodes.GetCount() == 3);
+	delete plan;
+}
+
+Fact("NodeClustering ShouldExecuteNode Excludes Node From Plan But Keeps Topology")
+{
+	// b doesn't need to execute (eg: a no-op pass-through), but it still
+	// takes part in clustering/scheduling as normal - it should simply be
+	// left out of the emitted cluster's node list, with a and c still
+	// correctly topologically ordered around the gap it leaves behind
+	TestNode a(1000);
+	TestNode b(1000, false, false);
+	TestNode c(1000);
+	b.AddPrecedent(&a);
+	c.AddPrecedent(&b);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&c);
+	Assert(plan != nullptr);
+	Assert(plan->clusters.GetCount() == 1);
+
+	auto& nodes = plan->clusters[0]->nodes;
+	Assert(nodes.GetCount() == 2);
+	Assert(nodes[0] == &a);
+	Assert(nodes[1] == &c);
+	delete plan;
+}
+
+Fact("NodeClustering ShouldExecuteNode Excluded Shared Precedent Still Feeds Both Dependents")
+{
+	// c is a shared precedent that doesn't need to execute, but a and b
+	// still both transitively depend on it - excluding it from the plan's
+	// node list must not affect the cluster/edge structure built around it
+	TestNode c(10, false, false);
+	TestNode a(20);
+	TestNode b(20);
+	TestNode r(5);
+	a.AddPrecedent(&c);
+	b.AddPrecedent(&c);
+	r.AddPrecedent(&a);
+	r.AddPrecedent(&b);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&r);
+	Assert(plan != nullptr);
+	// c is excluded from the emitted plan, so 3 of the 4 nodes remain
+	Assert(CountPlanNodes(plan) == 3);
+	delete plan;
+}
+
+Fact("NodeClustering Plan Orders Leaf Clusters First And Reports leafClusterCount")
+{
+	// Build a graph with a mix of leaf clusters (no precedents) and
+	// non-leaf clusters (some precedents), spread across independent
+	// branches - a plain post-order Finalize walk wouldn't necessarily
+	// group all the leaves together at the front, so this exercises the
+	// explicit sort/count rather than something that'd pass by accident
+	TestNode a(500);
+	TestNode b(500);
+	TestNode c(500);
+	c.AddPrecedent(&a);
+	c.AddPrecedent(&b);
+
+	TestNode d(500);
+	TestNode e(500);
+
+	TestNode sink(5);
+	sink.AddPrecedent(&c);
+	sink.AddPrecedent(&d);
+	sink.AddPrecedent(&e);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&sink);
+	Assert(plan != nullptr);
+
+	// Make sure the graph actually produced a mix of leaf and non-leaf
+	// clusters - otherwise the ordering guarantee wouldn't be exercised
+	int leafCount = 0, nonLeafCount = 0;
+	for (int i = 0; i < plan->clusters.GetCount(); i++)
+	{
+		if (plan->clusters[i]->predCount == 0)
+			leafCount++;
+		else
+			nonLeafCount++;
+	}
+	Assert(leafCount > 0);
+	Assert(nonLeafCount > 0);
+
+	// leafClusterCount must match, and every leaf cluster must be a
+	// leading entry with every non-leaf cluster coming after it
+	Assert(plan->leafClusterCount == leafCount);
+	for (int i = 0; i < plan->clusters.GetCount(); i++)
+	{
+		if (i < plan->leafClusterCount)
+			Assert(plan->clusters[i]->predCount == 0);
+		else
+			Assert(plan->clusters[i]->predCount > 0);
+	}
+
 	delete plan;
 }

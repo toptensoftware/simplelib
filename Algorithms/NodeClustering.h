@@ -5,6 +5,8 @@
 namespace SimpleLib
 {
 
+
+template <class TNode>
 class NodeClustering
 {
 public:
@@ -23,26 +25,34 @@ public:
 	}
 
 	// Client supplied nodes that need to be clustered
-	struct INode
-	{
-		virtual bool KeepWithPrecedents() = 0;
-		virtual int GetWeight() = 0;
-		virtual int GetPrecedentCount() = 0;
-		virtual INode* GetPrecedent(int index) = 0;
-	};
+	virtual bool ShouldKeepNodeWithPrecedents(TNode* node) = 0;
+	virtual bool ShouldExecuteNode(TNode* node) = 0;
+	virtual int GetNodeWeight(TNode* node) = 0;
+	virtual int GetNodePrecedentCount(TNode* node) = 0;
+	virtual TNode* GetNodePrecedent(TNode* node, int index) = 0;
 
 	// Output of clustering algorithm describing a single cluster
 	class Cluster
 	{
 	public:
 		// List of client nodes in topological order
-		List<INode*> nodes;
+		List<TNode*> nodes;
 
 		// List of successor clusters
 		List<Cluster*> succs;
 
 		// Number of precedent clusters
 		int predCount = 0;
+
+		// For client convenience - a counter of pending
+		// unexecuted precedents
+		Atomic<int> predCountPending;
+
+		static int __cdecl CompareByPredCount(Cluster* a, Cluster* b)
+		{
+			// ascending - leaf clusters (predCount == 0) sort to the front
+			return a->predCount - b->predCount;
+		}
 	};
 
 	class Plan
@@ -61,9 +71,14 @@ public:
 		}
 
 		List<Cluster*> clusters;
+
+		// Number of leading entries in clusters that are leaf clusters
+		// (predCount == 0, ie: ready to run immediately) - guaranteed
+		// contiguous at the front since Clusterize sorts clusters by predCount
+		int leafClusterCount = 0;
 	};
 
-	Plan* Clusterize(INode* sinkNode)
+	Plan* Clusterize(TNode* sinkNode)
 	{
 		// Build node info for the entire DAG
 		auto sinkNodeInfo = GetNodeInfo(sinkNode);
@@ -143,6 +158,19 @@ public:
 		Plan* plan = new Plan();
 		Finalize(plan, sinkNodeInfo->cluster);
 
+		// Finalize's post-order traversal doesn't guarantee every leaf
+		// cluster precedes every non-leaf one globally (only that a
+		// cluster's own precedents precede it) - sort leaves to the front
+		// explicitly so callers can rely on that ordering
+		plan->clusters.Sort(Cluster::CompareByPredCount);
+
+		plan->leafClusterCount = 0;
+		while (plan->leafClusterCount < plan->clusters.GetCount() &&
+			plan->clusters[plan->leafClusterCount]->predCount == 0)
+		{
+			plan->leafClusterCount++;
+		}
+
 		return plan;
 	}
 
@@ -154,7 +182,7 @@ protected:
 
 	struct NodeInfo
 	{
-		INode* node = nullptr;
+		TNode* node = nullptr;
 		ClusterInfo* cluster = nullptr;
 		int inDegree = 0;
 		List<NodeInfo*> preds;
@@ -172,11 +200,11 @@ protected:
 		int topLevel = -1;
 		int bottomLevel = -1;
 
-		void AddNode(NodeInfo* pNode)
+		void AddNode(NodeInfo* pNode, int nodeWeight)
 		{
 			nodes.Add(pNode);
 			pNode->cluster = this;
-			weight += pNode->node->GetWeight();
+			weight += nodeWeight;
 		}
 
 		void AddPrecedent(ClusterInfo* p)
@@ -211,7 +239,7 @@ protected:
 
 	};
 
-	Map<INode*, OwnedPtr<NodeInfo>> m_nodeInfos;
+	Map<TNode*, OwnedPtr<NodeInfo>> m_nodeInfos;
 	Set<ClusterInfo*> m_dirtyClusters;
 	Set<ClusterInfo*> m_allClusters;
 
@@ -226,7 +254,7 @@ protected:
 	Set<ClusterInfo*> m_mergeCyclicVisited;
 	List<ClusterInfo*> m_mergeCyclicStack;
 
-	NodeInfo* GetNodeInfo(INode* node)
+	NodeInfo* GetNodeInfo(TNode* node)
 	{
 		// Already created?
 		NodeInfo* ni = m_nodeInfos.Get(node, nullptr);
@@ -253,10 +281,10 @@ protected:
 		m_nodeInfos.Add(node, ni);
 
 		// Get all precedents
-		int predCount = node->GetPrecedentCount();
+		int predCount = GetNodePrecedentCount(node);
 		for (int i = 0; i < predCount; i++)
 		{
-			NodeInfo* pred = GetNodeInfo(node->GetPrecedent(i));
+			NodeInfo* pred = GetNodeInfo(GetNodePrecedent(node, i));
 			if (pred == nullptr)
 				return nullptr;
 			ni->preds.Add(pred);
@@ -295,7 +323,7 @@ protected:
 		}
 
 		// Add this node to the cluster
-		pCluster->AddNode(node);
+		pCluster->AddNode(node, GetNodeWeight(node->node));
 
 		// Add precedent nodes, either to this cluster or to their own
 		for (int i = 0; i < node->preds.GetCount(); i++)
@@ -307,7 +335,7 @@ protected:
 			//  - this node has only one precedent (ie: 1-to-1 chain)
 			//  - this node wants to be kept its precedents
 			if (pred->succs.GetCount() == 1 &&
-				(node->preds.GetCount() == 1 || node->node->KeepWithPrecedents()))
+				(node->preds.GetCount() == 1 || ShouldKeepNodeWithPrecedents(node->node)))
 			{
 				// Add to this cluster
 				BuildInitialClusters(pred, pCluster);
@@ -522,7 +550,7 @@ protected:
 		// Move nodes from b into a
 		for (auto iter = source->nodes.Iterate(); iter.Next(); )
 		{
-			target->AddNode(iter.Get());
+			target->AddNode(iter.Get(), GetNodeWeight(iter.Get()->node));
 		}
 
 		// Merge precedents
@@ -667,7 +695,7 @@ protected:
 
 
 
-	List<NodeInfo*> TopologicalSortCluster(ClusterInfo* pCluster)
+	List<TNode*> TopologicalSortCluster(ClusterInfo* pCluster)
 	{
 		// Calculate number of dependents within this cluster
 		for (auto iter = pCluster->nodes.Iterate(); iter.Next(); )
@@ -692,11 +720,15 @@ protected:
 		}
 
 		// Build topological order
-		List<NodeInfo*> sorted;
+		List<TNode*> sorted;
+		int processedCount = 0;
 		while (!ready.IsEmpty())
 		{
 			NodeInfo* n = ready.Dequeue();
-			sorted.Add(n);
+			processedCount++;
+
+			if (ShouldExecuteNode(n->node))
+				sorted.Add(n->node);
 
 			for (int i = 0; i < n->succs.GetCount(); i++)
 			{
@@ -710,7 +742,10 @@ protected:
 			}
 		}
 
-		assert(pCluster->nodes.GetCount() == sorted.GetCount());
+		// processedCount (not sorted.GetCount(), which excludes filtered-out
+		// nodes) confirms every node in the cluster was actually reachable
+		// via the topological walk - i.e. no missed cycle within the cluster
+		assert(pCluster->nodes.GetCount() == processedCount);
 		return sorted;
 	}
 
@@ -724,8 +759,7 @@ protected:
 		cluster->planCluster = new Cluster();
 
 		// Store nodes topologically
-		cluster->planCluster->nodes = TopologicalSortCluster(cluster)
-			.Map<INode*>([](NodeInfo* const& ni) { return ni->node;  });
+		cluster->planCluster->nodes = TopologicalSortCluster(cluster);
 
 		// Store precedent count
 		cluster->planCluster->predCount = cluster->preds.GetCount();
