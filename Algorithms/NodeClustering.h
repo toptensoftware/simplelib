@@ -11,6 +11,24 @@ template <class TNode>
 class NodeClustering
 {
 public:
+	// dispatchOverhead: the cost, in the same units as GetNodeWeight, of
+	// handing one cluster off to a worker (queue push/pop, wake-up latency,
+	// atomic predCountPending decrement, etc). It's what the algorithm
+	// weighs against a node's own weight when deciding whether to merge it
+	// into a neighboring cluster rather than dispatch it separately, so a
+	// larger value biases toward fewer/bigger clusters. Calibrate by
+	// measuring the actual per-dispatch overhead of the target execution
+	// environment (the runtime that will execute the produced Plan) in
+	// those same weight units - don't just guess.
+	//
+	// workerCount: the number of workers that will execute the plan in
+	// parallel (e.g. thread pool size). It's used to detect when a
+	// cluster's ready width exceeds available parallelism, so the excess
+	// ("oversubscription") is discounted in the merge decision - extra
+	// ready work beyond this count would just queue rather than run
+	// concurrently anyway. Set this to the actual worker/thread count the
+	// plan will run on; a mismatch will make the algorithm over- or
+	// under-estimate real parallelism.
 	NodeClustering(int dispatchOverhead, int workerCount) :
 		m_dispatchOverhead(dispatchOverhead),
 		m_workerCount(workerCount)
