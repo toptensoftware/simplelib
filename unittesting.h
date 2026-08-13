@@ -5,28 +5,37 @@
 namespace SimpleLib
 {
 
-class FactEntry;
+class TestEntry;
+
+enum class TestEntryKind
+{
+	Initialize,
+	Fact,
+	Deinitialize,
+};
 
 class TestRunner
 {
 public:
 	static void Run();
 
-	static void Register(FactEntry* p)
+	static void Register(TestEntry* p)
 	{
-		m_allFacts.Add(p);
+		m_entries.Add(p);
 	}
 
 private:
-	inline static List<FactEntry*> m_allFacts;
-	friend class FactEntry;
+	static void RunKind(TestEntryKind kind);
+	inline static List<TestEntry*> m_entries;
+	friend class TestEntry;
 };
 
-class FactEntry
+class TestEntry
 {
 public:
-	FactEntry(const char* name, const char* file, int line, void (*fn)())
+	TestEntry(TestEntryKind kind, const char* name, const char* file, int line, void (*fn)())
 	{
+		m_kind = kind;
 		m_strName = name;
 		m_strFile = file;
 		m_iLine = line;
@@ -39,6 +48,7 @@ public:
 		m_fn = fn;
 	}
 
+	TestEntryKind m_kind;
 	String m_strName;
 	String m_strFile;
 	int m_iLine;
@@ -62,19 +72,37 @@ public:
 };
 
 
+inline void TestRunner::RunKind(TestEntryKind kind)
+{
+	for (int i=0; i<m_entries.GetCount(); i++)
+	{
+		TestEntry* f = m_entries[i];
+		if (f->m_kind != kind)
+			continue;
+
+		m_entries[i]->m_fn();
+	}
+
+}
+
 inline void TestRunner::Run()
 {
+	RunKind(TestEntryKind::Initialize);
+
 	int failed = 0;
 	int count = 0;
-	for (int i=0; i<m_allFacts.GetCount(); i++)
+	for (int i=0; i<m_entries.GetCount(); i++)
 	{
-		FactEntry* f = m_allFacts[i];
+		TestEntry* f = m_entries[i];
+		if (f->m_kind != TestEntryKind::Fact)
+			continue;
+
 		printf("%s: ", f->m_strName.sz());
 		fflush(stdout);
         try
         {
 			count++;
-    		m_allFacts[i]->m_fn();
+    		m_entries[i]->m_fn();
 			printf("ok\n");
         }
         catch (const AssertionFailed& e)
@@ -83,6 +111,8 @@ inline void TestRunner::Run()
 			failed++;
         }
 	}
+
+	RunKind(TestEntryKind::Deinitialize);
 
 	if (failed == 0)
 		printf("\nAll (%i) tests passed.\n", count);
@@ -108,9 +138,19 @@ inline void TestRunner::Run()
 // Fact() after that point in the translation unit.
 #define SIMPLELIB_UNIQUE_NAME(prefix) CONCAT(prefix, __LINE__)
 
+#define Initialize() \
+static void SIMPLELIB_UNIQUE_NAME(fn)(); \
+static SimpleLib::TestEntry SIMPLELIB_UNIQUE_NAME(fe)(TestEntryKind::Initialize, nullptr, __FILE__, __LINE__, &SIMPLELIB_UNIQUE_NAME(fn)); \
+static void SIMPLELIB_UNIQUE_NAME(fn)() \
+
+#define Deinitialize() \
+static void SIMPLELIB_UNIQUE_NAME(fn)(); \
+static SimpleLib::TestEntry SIMPLELIB_UNIQUE_NAME(fe)(TestEntryKind::Deinitialize, nullptr, __FILE__, __LINE__, &SIMPLELIB_UNIQUE_NAME(fn)); \
+static void SIMPLELIB_UNIQUE_NAME(fn)() \
+
 #define Fact(name) \
 static void SIMPLELIB_UNIQUE_NAME(fn)(); \
-static SimpleLib::FactEntry SIMPLELIB_UNIQUE_NAME(fe)(name, __FILE__, __LINE__, &SIMPLELIB_UNIQUE_NAME(fn)); \
+static SimpleLib::TestEntry SIMPLELIB_UNIQUE_NAME(fe)(TestEntryKind::Fact, name, __FILE__, __LINE__, &SIMPLELIB_UNIQUE_NAME(fn)); \
 static void SIMPLELIB_UNIQUE_NAME(fn)() \
 
 inline void _Assert(bool value, const char* expr, const char* file, int line)

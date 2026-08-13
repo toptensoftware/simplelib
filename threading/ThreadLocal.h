@@ -16,7 +16,8 @@ public:
     }
     ~ThreadLocalBase()
     {
-        TlsFree(m_slot);
+        if (m_slot != 0)
+            TlsFree(m_slot);
         EnterMutex emx(m_mx);
         m_slots.Remove(this);
     }
@@ -35,9 +36,14 @@ public:
     }
 
 protected:
-    uint32_t m_slot;
+    uint32_t GetSlot()
+    {
+        assert(m_slot != 0);
+        return m_slot;
+    }
 
 private:
+    uint32_t m_slot;
     inline static Mutex m_mx;
     inline static List<ThreadLocalBase*> m_slots;
     friend class Thread;
@@ -58,7 +64,7 @@ public:
     // (Creates instance if not already set)
     T* Get()
     {
-        T* p = (T*)TlsGetValue(m_slot);
+        T* p = (T*)TlsGetValue(GetSlot());
         if constexpr (autoCreate)
         {
             if (!p)
@@ -73,7 +79,7 @@ public:
     // (Note: old instance won't be automatically deleted)
     T* Set(T* val)
     {
-        TlsSetValue(m_slot, (void*)val);
+        TlsSetValue(GetSlot(), (void*)val);
         return val;
     }
 
@@ -82,7 +88,7 @@ public:
     {
         if constexpr (autoCreate)
         {
-            T* p = (T*)TlsGetValue(m_slot);
+            T* p = (T*)TlsGetValue(GetSlot());
             delete p;
         }
     }
