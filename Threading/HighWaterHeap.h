@@ -8,6 +8,15 @@
 namespace SimpleLib
 {
 
+
+constexpr uint32_t fourcc(const char* s)
+{
+    return uint32_t(uint8_t(s[0])) |
+        (uint32_t(uint8_t(s[1])) << 8) |
+        (uint32_t(uint8_t(s[2])) << 16) |
+        (uint32_t(uint8_t(s[3])) << 24);
+}
+    
 // Implementation of a non-blocking thread-safe "highwater" heap
 // Heap fills up until everything has been freed and then
 // resets to completely empty
@@ -48,11 +57,15 @@ public:
 
     // Allocate memory from the heap
     // Returns nullptr on failure.
-    void* Alloc(size_t bytes)
+    void* Alloc(uint32_t bytes)
     {
+        // Remember the caller's requested size (for GetSize()) before
+        // padding it out with header and rounding overhead
+        uint32_t requestedBytes = bytes;
+
         // Work out actual required bytes for the allocation
         bytes += sizeof(HEADER);
-        bytes = (bytes + 15) & ~(0xFLL);
+        bytes = (bytes + 15) & ~(0xFL);
 
         while (true)
         {
@@ -79,6 +92,8 @@ public:
             // Setup header
             HEADER* p = (HEADER*)(m_pmem + state.unpacked.high);
             p->heap = this;
+            p->size = requestedBytes;
+            p->sig = kSigAlloc;
 
             // Notify if this allocation just crossed the trigger level
             uint32_t trigger = m_trigger.Get();
@@ -95,6 +110,8 @@ public:
     {
         // Get header
         HEADER* p = ((HEADER*)mem) - 1;
+        assert(p->sig == kSigAlloc);
+        assert(p->heap->m_sig == kSigHeap);
 
         // Check for double free/invalid block
         assert(p->heap == this);
@@ -131,8 +148,18 @@ public:
         }
     }
 
+    // Get size of an allocation
+    static uint32_t GetSize(void* mem)
+    {
+        // Get header
+        HEADER* p = ((HEADER*)mem) - 1;
+        assert(p->sig == kSigAlloc);
+        assert(p->heap->m_sig == kSigHeap);
+        return p->size;
+    }
+
     // Check how much of the heap has been used
-    size_t GetLikelyUsed()
+    uint32_t GetLikelyUsed()
     {
         STATE state;
         state.packed = m_state.Get();
@@ -140,7 +167,7 @@ public:
     }
 
     // Check how much of the heap has been used
-    size_t GetLikelyCount()
+    uint32_t GetLikelyCount()
     {
         STATE state;
         state.packed = m_state.Get();
@@ -148,7 +175,7 @@ public:
     }
 
     // Get the heap's capacity
-    size_t GetCapacity()
+    uint32_t GetCapacity()
     {
         return m_capacity;
     }
@@ -185,7 +212,10 @@ public:
     // Get the highwater heap a pointer was allocated from
     static HighWaterHeap* FromAllocation(void* mem)
     {
-        return (((HEADER*)mem)-1)->heap;
+        HEADER* p = ((HEADER*)mem) - 1;
+        assert(p->sig == kSigAlloc);
+        assert(p->heap->m_sig == kSigHeap);
+        return p->heap;
     }
 
     // Free a previous allocation from the correct heap
@@ -211,6 +241,7 @@ private:
 #pragma pack()
     static_assert(sizeof(STATE) == sizeof(uint64_t), "state size doesn't match uint64_t");
 
+    uint32_t m_sig = kSigHeap;
     Atomic<uint64_t> m_state;   // STATE::packed
     Atomic<uint32_t> m_trigger; // defaults to 0
     uint32_t m_capacity = 0;
@@ -218,6 +249,8 @@ private:
     struct HEADER
     {
         HighWaterHeap* heap;
+        uint32_t size;
+        uint32_t sig;
     };
 
     // No move or copy
@@ -225,6 +258,9 @@ private:
 	HighWaterHeap& operator=(const HighWaterHeap&) = delete;		
 	HighWaterHeap(HighWaterHeap&& other) = delete;
 	HighWaterHeap& operator=(HighWaterHeap&& other) = delete;
+
+    static const uint32_t kSigAlloc = fourcc("hwal");
+    static const uint32_t kSigHeap = fourcc("hwhp");
 };
 
 }

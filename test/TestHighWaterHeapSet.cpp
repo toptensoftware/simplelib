@@ -19,6 +19,19 @@ Fact("HighWaterHeapSet Alloc Returns Usable Memory")
 	pool.Free(p);
 }
 
+Fact("HighWaterHeapSet GetSize Passes Through To Owning Heap")
+{
+	HighWaterHeapSet pool(2, 256);
+
+	// GetSize() reports back exactly the requested allocation size, not
+	// padded out with header or rounding overhead
+	void* p = pool.Alloc(8);
+	Assert(p != nullptr);
+	Assert(pool.GetSize(p) == 8);
+
+	pool.Free(p);
+}
+
 Fact("HighWaterHeapSet Reuses Same Bucket For Repeated Allocations")
 {
 	HighWaterHeapSet pool(2, 256);
@@ -36,7 +49,7 @@ Fact("HighWaterHeapSet Reuses Same Bucket For Repeated Allocations")
 
 Fact("HighWaterHeapSet Overflows To Next Bucket When Full")
 {
-	// bucketSize=128: Alloc(16) needs 16 + header(8) rounded up to 16 = 32
+	// bucketSize=128: Alloc(16) needs 16 + header(16) rounded up to 16 = 32
 	// bytes each, so exactly 4 fit per bucket.
 	HighWaterHeapSet pool(2, 128);
 
@@ -170,7 +183,7 @@ Fact("HighWaterHeapSet Concurrent Alloc Free Does Not Corrupt Data")
 {
 	const int kThreads = 8;
 	const int kIterations = 50000;
-	const size_t kAllocSize = 16;
+	const uint32_t kAllocSize = 16;
 
 	// Deliberately oversubscribed: 8 threads each wanting a 32-byte block
 	// (256 bytes worst case) against a pool with only 128 bytes of total

@@ -31,7 +31,7 @@ public:
     }
 
     // Allocate memory
-    void* Alloc(size_t size)
+    void* Alloc(uint32_t size)
     {
         // The idea here is we want to continue to use the same active buckets repeatedly until
         // they fill up.   Once full a bucket will be drained out to empty as the allocations
@@ -93,6 +93,13 @@ public:
     {
         // Pass through...
         HighWaterHeap::FreeFromCorrectHeap(mem);
+    }
+
+    // Free memory
+    uint32_t GetSize(void* mem)
+    {
+        // Pass through...
+        return HighWaterHeap::GetSize(mem);
     }
 
 protected:

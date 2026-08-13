@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Core/String.h"
+#include "./Core/String.h"
 
 namespace SimpleLib
 {

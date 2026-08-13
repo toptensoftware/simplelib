@@ -32,7 +32,7 @@ Fact("HighWaterHeap GetLikelyUsed Increases After Alloc")
 
 	void* p1 = heap.Alloc(32);
 	Assert(p1 != nullptr);
-	size_t usedAfter1 = heap.GetLikelyUsed();
+	uint32_t usedAfter1 = heap.GetLikelyUsed();
 	Assert(usedAfter1 > 0);
 
 	void* p2 = heap.Alloc(32);
@@ -89,14 +89,15 @@ Fact("HighWaterHeap Sequential Allocations Do Not Overlap")
 
 Fact("HighWaterHeap Alloc Exactly Filling Capacity Succeeds")
 {
-	// The allocation header is a single pointer (8 bytes on this 64-bit
-	// build), and requests round up to a 16 byte boundary - requesting 8
-	// bytes needs exactly 16 bytes total, so a 16 byte heap should be
-	// able to satisfy exactly one such request with nothing left over.
+	// The allocation header is a pointer plus two uint32_t fields (16
+	// bytes on this 64-bit build), and requests round up to a 16 byte
+	// boundary - requesting 8 bytes needs exactly 32 bytes total, so a
+	// 32 byte heap should be able to satisfy exactly one such request
+	// with nothing left over.
 	// This also regresses the old header-placement bug, which wrote the
 	// header one-past-the-end of m_pmem whenever an allocation exactly
 	// filled the remaining capacity.
-	HighWaterHeap heap(16);
+	HighWaterHeap heap(32);
 	void* p = heap.Alloc(8);
 	Assert(p != nullptr);
 
@@ -104,7 +105,7 @@ Fact("HighWaterHeap Alloc Exactly Filling Capacity Succeeds")
 	for (int i = 0; i < 8; i++)
 		Assert(((unsigned char*)p)[i] == 0x77);
 
-	Assert(heap.GetLikelyUsed() == 16);
+	Assert(heap.GetLikelyUsed() == 32);
 	Assert(heap.Alloc(1) == nullptr);	// no room left
 
 	heap.Free(p);
@@ -266,22 +267,23 @@ Fact("HighWaterHeap SetTrigger Fires Once On Crossing")
 	heap.SetTrigger(50);
 	Assert(heap.triggerCount == 0);
 
-	// Each Alloc(8) consumes exactly 16 bytes of high-water mark (an 8
-	// byte header plus 8 requested bytes, already 16-byte aligned)
-	void* p1 = heap.Alloc(8);	// high: 0 -> 16, still below 50
+	// Each Alloc(8) consumes 32 bytes of high-water mark (a 16 byte
+	// header plus 8 requested bytes, rounded up to the next 16-byte
+	// boundary)
+	void* p1 = heap.Alloc(8);	// high: 0 -> 32, still below 50
 	Assert(heap.triggerCount == 0);
 
-	void* p2 = heap.Alloc(8);	// high: 16 -> 32, still below 50
-	Assert(heap.triggerCount == 0);
-
-	void* p3 = heap.Alloc(8);	// high: 32 -> 48, still below 50
-	Assert(heap.triggerCount == 0);
-
-	void* p4 = heap.Alloc(8);	// high: 48 -> 64, crosses 50
+	void* p2 = heap.Alloc(8);	// high: 32 -> 64, crosses 50
 	Assert(heap.GetLikelyUsed() == 64);
 	Assert(heap.triggerCount == 1);
 
-	void* p5 = heap.Alloc(8);	// already past the trigger, no re-fire
+	void* p3 = heap.Alloc(8);	// high: 64 -> 96, already past the trigger
+	Assert(heap.triggerCount == 1);
+
+	void* p4 = heap.Alloc(8);	// high: 96 -> 128, already past the trigger
+	Assert(heap.triggerCount == 1);
+
+	void* p5 = heap.Alloc(8);	// high: 128 -> 160, already past the trigger, no re-fire
 	Assert(heap.triggerCount == 1);
 
 	heap.Free(p1);
@@ -394,11 +396,54 @@ Fact("HighWaterHeap FreeFromCorrectHeap Null Is No Op")
 	Assert(true);
 }
 
+Fact("HighWaterHeap GetSize Returns Originally Requested Allocation Size")
+{
+	// GetSize() reports back exactly what was passed to Alloc() - not
+	// padded out with header or rounding overhead
+	HighWaterHeap heap(256);
+
+	void* p1 = heap.Alloc(8);
+	Assert(p1 != nullptr);
+	Assert(HighWaterHeap::GetSize(p1) == 8);
+
+	void* p2 = heap.Alloc(32);
+	Assert(p2 != nullptr);
+	Assert(HighWaterHeap::GetSize(p2) == 32);
+
+	// Not rounded up, even though the underlying block reserves more
+	void* p3 = heap.Alloc(1);
+	Assert(p3 != nullptr);
+	Assert(HighWaterHeap::GetSize(p3) == 1);
+
+	heap.Free(p1);
+	heap.Free(p2);
+	heap.Free(p3);
+}
+
+Fact("HighWaterHeap GetSize Is Independent Per Allocation")
+{
+	// Each allocation's header stores its own requested size, so
+	// differently sized neighbours must each report back their own value
+	HighWaterHeap heap(256);
+	void* p1 = heap.Alloc(3);
+	void* p2 = heap.Alloc(17);
+	void* p3 = heap.Alloc(9);
+	Assert(p1 && p2 && p3);
+
+	Assert(HighWaterHeap::GetSize(p1) == 3);
+	Assert(HighWaterHeap::GetSize(p2) == 17);
+	Assert(HighWaterHeap::GetSize(p3) == 9);
+
+	heap.Free(p1);
+	heap.Free(p2);
+	heap.Free(p3);
+}
+
 Fact("HighWaterHeap Concurrent Allocations From Multiple Threads Do Not Corrupt Data")
 {
 	const int kThreads = 4;
 	const int kPerThread = 2000;
-	const size_t kBlockSize = 32;
+	const uint32_t kBlockSize = 32;
 
 	// Comfortably larger than kThreads*kPerThread allocations of
 	// kBlockSize (plus header/rounding overhead) so no thread ever sees
