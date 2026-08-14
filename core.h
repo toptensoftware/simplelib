@@ -7,6 +7,7 @@
 #include "Core/StringPool.h"
 #include "Core/Encoding.h"
 #include "Core/Formatting.h"
+#include "Core/Parse.h"
 
 // Collections
 #include "Core/Delegate.h"

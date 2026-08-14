@@ -14,6 +14,17 @@ namespace SimpleLib
 		// Maximum
 		template <typename T>
 		static T Max(const T& a, const T& b) { return a > b ? a : b; }
+		
+		template <typename T>
+		static void Normalize(T& a, T& b)
+		{
+			if (a > b)
+			{
+				T temp = a;
+				a = b;
+				b = temp;
+			}
+		}
 
 		inline static constexpr double PI = 3.141592653589793238463;
 		inline static constexpr double PI_F = 3.14159265358979f;
