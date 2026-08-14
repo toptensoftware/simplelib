@@ -398,6 +398,80 @@ public:
 };
 
 
+// Specialization for float: the primary template's `(T)atomicLoad(...)`
+// style casts would do a numeric conversion between float and uint32_t
+// (eg: bit pattern 0x3f800000 becoming the float value 1065353216.0f)
+// instead of reinterpreting the bits, which is never what's wanted for an
+// atomic float. This bit-casts to/from uint32_t instead, so the stored
+// bits are exactly the IEEE-754 representation of the float. Inc/Dec/Add
+// aren't provided since incrementing the bit pattern isn't a meaningful
+// operation on a float.
+template <>
+class Atomic<float>
+{
+protected:
+    volatile uint32_t m_val;
+
+    static uint32_t ToBits(float val) { uint32_t bits; memcpy(&bits, &val, sizeof(bits)); return bits; }
+    static float ToFloat(uint32_t bits) { float val; memcpy(&val, &bits, sizeof(val)); return val; }
+
+public:
+    Atomic() : m_val(0) {}
+    explicit Atomic(float initial) : m_val(ToBits(initial)) {}
+
+    Atomic(const Atomic&) = delete;
+    Atomic& operator=(const Atomic&) = delete;
+
+    float CompareExchange(float val, float compare)
+    {
+        return ToFloat(atomicCompareExchange((uint32_t volatile*)&m_val, ToBits(val), ToBits(compare)));
+    }
+
+    // Same as CompareExchange, but returns whether it succeeded rather
+    // than the previous value
+    bool TrySet(float val, float compare)
+    {
+        return atomicCompareExchange((uint32_t volatile*)&m_val, ToBits(val), ToBits(compare)) == ToBits(compare);
+    }
+
+    float Get() const
+    {
+        return ToFloat(atomicLoad((uint32_t volatile*)&m_val));
+    }
+
+    float Set(float val)
+    {
+        return ToFloat(atomicExchange((uint32_t volatile*)&m_val, ToBits(val)));
+    }
+
+    // Block while current value == expected. Returns false on timeout.
+    bool Wait(float expected, uint32_t timeout = kWaitForever)
+    {
+        uint32_t bits = ToBits(expected);
+        uint32_t current = atomicLoad((uint32_t volatile*)&m_val);
+        while (current == bits)
+        {
+            if (!futexWait(const_cast<uint32_t*>(&m_val), &current, sizeof(uint32_t), timeout))
+            {
+                return false; // timed out (or, rarely, a real failure — see GetLastError)
+            }
+            current = atomicLoad((uint32_t volatile*)&m_val); // re-check — WaitOnAddress can wake spuriously
+        }
+        return true;
+    }
+
+    void WakeOne()
+    {
+        futexWakeOne(&m_val);
+    }
+
+    void WakeAll()
+    {
+        futexWakeAll(&m_val);
+    }
+};
+
+
 // A pointer paired with a monotonically incrementing generation tag, CAS'd
 // together as a single 128-bit value. Plain pointer CAS can't tell "the
 // same node I originally saw" from "that address, again, because it was

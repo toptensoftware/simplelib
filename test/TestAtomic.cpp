@@ -102,6 +102,90 @@ Fact("Atomic Size_t Sized")
 	Assert(a.Add(10) == 111);
 }
 
+Fact("Atomic Float Default Constructor")
+{
+	Atomic<float> a;
+	Assert(a.Get() == 0.0f);
+}
+
+Fact("Atomic Float Get Set")
+{
+	Atomic<float> a(5.5f);
+	Assert(a.Get() == 5.5f);
+
+	float old = a.Set(10.25f);
+	Assert(old == 5.5f);
+	Assert(a.Get() == 10.25f);
+}
+
+Fact("Atomic Float CompareExchange")
+{
+	Atomic<float> a(5.5f);
+
+	// Compare matches current value -> succeeds
+	float prev = a.CompareExchange(10.25f, 5.5f);
+	Assert(prev == 5.5f);
+	Assert(a.Get() == 10.25f);
+
+	// Compare no longer matches -> fails, returns actual current value
+	prev = a.CompareExchange(20.0f, 5.5f);
+	Assert(prev == 10.25f);
+	Assert(a.Get() == 10.25f);
+}
+
+Fact("Atomic Float TrySet")
+{
+	Atomic<float> a(5.5f);
+
+	// Compare matches current value -> succeeds
+	Assert(a.TrySet(10.25f, 5.5f) == true);
+	Assert(a.Get() == 10.25f);
+
+	// Compare no longer matches -> fails, value unchanged
+	Assert(a.TrySet(20.0f, 5.5f) == false);
+	Assert(a.Get() == 10.25f);
+}
+
+Fact("Atomic Float Round Trips Bit Pattern Exactly")
+{
+	// Guards against the naive `(T)atomicLoad(...)` cast, which would do a
+	// numeric conversion (bits reinterpreted as an integer, then converted
+	// to float) rather than a bit-cast.
+	Atomic<float> a(0.0f);
+	a.Set(1.0f);						// bit pattern 0x3f800000
+	Assert(a.Get() == 1.0f);
+
+	a.Set(-1.0f);
+	Assert(a.Get() == -1.0f);
+
+	a.Set(0.1f);
+	Assert(a.Get() == 0.1f);
+}
+
+Fact("Atomic Float Wait Times Out When Value Unchanged")
+{
+	Atomic<float> a(0.0f);
+	Assert(!a.Wait(0.0f, 50));
+}
+
+Fact("Atomic Float Wait WakeOne")
+{
+	Atomic<float> a(0.0f);
+
+	std::thread waiter([&]() {
+		a.Wait(0.0f, 5000);
+	});
+
+	// Give the waiter time to actually start waiting before signalling
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+	a.Set(1.5f);
+	a.WakeOne();
+
+	waiter.join();
+	Assert(a.Get() == 1.5f);
+}
+
 Fact("Atomic Wait Times Out When Value Unchanged")
 {
 	Atomic<uint32_t> a(0);
