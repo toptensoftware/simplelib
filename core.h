@@ -22,6 +22,7 @@
 
 // Misc
 #include "Core/BitOps.h"
+#include "Core/Endian.h"
 #include "Core/Crc32.h"
 #include "Core/Guid.h"
 
