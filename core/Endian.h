@@ -101,6 +101,20 @@ public:
         return (int64_t)ByteSwap((uint64_t)value);
     }
 
+
+    // Generate a fourcc value from a character string such that
+    // ToBig(fourcc(s)) written to disk always produces the bytes in string order,
+    // regardless of platform endianness (ToBig handles the platform adaptation,
+    // so this value itself is intentionally platform-independent).
+    static constexpr uint32_t fourcc(const char* s)
+    {
+        return uint32_t(uint8_t(s[3])) |
+            (uint32_t(uint8_t(s[2])) << 8) |
+            (uint32_t(uint8_t(s[1])) << 16) |
+            (uint32_t(uint8_t(s[0])) << 24);
+    }
+
+
     // Native => Big
     template <typename T>
     static inline T ToBig(T value)
@@ -131,7 +145,7 @@ public:
             return ByteSwap(value);
     }
 
-    // Little => Native
+    // ceeLittle => Native
     template <typename T>
     static inline T FromLittle(T value)
     {

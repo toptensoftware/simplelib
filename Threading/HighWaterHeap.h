@@ -2,21 +2,14 @@
 
 #include <assert.h>
 #include "Atomic.h"
+#include "../Core/BitOps.h"
+#include "../Core/Endian.h"
 
 #include <malloc.h>
 
 namespace SimpleLib
 {
 
-
-constexpr uint32_t fourcc(const char* s)
-{
-    return uint32_t(uint8_t(s[0])) |
-        (uint32_t(uint8_t(s[1])) << 8) |
-        (uint32_t(uint8_t(s[2])) << 16) |
-        (uint32_t(uint8_t(s[3])) << 24);
-}
-    
 // Implementation of a non-blocking thread-safe "highwater" heap
 // Heap fills up until everything has been freed and then
 // resets to completely empty
@@ -259,8 +252,8 @@ private:
 	HighWaterHeap(HighWaterHeap&& other) = delete;
 	HighWaterHeap& operator=(HighWaterHeap&& other) = delete;
 
-    static const uint32_t kSigAlloc = fourcc("hwal");
-    static const uint32_t kSigHeap = fourcc("hwhp");
+    static const uint32_t kSigAlloc = Endian::fourcc("hwal");
+    static const uint32_t kSigHeap = Endian::fourcc("hwhp");
 };
 
 }
