@@ -36,14 +36,23 @@ public:
 	{
 		assert(m_handle == nullptr);
 
+        // Start suspended so m_handle (and the priority/description below)
+        // are fully set up before ThreadProc can run. Otherwise, since the
+        // new thread can start running as soon as CreateThread is called,
+        // ThreadProc could call SetPriority/SetDescription/GetHandle on
+        // itself while this thread is still storing m_handle -- a race.
+        // ResumeThread implies a memory barrier, so the child is guaranteed
+        // to see everything set up here once it wakes up.
         DWORD dwId;
-        m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, 0, &dwId);
+        m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, CREATE_SUSPENDED, &dwId);
         m_id = dwId;
 
 		if (m_priority != ThreadPriority::Normal)
 			SetPriority(m_priority);
 		if (!m_description.IsEmpty())
 			SetDescription(m_description);
+
+		ResumeThread(m_handle);
 	}
 
 	void Wait(uint32_t timeout = kWaitForever)

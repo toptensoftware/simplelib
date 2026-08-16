@@ -259,6 +259,36 @@ Fact("List Move Element")
 	Assert(list[3] == 3);
 }
 
+Fact("List Move Element Does Not Leak Or Double-Destruct")
+{
+	// InstanceCounter's ctor/dtor only touch a static counter, not any
+	// owned resource, so this specifically checks whether Move's
+	// memmove-based shuffle invokes exactly one ctor and one dtor per
+	// logical element -- if the placement-Constructor at iTo ever
+	// overwrites a slot that still held a "live" un-destructed object,
+	// s_iInstances will end up too high after the list goes away.
+	InstanceCounter::s_iInstances = 0;
+	{
+		List<InstanceCounter> list;
+		for (int i = 0; i < 6; i++)
+			list.Add(InstanceCounter());
+		Assert(InstanceCounter::s_iInstances == 6);
+
+		list.Move(4, 1); // backward shift
+		Assert(InstanceCounter::s_iInstances == 6);
+
+		list.Move(1, 4); // forward shift back
+		Assert(InstanceCounter::s_iInstances == 6);
+
+		list.Move(0, 5); // move to end
+		Assert(InstanceCounter::s_iInstances == 6);
+
+		list.Move(5, 0); // move to start
+		Assert(InstanceCounter::s_iInstances == 6);
+	}
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
 Fact("List ReplaceAt")
 {
 	List<int> list;

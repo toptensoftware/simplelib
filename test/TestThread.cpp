@@ -142,6 +142,37 @@ Fact("Thread GetCurrentHandle Is Not Null")
 	Assert(Thread::GetCurrentHandle() != nullptr);
 }
 
+class SelfPriorityThread : public Thread
+{
+public:
+	std::atomic<bool> finished{ false };
+	std::atomic<bool> handleWasValid{ false };
+
+	virtual void ThreadProc() override
+	{
+		// Exercises the Start() race: without starting suspended, m_handle
+		// may not be stored yet when this runs on the new thread. Can't use
+		// Assert() here since it throws and nothing on this thread catches it
+		// -- capture the result and check it back on the main thread instead.
+		handleWasValid = GetHandle() != nullptr;
+		SetPriority(ThreadPriority::AboveNormal);
+		SetDescription("Self Priority Thread");
+		finished = true;
+	}
+};
+
+Fact("Thread Can Set Its Own Priority And Description From ThreadProc")
+{
+	for (int i = 0; i < 50; i++)
+	{
+		SelfPriorityThread t;
+		t.Start();
+		t.Wait();
+		Assert(t.finished);
+		Assert(t.handleWasValid);
+	}
+}
+
 Fact("Thread Multiple Threads Run Concurrently")
 {
 	std::atomic<int> counter{ 0 };
