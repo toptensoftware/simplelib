@@ -136,19 +136,72 @@ class List
 	// InsertAt
 	void InsertAt(int iPosition, TArg val)
 	{
-		InsertAtInternal(iPosition, &val, 1);
+		assert(iPosition >= 0);
+		assert(iPosition <= GetCount());
+
+		// Make sure have room
+		SetCapacity(m_count + 1);
+
+		// Shuffle memory
+		if (iPosition < m_count)
+			memmove(m_data + iPosition + 1, m_data + iPosition, (m_count - iPosition) * sizeof(TStorage));
+
+		// Construct new element directly from TArg (same as Add)
+		Constructor(m_data + iPosition, val);
+
+		// Update count
+		m_count++;
 	}
 
-	// Add the contents of another list to the end of this one
+	// Add the contents of another list to the end of this one (copies each
+	// element, so TStorage must be copyable)
 	void AddRange(const List& vec)
 	{
 		InsertAtInternal(GetCount(), vec.GetBuffer(), vec.GetCount());
 	}
 
-	// Insert the contents of another list into this one
+	// Move the contents of another list to the end of this one, leaving it
+	// empty. Works with move-only element types (eg. List<OwnedPtr<T>>)
+	void AddRange(List&& vec)
+	{
+		InsertRangeAt(GetCount(), SimpleLib::move(vec));
+	}
+
+	// Insert the contents of another list into this one (copies each
+	// element, so TStorage must be copyable)
 	void InsertRangeAt(int iPosition, const List& vec)
 	{
 		InsertAtInternal(iPosition, vec.GetBuffer(), vec.GetCount());
+	}
+
+	// Insert the contents of another list into this one, transferring
+	// ownership of its elements and leaving it empty. Works with move-only
+	// element types (eg. List<OwnedPtr<T>>)
+	void InsertRangeAt(int iPosition, List&& vec)
+	{
+		assert(&vec != this);
+
+		int iCount = vec.GetCount();
+		if (iCount < 1)
+			return;
+
+		assert(iPosition >= 0);
+		assert(iPosition <= GetCount());
+
+		// Make sure have room
+		SetCapacity(m_count + iCount);
+
+		// Shuffle memory to make room
+		if (iPosition < m_count)
+			memmove(m_data + iPosition + iCount, m_data + iPosition, (m_count - iPosition) * sizeof(TStorage));
+
+		// Bitwise relocate elements straight out of vec's buffer - no
+		// constructor/destructor calls, consistent with how RemoveAt and
+		// InsertAtInternal already relocate elements via memmove
+		memcpy(m_data + iPosition, vec.m_data, iCount * sizeof(TStorage));
+
+		m_count += iCount;
+		vec.m_count = 0;
 	}
 
 	template <typename TColl>
@@ -270,6 +323,15 @@ class List
 		m_count--;
 
 		return val;
+	}
+
+	// Detach every element (eg. for List<OwnedPtr<T>> this abandons the
+	// owned objects rather than deleting them) and empty the list
+	void DetachAll()
+	{
+		for (int i = 0; i < m_count; i++)
+			TSemantics::Detach(m_data[i]);
+		m_count = 0;
 	}
 
 	// RemoveAt
@@ -394,6 +456,75 @@ class List
         return true;
     }
 
+public:
+	// Binary search this list (which must already be sorted in ascending
+	// order according to the same convention as compare - negative if elem
+	// comes before key, 0 if equal, positive if elem comes after key). If
+	// there are multiple matching elements, which one is found is unspecified.
+	//
+	// Implemented directly rather than via the CRT's bsearch/bsearch_s since
+	// the latter isn't available in a portable form (bsearch_s is an MSVC/
+	// Annex K extension with no equivalent on other platforms).
+	//
+	// If found:
+	//   - returns `true` with `index` containing the item's index (not
+	//     necessarily the first if there are duplicates)
+	// If not found:
+	//   - returns `false` with `index` containing the position it should be
+	//     inserted at to keep the list sorted
+	template <typename TKey>
+	bool BinarySearch(int& index, TKey key, int (*compare)(TArg elem, TKey key, void* user), void* user = nullptr) const
+	{
+		int lo = 0;
+		int hi = m_count - 1;
+		while (lo <= hi)
+		{
+			int mid = lo + (hi - lo) / 2;
+			int cmp = compare(m_data[mid], key, user);
+			if (cmp == 0)
+			{
+				index = mid;
+				return true;
+			}
+			if (cmp < 0)
+				lo = mid + 1;
+			else
+				hi = mid - 1;
+		}
+		index = lo;
+		return false;
+	}
+
+	// As above, but takes any callable (eg. a capturing lambda) directly so
+	// no void* user needs to be threaded through. TCompare is deduced from
+	// the callable itself; the enable_if excludes plain function pointers
+	// matching the overload above so calls like BinarySearch(index, key,
+	// CFunctionPointer) aren't ambiguous between the two overloads
+	template <typename TKey, typename TCompare,
+		typename = typename std::enable_if<!std::is_convertible<TCompare, int (*)(TArg, TKey, void*)>::value>::type>
+	bool BinarySearch(int& index, TKey key, TCompare compare) const
+	{
+		int lo = 0;
+		int hi = m_count - 1;
+		while (lo <= hi)
+		{
+			int mid = lo + (hi - lo) / 2;
+			int cmp = compare(m_data[mid], key);
+			if (cmp == 0)
+			{
+				index = mid;
+				return true;
+			}
+			if (cmp < 0)
+				lo = mid + 1;
+			else
+				hi = mid - 1;
+		}
+		index = lo;
+		return false;
+	}
+
+private:
 	struct sort_ctx_s
 	{
 		int (*callback)(TArg a, TArg b, void* user);
@@ -410,6 +541,7 @@ class List
 		return ctx.callback(*(TStorage*)a, *(TStorage*)b, ctx.user);
 	}
 
+public:
 	void Sort(int (*callback)(TArg a, TArg b, void* user), void* user)
 	{
 		sort_ctx_s ctx;
@@ -422,6 +554,7 @@ class List
 		#endif
 	}
 
+private:
 	struct sort_ctx
 	{
 		int (*callback)(TArg a, TArg b);
@@ -437,6 +570,7 @@ class List
 		return ctx.callback(*(TStorage*)a, *(TStorage*)b);
 	}
 
+public:
 	void Sort(int (*callback)(TArg a, TArg b))
 	{
 		sort_ctx ctx;
@@ -457,6 +591,7 @@ class List
 		});
 	}
 
+public:
 	// Find index of an item(linear)
 	template <typename TCompare = SDefaultCompare>
 	int IndexOf(TArg val, int iStartAfter = -1) const
@@ -464,7 +599,7 @@ class List
 		// Find an item
 		for (int i = iStartAfter + 1; i < m_count; i++)
 		{
-			if (TCompare::AreEqual(m_data[i], val))
+			if (TCompare::AreEqual(static_cast<TArg>(m_data[i]), val))
 				return i;
 		}
 

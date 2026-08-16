@@ -27,6 +27,11 @@ static int CompareIntsWithContext(int a, int b, void* pUser)
 	return (a > b ? 1 : a < b ? -1 : 0) * iSign;
 }
 
+static int CompareIntToKey(int elem, int key, void* /*pUser*/)
+{
+	return elem > key ? 1 : elem < key ? -1 : 0;
+}
+
 Fact("List Basics")
 {
 	List<int> list;
@@ -730,6 +735,118 @@ Fact("List Sort With Context")
 	Assert(list[2] == 1);
 }
 
+Fact("List BinarySearch")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(3);
+	list.Add(5);
+	list.Add(7);
+	list.Add(9);
+
+	int index;
+
+	// Found - first, middle and last elements
+	Assert(list.BinarySearch(index, 1, CompareIntToKey) && index == 0);
+	Assert(list.BinarySearch(index, 5, CompareIntToKey) && index == 2);
+	Assert(list.BinarySearch(index, 9, CompareIntToKey) && index == 4);
+
+	// Not found - index gives the position it should be inserted at to
+	// keep the list sorted
+	Assert(!list.BinarySearch(index, 0, CompareIntToKey) && index == 0);
+	Assert(!list.BinarySearch(index, 10, CompareIntToKey) && index == 5);
+	Assert(!list.BinarySearch(index, 4, CompareIntToKey) && index == 2);
+}
+
+Fact("List BinarySearch Empty List")
+{
+	List<int> list;
+	int index;
+	Assert(!list.BinarySearch(index, 5, CompareIntToKey) && index == 0);
+}
+
+Fact("List BinarySearch Single Element")
+{
+	List<int> list;
+	list.Add(42);
+
+	int index;
+	Assert(list.BinarySearch(index, 42, CompareIntToKey) && index == 0);
+	Assert(!list.BinarySearch(index, 41, CompareIntToKey) && index == 0);
+	Assert(!list.BinarySearch(index, 43, CompareIntToKey) && index == 1);
+}
+
+Fact("List BinarySearch With User Context")
+{
+	// List sorted descending - CompareIntsWithContext's sign flips the
+	// comparison so binary search still works against this ordering
+	List<int> list;
+	list.Add(9);
+	list.Add(7);
+	list.Add(5);
+	list.Add(3);
+	list.Add(1);
+
+	int iSign = -1;
+	int index;
+	Assert(list.BinarySearch(index, 9, CompareIntsWithContext, &iSign) && index == 0);
+	Assert(list.BinarySearch(index, 5, CompareIntsWithContext, &iSign) && index == 2);
+	Assert(list.BinarySearch(index, 1, CompareIntsWithContext, &iSign) && index == 4);
+
+	// 4 belongs between 5 (index 2) and 3 (index 3) to keep it descending
+	Assert(!list.BinarySearch(index, 4, CompareIntsWithContext, &iSign) && index == 3);
+}
+
+Fact("List BinarySearch Lambda")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(3);
+	list.Add(5);
+	list.Add(7);
+	list.Add(9);
+
+	auto compare = [](int elem, int key) {
+		return elem > key ? 1 : elem < key ? -1 : 0;
+	};
+
+	int index;
+	Assert(list.BinarySearch(index, 5, compare) && index == 2);
+	Assert(!list.BinarySearch(index, 4, compare) && index == 2);
+
+	// A capturing lambda needs no void* user plumbing
+	int iSign = -1;
+	List<int> descending;
+	descending.Add(9);
+	descending.Add(7);
+	descending.Add(5);
+	descending.Add(3);
+	descending.Add(1);
+	Assert(descending.BinarySearch(index, 5, [iSign](int elem, int key) {
+		return (elem > key ? 1 : elem < key ? -1 : 0) * iSign;
+	}) && index == 2);
+}
+
+Fact("List BinarySearch Lambda With Different Key Type")
+{
+	List<String> list;
+	list.Add(String("apple"));
+	list.Add(String("banana"));
+	list.Add(String("cherry"));
+	list.Add(String("date"));
+
+	auto compare = [](String elem, const char* key) {
+		return SCase::Compare(elem.sz(), key);
+	};
+
+	int index;
+	Assert(list.BinarySearch(index, "cherry", compare) && index == 2);
+	Assert(list.BinarySearch(index, "apple", compare) && index == 0);
+
+	// Not found - "fig" sorts after "date", so it belongs at the end
+	Assert(!list.BinarySearch(index, "fig", compare) && index == 4);
+}
+
 Fact("List Stack Operations")
 {
 	List<int> list;
@@ -863,6 +980,157 @@ Fact("List Of Owned Pointers")
 	Assert(InstanceCounter::s_iInstances == 2);
 
 	list.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Of Owned Pointers IndexOf")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> list;
+	InstanceCounter* p0 = new InstanceCounter(10);
+	InstanceCounter* p1 = new InstanceCounter(20);
+	InstanceCounter* p2 = new InstanceCounter(30);
+	list.Add(p0);
+	list.Add(p1);
+	list.Add(p2);
+
+	// IndexOf/Contains must compare by the raw TArg pointer (identity),
+	// not try to compare the OwnedPtr<T> wrapper itself
+	Assert(list.IndexOf(p0) == 0);
+	Assert(list.IndexOf(p1) == 1);
+	Assert(list.IndexOf(p2) == 2);
+	Assert(list.Contains(p1));
+	Assert(!list.Contains(nullptr));
+	Assert(list.IndexOf(nullptr) == -1);
+
+	// Remove locates and removes the correct element (deleting what it owned)
+	Assert(list.Remove(p1) == 1);
+	Assert(InstanceCounter::s_iInstances == 2);
+	Assert(list.GetCount() == 2);
+	Assert(list[0]->Value == 10);
+	Assert(list[1]->Value == 30);
+
+	list.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Of Owned Pointers InsertAt")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> list;
+	list.Add(new InstanceCounter(10));
+	list.Add(new InstanceCounter(30));
+
+	// Insert in the middle, at TArg = InstanceCounter* rather than TStorage
+	list.InsertAt(1, new InstanceCounter(20));
+	Assert(InstanceCounter::s_iInstances == 3);
+	Assert(list.GetCount() == 3);
+	Assert(list[0]->Value == 10);
+	Assert(list[1]->Value == 20);
+	Assert(list[2]->Value == 30);
+
+	// Insert at the front and back too
+	list.InsertAt(0, new InstanceCounter(0));
+	list.InsertAt(list.GetCount(), new InstanceCounter(40));
+	Assert(list[0]->Value == 0);
+	Assert(list[4]->Value == 40);
+	Assert(InstanceCounter::s_iInstances == 5);
+
+	list.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Of Owned Pointers AddRange Moves And Empties Source")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> src;
+	src.Add(new InstanceCounter(1));
+	src.Add(new InstanceCounter(2));
+
+	List<OwnedPtr<InstanceCounter>> dest;
+	dest.Add(new InstanceCounter(0));
+
+	// Moving (not copying - OwnedPtr can't be copied) src's elements into dest
+	dest.AddRange(SimpleLib::move(src));
+
+	// Ownership transferred, no duplication/leak of the underlying objects
+	Assert(InstanceCounter::s_iInstances == 3);
+	Assert(src.GetCount() == 0);
+	Assert(dest.GetCount() == 3);
+	Assert(dest[0]->Value == 0);
+	Assert(dest[1]->Value == 1);
+	Assert(dest[2]->Value == 2);
+
+	dest.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Of Owned Pointers InsertRangeAt Moves And Empties Source")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> src;
+	src.Add(new InstanceCounter(1));
+	src.Add(new InstanceCounter(2));
+
+	List<OwnedPtr<InstanceCounter>> dest;
+	dest.Add(new InstanceCounter(0));
+	dest.Add(new InstanceCounter(3));
+
+	dest.InsertRangeAt(1, SimpleLib::move(src));
+
+	Assert(InstanceCounter::s_iInstances == 4);
+	Assert(src.GetCount() == 0);
+	Assert(dest.GetCount() == 4);
+	Assert(dest[0]->Value == 0);
+	Assert(dest[1]->Value == 1);
+	Assert(dest[2]->Value == 2);
+	Assert(dest[3]->Value == 3);
+
+	dest.Clear();
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List DetachAll Empties List")
+{
+	List<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	list.DetachAll();
+
+	Assert(list.GetCount() == 0);
+	Assert(list.IsEmpty());
+}
+
+Fact("List Of Owned Pointers DetachAll Releases Ownership Without Deleting")
+{
+	InstanceCounter::s_iInstances = 0;
+
+	List<OwnedPtr<InstanceCounter>> list;
+	list.Add(new InstanceCounter(1));
+	list.Add(new InstanceCounter(2));
+	list.Add(new InstanceCounter(3));
+	Assert(InstanceCounter::s_iInstances == 3);
+
+	// Grab the raw pointers before detaching so we can clean them up ourselves
+	InstanceCounter* raw[3];
+	for (int i = 0; i < 3; i++)
+		raw[i] = list[i];
+
+	list.DetachAll();
+
+	// List is now empty but nothing was deleted - ownership was abandoned, not destroyed
+	Assert(list.GetCount() == 0);
+	Assert(InstanceCounter::s_iInstances == 3);
+
+	// Caller now owns the raw pointers and must clean them up
+	for (int i = 0; i < 3; i++)
+		delete raw[i];
 	Assert(InstanceCounter::s_iInstances == 0);
 }
 

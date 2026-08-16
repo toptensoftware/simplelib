@@ -8,6 +8,7 @@
 
 #include "List.h"
 #include "StringBuilder.h"
+#include "Parse.h"
 
 
 namespace SimpleLib
@@ -291,6 +292,50 @@ namespace SimpleLib
 			return StringCore<T>(m_pData->m_sz + iStart, iLength);
 		}
 
+		// Remove leading whitespace, returning *this if there was none
+		StringCore<T> LTrim() const
+		{
+			if (m_pData == nullptr)
+				return *this;
+
+			int length = m_pData->m_iLength;
+			const T* p = m_pData->m_sz;
+
+			int start = 0;
+			while (start < length && Parse<T>::IsWhiteSpace(p[start]))
+				start++;
+
+			if (start == 0)
+				return *this;
+
+			return StringCore<T>(p + start, length - start);
+		}
+
+		// Remove trailing whitespace, returning *this if there was none
+		StringCore<T> RTrim() const
+		{
+			if (m_pData == nullptr)
+				return *this;
+
+			int length = m_pData->m_iLength;
+			const T* p = m_pData->m_sz;
+
+			int end = length;
+			while (end > 0 && Parse<T>::IsWhiteSpace(p[end - 1]))
+				end--;
+
+			if (end == length)
+				return *this;
+
+			return StringCore<T>(p, end);
+		}
+
+		// Remove leading and trailing whitespace, returning *this if there was none
+		StringCore<T> Trim() const
+		{
+			return LTrim().RTrim();
+		}
+
 		template <typename S = SCase>
 		int IndexOf(T find, int startOffset = 0) const
 		{
@@ -450,6 +495,18 @@ namespace SimpleLib
 		}
 
 		static StringCore<T> Join(List<StringCore<T>>& parts, T separator)
+		{
+			StringBuilder<T> sb;
+			for (int i=0; i<parts.GetCount(); i++)
+			{
+				if (i > 0)
+					sb.Append(separator);
+				sb.Append(parts[i]);
+			}
+			return sb.Finish();
+		}
+
+		static StringCore<T> Join(List<StringCore<T>>& parts, const T* separator)
 		{
 			StringBuilder<T> sb;
 			for (int i=0; i<parts.GetCount(); i++)

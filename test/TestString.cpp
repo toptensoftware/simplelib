@@ -62,6 +62,29 @@ Fact("Sub StringCore")
 	Assert(strW.IsEqualTo(L"Hello World"));
 }
 
+Fact("StringCore Trim")
+{
+	String str("  Hello World  ");
+	Assert(str.Trim().IsEqualTo("Hello World"));
+	Assert(str.LTrim().IsEqualTo("Hello World  "));
+	Assert(str.RTrim().IsEqualTo("  Hello World"));
+
+	// Whitespace only
+	Assert(String("   ").Trim().IsEqualTo(""));
+
+	// No whitespace at all - should return the same underlying data, not a copy
+	String noWhiteSpace("Hello World");
+	Assert(static_cast<const char*>(noWhiteSpace.Trim()) == static_cast<const char*>(noWhiteSpace));
+	Assert(static_cast<const char*>(noWhiteSpace.LTrim()) == static_cast<const char*>(noWhiteSpace));
+	Assert(static_cast<const char*>(noWhiteSpace.RTrim()) == static_cast<const char*>(noWhiteSpace));
+
+	// Mixed whitespace characters
+	Assert(String("\t\r\n Hello World \n\r\t").Trim().IsEqualTo("Hello World"));
+
+	// Empty string
+	Assert(String("").Trim().IsEqualTo(""));
+}
+
 Fact("StringCore CaseI Compare")
 {
 	Assert(SCaseI::Compare("Hello World", "hello world")==0);
@@ -316,6 +339,15 @@ Fact("StringCore Join")
 	parts.Add("Pears");
 	parts.Add("Bananas");
 	Assert(String::Join(parts, ';').IsEqualTo("Apples;Pears;Bananas"));
+}
+
+Fact("StringCore Join With String Separator")
+{
+	List<String> parts;
+	parts.Add("Apples");
+	parts.Add("Pears");
+	parts.Add("Bananas");
+	Assert(String::Join(parts, ", ").IsEqualTo("Apples, Pears, Bananas"));
 }
 
 Fact("StringCore Format Integers")
