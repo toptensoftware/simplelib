@@ -30,7 +30,7 @@ public:
 
 #ifdef _MSC_VER
         if (shFlag == 0)
-            shFlag = _SH_DENYRW;
+            shFlag = _SH_DENYWR;
 #endif
 
         m_file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
@@ -47,7 +47,7 @@ public:
     {
     #ifdef _MSC_VER
         if (shFlag == 0)
-            shFlag = _SH_DENYRW;
+            shFlag = _SH_DENYWR;
     #endif
         FILE* file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
         if (file)
