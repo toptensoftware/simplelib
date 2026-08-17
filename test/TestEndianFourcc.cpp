@@ -2,9 +2,9 @@
 #include "../Core.h"
 using namespace SimpleLib;
 
-Fact("Endian fourcc ToBig produces bytes in string order")
+Fact("Endian fourcc produces bytes in string order in memory")
 {
-	uint32_t v = Endian::ToBig(Endian::fourcc("ABCD"));
+	uint32_t v = Endian::fourcc("ABCD");
 	uint8_t* bytes = (uint8_t*)&v;
 	Assert(bytes[0] == 'A');
 	Assert(bytes[1] == 'B');
@@ -12,12 +12,11 @@ Fact("Endian fourcc ToBig produces bytes in string order")
 	Assert(bytes[3] == 'D');
 }
 
-Fact("Endian fourcc FromBig of on-disk bytes matches fourcc")
+Fact("Endian fourcc matches a raw memcpy of the string bytes")
 {
-	// Simulate reading the on-disk bytes (string order) back into memory
-	uint8_t onDisk[4] = { 'A', 'B', 'C', 'D' };
+	char onDisk[4] = { 'A', 'B', 'C', 'D' };
 	uint32_t raw;
 	memcpy(&raw, onDisk, 4);
 
-	Assert(Endian::FromBig(raw) == Endian::fourcc("ABCD"));
+	Assert(raw == Endian::fourcc("ABCD"));
 }

@@ -102,16 +102,24 @@ public:
     }
 
 
-    // Generate a fourcc value from a character string such that
-    // ToBig(fourcc(s)) written to disk always produces the bytes in string order,
-    // regardless of platform endianness (ToBig handles the platform adaptation,
-    // so this value itself is intentionally platform-independent).
+    // Generate a fourcc value from a character string such that the bytes
+    // in memory are the same as the character string
     static constexpr uint32_t fourcc(const char* s)
     {
-        return uint32_t(uint8_t(s[3])) |
-            (uint32_t(uint8_t(s[2])) << 8) |
-            (uint32_t(uint8_t(s[1])) << 16) |
-            (uint32_t(uint8_t(s[0])) << 24);
+        if constexpr (GetKind() == EndianKind::Little)
+        {
+            return uint32_t(uint8_t(s[0])) |
+                (uint32_t(uint8_t(s[1])) << 8) |
+                (uint32_t(uint8_t(s[2])) << 16) |
+                (uint32_t(uint8_t(s[3])) << 24);
+        }
+        else
+        {
+            return uint32_t(uint8_t(s[3])) |
+                (uint32_t(uint8_t(s[2])) << 8) |
+                (uint32_t(uint8_t(s[1])) << 16) |
+                (uint32_t(uint8_t(s[0])) << 24);
+        }
     }
 
 
