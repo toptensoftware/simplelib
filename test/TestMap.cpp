@@ -372,6 +372,36 @@ Fact("Map Of StringCore Keys")
 	Assert(!map.ContainsKey("Oranges"));
 }
 
+Fact("Map Of StringCore Keys With Case Insensitive Comparer")
+{
+	Map<String, int, SCaseI> map;
+	map.Add("Apples", 1);
+	map.Add("Pears", 2);
+	map.Add("Bananas", 3);
+
+	Assert(map.GetCount() == 3);
+	Assert(map.Get("pears") == 2);
+	Assert(map.Get("PEARS") == 2);
+	Assert(map.ContainsKey("bananas"));
+	Assert(map.ContainsKey("BANANAS"));
+	Assert(!map.ContainsKey("Oranges"));
+
+	// Adding a key that only differs by case is treated as the same key
+	map.Set("PEARS", 22);
+	Assert(map.GetCount() == 3);
+	Assert(map.Get("Pears") == 22);
+}
+
+Fact("Map Of WString Keys With Case Insensitive Comparer")
+{
+	Map<WString, int, SCaseI> map;
+	map.Add(L"Apples", 1);
+	map.Add(L"Pears", 2);
+
+	Assert(map.Get(L"pears") == 2);
+	Assert(map.ContainsKey(L"APPLES"));
+}
+
 Fact("Map Iterate")
 {
 	Map<int, int> map;

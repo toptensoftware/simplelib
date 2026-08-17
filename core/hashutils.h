@@ -7,10 +7,12 @@ namespace SimpleLib
 #include <stddef.h>
 
 // FNV-1a 32-bit hash
-inline uint32_t hash_buf(const void* data, size_t len)
+// seed lets a hash be continued/folded across multiple calls (e.g. hashing
+// a string one case-folded character at a time without a temporary buffer)
+inline uint32_t hash_buf(const void* data, size_t len, uint32_t seed = 0x811c9dc5u)
 {
     const uint8_t* p = (const uint8_t*)data;
-    uint32_t h = 0x811c9dc5u;      // FNV offset basis
+    uint32_t h = seed;      // FNV offset basis by default
     for (size_t i = 0; i < len; i++)
     {
         h ^= p[i];

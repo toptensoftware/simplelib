@@ -153,6 +153,10 @@ public:
         return p;
     }
 
+    virtual bool IsOpen() override
+    {
+        return m_p != nullptr;
+    }
 
     virtual int Read(void* pv, uint32_t cb, uint32_t* pcb = nullptr) override
     {

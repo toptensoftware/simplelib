@@ -300,6 +300,27 @@ Fact("Set Of Strings")
 	Assert(!set.Contains("Pears"));
 }
 
+Fact("Set Of Strings With Case Insensitive Comparer")
+{
+	Set<String, SCaseI> set;
+	set.Add("Apples");
+	set.Add("Pears");
+	set.Add("Bananas");
+
+	Assert(set.GetCount() == 3);
+	Assert(set.Contains("pears"));
+	Assert(set.Contains("PEARS"));
+	Assert(!set.Contains("Oranges"));
+
+	// Adding an element that only differs by case is treated as a duplicate
+	set.Add("PEARS");
+	Assert(set.GetCount() == 3);
+
+	set.Remove("pears");
+	Assert(set.GetCount() == 2);
+	Assert(!set.Contains("Pears"));
+}
+
 Fact("Set Union")
 {
 	Set<int> a;

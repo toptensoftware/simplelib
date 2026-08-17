@@ -309,6 +309,24 @@ namespace SimpleLib
 			return Compare(a, b) == 0;
 		}
 
+		// Case-folded hash so that strings which compare equal under
+		// AreEqual() above also hash to the same value (required for use
+		// as a Map/HashCore key comparer). Folds one character at a time
+		// via hash_buf's seed rather than building a lowercased copy.
+		static uint32_t Hash(const char* a)
+		{
+			uint32_t h = 0x811c9dc5u;
+			if (a)
+			{
+				while (*a)
+				{
+					char lower = SChar<char>::ToLower(*a++);
+					h = hash_buf(&lower, sizeof(lower), h);
+				}
+			}
+			return h;
+		}
+
 		static int Compare(wchar_t a, wchar_t b)
 		{
 			return SChar<wchar_t>::ToUpper(b) - SChar<wchar_t>::ToUpper(a);
@@ -362,6 +380,20 @@ namespace SimpleLib
 		static bool AreEqual(const wchar_t* a, const wchar_t* b)
 		{
 			return Compare(a, b) == 0;
+		}
+
+		static uint32_t Hash(const wchar_t* a)
+		{
+			uint32_t h = 0x811c9dc5u;
+			if (a)
+			{
+				while (*a)
+				{
+					wchar_t lower = SChar<wchar_t>::ToLower(*a++);
+					h = hash_buf(&lower, sizeof(lower), h);
+				}
+			}
+			return h;
 		}
 
 	};
