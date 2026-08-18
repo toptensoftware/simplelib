@@ -47,3 +47,57 @@ Fact("Math::Normalize doubles")
 	Assert(a == 1.5);
 	Assert(b == 3.5);
 }
+
+Fact("Math::Constrain value within range")
+{
+	Assert(Math::Constrain(5, 0, 10) == 5);
+}
+
+Fact("Math::Constrain value below min")
+{
+	Assert(Math::Constrain(-5, 0, 10) == 0);
+}
+
+Fact("Math::Constrain value above max")
+{
+	Assert(Math::Constrain(15, 0, 10) == 10);
+}
+
+Fact("Math::Constrain value equal to min")
+{
+	Assert(Math::Constrain(0, 0, 10) == 0);
+}
+
+Fact("Math::Constrain value equal to max")
+{
+	Assert(Math::Constrain(10, 0, 10) == 10);
+}
+
+Fact("Math::Constrain inverse range value within range")
+{
+	Assert(Math::Constrain(5, 10, 0) == 5);
+}
+
+Fact("Math::Constrain inverse range value below max")
+{
+	Assert(Math::Constrain(-5, 10, 0) == 0);
+}
+
+Fact("Math::Constrain inverse range value above min")
+{
+	Assert(Math::Constrain(15, 10, 0) == 10);
+}
+
+Fact("Math::Constrain min equals max")
+{
+	Assert(Math::Constrain(5, 3, 3) == 3);
+	Assert(Math::Constrain(3, 3, 3) == 3);
+	Assert(Math::Constrain(-5, 3, 3) == 3);
+}
+
+Fact("Math::Constrain doubles")
+{
+	Assert(Math::Constrain(1.5, 0.0, 10.0) == 1.5);
+	Assert(Math::Constrain(-1.5, 0.0, 10.0) == 0.0);
+	Assert(Math::Constrain(11.5, 0.0, 10.0) == 10.0);
+}

@@ -26,6 +26,29 @@ namespace SimpleLib
 			}
 		}
 
+		template <typename T>
+		static T Constrain(T val, T min, T max)
+		{
+			if (min < max)
+			{
+				// Normal range
+				if (val < min)
+					return min;
+				if (val > max)
+					return max;
+			}
+			else
+			{
+				// Inverse range
+				if (val < max)
+					return max;
+				if (val > min)
+					return min;
+			}
+			return val;
+		}
+
+
 		inline static constexpr double PI = 3.141592653589793238463;
 		inline static constexpr double PI_F = 3.14159265358979f;
 
