@@ -74,11 +74,11 @@ class List
 	}
 
 	// Ensure allocated capacity is at least iRequiredCapacity (does not shrink)
-	void SetCapacity(int iRequiredCapacity)
+	bool SetCapacity(int iRequiredCapacity)
 	{
 		// Quit if already big enough
 		if (iRequiredCapacity <= m_capacity)
-			return;
+			return true;
 
 		// Work out how big to make it
 		int iNewCapacity = iRequiredCapacity * 2;
@@ -90,27 +90,34 @@ class List
 			// Reallocate memory
 			assert(m_capacity != 0);
 			m_data = (TStorage*)TAllocator::ReAlloc((void*)m_data, iNewCapacity * sizeof(TStorage));
+			if (!m_data)
+				return false;
 		}
 		else
 		{
 			// Allocate memory
 			assert(m_capacity == 0);
 			m_data = (TStorage*)TAllocator::Alloc(iNewCapacity * sizeof(TStorage));
+			if (!m_data)
+				return false;
 		}
 
 		// Store new capacity
 		m_capacity = iNewCapacity;
+		return true;
 	}
 
 	// Set the number of elements, adding default-constructed elements or
 	// popping existing ones as needed
-	void SetCount(int iRequiredCount, TArg val)
+	bool SetCount(int iRequiredCount, TArg val)
 	{
-		SetCapacity(iRequiredCount);
+		if (!SetCapacity(iRequiredCount))
+			return false;
 		while (GetCount() < iRequiredCount)
 			Add(val);
 		while (GetCount() > iRequiredCount)
 			Pop();
+		return true;
 	}
 
 	// Release extra memory
@@ -136,13 +143,14 @@ class List
 	}
 
 	// InsertAt
-	void InsertAt(int iPosition, TArg val)
+	bool InsertAt(int iPosition, TArg val)
 	{
 		assert(iPosition >= 0);
 		assert(iPosition <= GetCount());
 
 		// Make sure have room
-		SetCapacity(m_count + 1);
+		if (!SetCapacity(m_count + 1))
+			return false;
 
 		// Shuffle memory
 		if (iPosition < m_count)
@@ -153,6 +161,7 @@ class List
 
 		// Update count
 		m_count++;
+		return true;
 	}
 
 	// Add the contents of another list to the end of this one (copies each
@@ -179,19 +188,20 @@ class List
 	// Insert the contents of another list into this one, transferring
 	// ownership of its elements and leaving it empty. Works with move-only
 	// element types (eg. List<OwnedPtr<T>>)
-	void InsertRangeAt(int iPosition, List&& vec)
+	bool InsertRangeAt(int iPosition, List&& vec)
 	{
 		assert(&vec != this);
 
 		int iCount = vec.GetCount();
 		if (iCount < 1)
-			return;
+			return true;
 
 		assert(iPosition >= 0);
 		assert(iPosition <= GetCount());
 
 		// Make sure have room
-		SetCapacity(m_count + iCount);
+		if (!SetCapacity(m_count + iCount))
+			return false;
 
 		// Shuffle memory to make room
 		if (iPosition < m_count)
@@ -204,6 +214,7 @@ class List
 
 		m_count += iCount;
 		vec.m_count = 0;
+		return true;
 	}
 
 	template <typename TColl>
@@ -277,7 +288,10 @@ class List
 	{
 		// Grow if necessary
 		if (m_count + 1 > m_capacity)
-			SetCapacity(m_count + 1);
+		{
+			if (!SetCapacity(m_count + 1))
+				return -1;
+		}
 
 		Constructor(m_data + m_count, val);
 		m_count++;
@@ -727,16 +741,17 @@ protected:
 	TStorage* m_data = nullptr;
 
 	// Insert at a position
-	void InsertAtInternal(int iPosition, const TStorage* pVal, int iCount)
+	bool InsertAtInternal(int iPosition, const TStorage* pVal, int iCount)
 	{
 		if (iCount < 1)
-			return;
+			return true;
 
 		assert(iPosition >= 0);
 		assert(iPosition <= GetCount());
 
 		// Make sure have room
-		SetCapacity(m_count + iCount);
+		if (!SetCapacity(m_count + iCount))
+			return false;
 
 		// Shuffle memory
 		if (iPosition < m_count)
@@ -750,6 +765,7 @@ protected:
 
 		// Update count
 		m_count += iCount;
+		return true;
 	}
 
 };
