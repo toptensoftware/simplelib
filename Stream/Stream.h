@@ -50,14 +50,17 @@ public:
 
     int Write(const char* psz)
     {
-        auto len = strlen(psz);
-        return Write(psz, (uint32_t)len);
+        if (!psz)
+            return 0;
+        return Write(psz, SChar<char>::Length(psz));
     }
 
     int Write(const wchar_t* psz)
     {
-        auto len = wcslen(psz);
-        return Write(psz, (uint32_t)(len * sizeof(wchar_t*)));
+        if (!psz)
+            return 0;
+
+        return Write(psz, SChar<wchar_t>::Length(psz) * sizeof(wchar_t*));
     }
 
     void WriteLenString(const char* psz)
@@ -69,7 +72,7 @@ public:
         }
 
         // Convert to utf-8
-        size_t length = strlen(psz);
+        size_t length = SChar<char>::Length(psz);
 
         // Write it
         WriteValue<uint32_t>((uint32_t)length);
