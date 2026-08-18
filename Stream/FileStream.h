@@ -1,9 +1,8 @@
 #pragma once
 
-#include <io.h>
-
 #include "Stream.h"
 #include "../Core/Encoding.h"
+#include "../Platform/Platform.h"
 
 namespace SimpleLib
 {
@@ -13,108 +12,59 @@ class FileStream : public Stream
 {
 public:
 
-	FileStream(FILE* file = nullptr)
+	FileStream()
 	{
-		m_file = nullptr;
+		Platform::Init(m_file);
 	}
 
 	virtual ~FileStream()
 	{
-		Close();
+		Platform::Close(m_file);
 	}
 
 	// Opens a file in this instance
-	int Open(const char* pszFileName, const char* pszMode, int shFlag = 0)
+	int Open(const char* pszFileName, const char* pszMode)
 	{
-		assert(m_file == nullptr);
-
-#ifdef _MSC_VER
-		if (shFlag == 0)
-			shFlag = _SH_DENYWR;
-#endif
-
-		m_file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
-		if (!m_file)
-		{
-			return errno;
-		}
-
-		return 0;
-	}
-
-	// Create an instance and open the underlying file
-	static FileStream* Create(const char* pszFileName, const char* pszMode, int shFlag = 0)
-	{
-#ifdef _MSC_VER
-		if (shFlag == 0)
-			shFlag = _SH_DENYWR;
-#endif
-		FILE* file = _wfsopen(Encode<wchar_t>(pszFileName), Encode<wchar_t>(pszMode), shFlag);
-		if (file)
-			return new FileStream(file);
-		else
-			return nullptr;
+		return Platform::Open(m_file, pszFileName, pszMode);
 	}
 
 	void Close()
 	{
-		if (m_file != nullptr)
-		{
-			fclose(m_file);
-			m_file = nullptr;
-		}
+		Platform::Close(m_file);
 	}
 
 	virtual bool IsOpen() override
 	{
-		return m_file != nullptr;
+		return Platform::IsOpen(m_file);
 	}
-
 
 	virtual int Read(void* pv, size_t cb, size_t* pcb = nullptr) override
 	{
-		assert(m_file != nullptr);
-		errno = 0;
-		size_t cbRead = fread(pv, 1, cb, m_file);
-		if (errno != 0)
-			return errno;
-
-		if (pcb)
-		{
-			*pcb = cbRead;
-		}
-		return 0;
+		assert(Platform::IsOpen(m_file));
+		return Platform::Read(m_file, pv, cb, pcb);
 	}
 
 	virtual int Write(const void* pv, size_t cb, size_t* pcb = nullptr) override
 	{
-		assert(m_file != nullptr);
-		errno = 0;
-		size_t cbWrite = fwrite(pv, 1, cb, m_file);
-		if (errno != 0)
-			return errno;
-		if (pcb)
-		{
-			*pcb = cbWrite;
-		}
-		return 0;
+		assert(Platform::IsOpen(m_file));
+		return Platform::Write(m_file, pv, cb, pcb);
 	}
 
 	virtual int Seek(int64_t offset, int origin = SEEK_SET) override
 	{
-		assert(m_file != nullptr);
-		return _fseeki64(m_file, offset, origin);
+		assert(Platform::IsOpen(m_file));
+		return Platform::Seek(m_file, offset, origin);
 	}
 
 	virtual int64_t Tell() override
 	{
-		assert(m_file != nullptr);
-		return _ftelli64(m_file);
+		assert(Platform::IsOpen(m_file));
+		return Platform::Tell(m_file);
 	}
 
 	virtual int64_t GetLength() override
 	{
-		assert(m_file != nullptr);
+		assert(Platform::IsOpen(m_file));
 		int64_t save = Tell();
 		Seek(0, SEEK_END);
 		int64_t length = Tell();
@@ -124,18 +74,18 @@ public:
 
 	virtual int Truncate() override
 	{
-		assert(m_file != nullptr);
-		return _chsize_s(_fileno(m_file), Tell());
+		assert(Platform::IsOpen(m_file));
+		return Platform::Truncate(m_file);
 	}
 
 	virtual int Flush() override
 	{
-		assert(m_file != nullptr);
-		return fflush(m_file);
+		assert(Platform::IsOpen(m_file));
+		return Platform::Flush(m_file);
 	}
 
 private:
-	FILE* m_file;
+	Platform::TFile m_file;
 };
 
 

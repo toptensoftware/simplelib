@@ -232,34 +232,19 @@ public:
 
     Value Get() const
     {
-#if defined(_WIN32)
-        long long cmp[2] = { 0, 0 };
-        Platform::atomicCompareExchange128((volatile long long*)&m_val, 0, 0, cmp);
-        Value v;
-        memcpy(&v, cmp, sizeof(v));
-        return v;
-#else
-        uint128_t raw = Platform::atomicLoad128((volatile uint128_t*)&m_val);
+        Platform::uint128_t raw = Platform::atomicLoad128((volatile Platform::uint128_t*)&m_val);
         Value v;
         memcpy(&v, &raw, sizeof(v));
         return v;
-#endif
     }
 
     // Returns true if the value was `compare` and has been changed to `val`
     bool TrySet(Value val, Value compare)
     {
-#if defined(_WIN32)
-        long long ex[2], cmp[2];
-        memcpy(ex, &val, sizeof(ex));
-        memcpy(cmp, &compare, sizeof(cmp));
-        return Platform::atomicCompareExchange128((volatile long long*)&m_val, ex[1], ex[0], cmp);
-#else
-        uint128_t ex, cmp, actual;
+        Platform::uint128_t ex, cmp, actual;
         memcpy(&ex, &val, sizeof(ex));
         memcpy(&cmp, &compare, sizeof(cmp));
-        return Platform::atomicCompareExchange128((volatile uint128_t*)&m_val, ex, cmp, &actual);
-#endif
+        return Platform::atomicCompareExchange128((volatile Platform::uint128_t*)&m_val, ex, cmp, &actual);
     }
 
     // Non-atomic - only safe when no other thread can be concurrently
