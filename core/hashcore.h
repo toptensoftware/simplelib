@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <malloc.h>
 #include <string.h>
 #include <assert.h>
 
@@ -11,6 +10,7 @@ namespace SimpleLib
 {
 
 
+template <typename TAllocator>
 class HashCore
 {
 public:
@@ -87,7 +87,7 @@ public:
     // Free and reset everything back to initial state
     void Reset()
     {
-        free(m_entries);
+        TAllocator::Free(m_entries);
         m_version = 0;
         m_freecount = 0;
         m_freelist = -1;
@@ -105,7 +105,7 @@ public:
         capacity = (int)next_prime_capacity(capacity);
 
         // Resize entries array
-        m_entries = (char*)realloc(m_entries, capacity * (m_entrySize + sizeof(int)));
+        m_entries = (char*)TAllocator::ReAlloc(m_entries, capacity * (m_entrySize + sizeof(int)));
         m_hashtable = (int*)(m_entries + capacity * (m_entrySize));
         m_capacity = capacity;
 

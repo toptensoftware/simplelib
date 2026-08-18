@@ -9,13 +9,14 @@
 #include "PlacedConstructor.h"
 #include "Delegate.h"
 
+#include "Allocator.h"
 
 namespace SimpleLib
 {
 
 
 // List
-template <typename T>
+template <typename T, typename TAllocator = TMalloc>
 class List
 {
 	typedef typename get_semantics<T>::TSemantics TSemantics;
@@ -33,7 +34,7 @@ class List
 	{
 		Clear();
 		if (m_data)
-			free(m_data);
+			TAllocator::Free(m_data);
 	}
 
 	// No copy
@@ -58,7 +59,8 @@ class List
 		if (this == &other)
 			return *this;
 
-		delete[] m_data;
+		if (m_data)
+			TAllocator::Free(m_data);
 
 		m_count = other.m_count;
 		m_capacity = other.m_capacity;
@@ -87,13 +89,13 @@ class List
 		{
 			// Reallocate memory
 			assert(m_capacity != 0);
-			m_data = (TStorage*)realloc((void*)m_data, iNewCapacity * sizeof(TStorage));
+			m_data = (TStorage*)TAllocator::ReAlloc((void*)m_data, iNewCapacity * sizeof(TStorage));
 		}
 		else
 		{
 			// Allocate memory
 			assert(m_capacity == 0);
-			m_data = (TStorage*)malloc(iNewCapacity * sizeof(TStorage));
+			m_data = (TStorage*)TAllocator::Alloc(iNewCapacity * sizeof(TStorage));
 		}
 
 		// Store new capacity
@@ -121,12 +123,12 @@ class List
 		// Free or realloc memory...
 		if (m_count == 0)
 		{
-			free(m_data);
+			TAllocator::Free(m_data);
 			m_data = nullptr;
 		}
 		else
 		{
-			m_data = (TStorage*)realloc(m_data, m_count * sizeof(TStorage));
+			m_data = (TStorage*)TAllocator::ReAlloc(m_data, m_count * sizeof(TStorage));
 		}
 
 		// Store new capacity

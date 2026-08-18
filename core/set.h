@@ -4,11 +4,12 @@
 #include "Compare.h"
 #include "HashCore.h"
 #include "PlacedConstructor.h"
+#include "Allocator.h"
 
 namespace SimpleLib
 {
 
-template <typename T, typename TCompare = SDefaultCompare>
+template <typename T, typename TCompare = SDefaultCompare, typename TAllocator = TMalloc>
 class Set
 {
     typedef typename get_semantics<T>::TSemantics TSemantics;
@@ -231,7 +232,7 @@ public:
 
     // Implementation
 private:
-    class Core : public HashCore
+    class Core : public HashCore<TAllocator>
     {
     public:
         Core() :

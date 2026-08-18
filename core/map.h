@@ -4,11 +4,12 @@
 #include "Compare.h"
 #include "HashCore.h"
 #include "PlacedConstructor.h"
+#include "Allocator.h"
 
 namespace SimpleLib
 {
 
-template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare>
+template <typename TKey, typename TValue, typename TKeyCompare = SDefaultCompare, typename TAllocator = TMalloc>
 class Map
 {
     typedef typename get_semantics<TKey>::TSemantics TKeySemantics;
@@ -256,7 +257,7 @@ public:
 
     // Implementation
 private:
-    class Core : public HashCore
+    class Core : public HashCore<TAllocator>
     {
     public:
         Core() :
