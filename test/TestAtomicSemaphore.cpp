@@ -1,5 +1,6 @@
 #include <thread>
 #include <chrono>
+#include <atomic>
 #include "../UnitTesting.h"
 #include "../Threading.h"
 using namespace SimpleLib;
@@ -92,4 +93,82 @@ Fact("AtomicSemaphore Reset Reopens After Stop")
 	s.Reset();
 	s.Release(1);
 	Assert(s.Wait(0));
+}
+
+Fact("AtomicSemaphore SpinWait Skips OnIdle When Signal Available")
+{
+	AtomicSemaphore s(1);
+	int idleCalls = 0;
+
+	Assert(s.SpinWait(0, 0,
+		[](void* user) -> bool {
+			(*(int*)user)++;
+			return true;
+		},
+		&idleCalls));
+
+	Assert(idleCalls == 0);		// signal was already there, never needed to idle
+}
+
+Fact("AtomicSemaphore SpinWait Calls OnIdle Before Sleeping")
+{
+	AtomicSemaphore s(0);
+	std::atomic<int> idleCalls{0};
+	bool waitResult = false;
+
+	std::thread waiter([&]() {
+		waitResult = s.SpinWait(10, 5000,
+			[](void* user) -> bool {
+				(*(std::atomic<int>*)user)++;
+				return true;		// ok to go idle/sleep
+			},
+			&idleCalls);
+	});
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	Assert(idleCalls.load() >= 1);	// callback ran before the thread parked
+	s.Release();
+
+	waiter.join();
+	Assert(waitResult);
+}
+
+Fact("AtomicSemaphore SpinWait OnIdle False Retries Without Sleeping")
+{
+	AtomicSemaphore s(0);
+	int idleCalls = 0;
+
+	bool result = s.SpinWait(0, 0,
+		[](void* user) -> bool {
+			int* calls = (int*)user;
+			(*calls)++;
+			return *calls >= 3;	// decline twice, then agree to idle
+		},
+		&idleCalls);
+
+	Assert(!result);				// still no signal once it agreed to idle, and timeout is 0
+	Assert(idleCalls == 3);		// retried until it agreed, not called forever
+}
+
+Fact("AtomicSemaphore Stop Unblocks Busy OnIdle Loop")
+{
+	AtomicSemaphore s(0);
+	std::atomic<int> idleCalls{0};
+	bool waitResult = true;	// start true so a bug that never runs the thread body wouldn't false-pass
+
+	std::thread waiter([&]() {
+		waitResult = s.SpinWait(0, 5000,
+			[](void* user) -> bool {
+				(*(std::atomic<int>*)user)++;
+				return false;	// never agrees to idle - keeps retrying
+			},
+			&idleCalls);
+	});
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	s.Stop();
+
+	waiter.join();
+	Assert(!waitResult);
+	Assert(idleCalls.load() > 0);	// callback was actually being driven, not skipped
 }

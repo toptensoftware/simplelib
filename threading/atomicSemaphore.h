@@ -36,7 +36,7 @@ public:
     // falling through to the OS wait. Useful when releases are expected
     // to arrive quickly, where the syscall/context-switch cost of the OS
     // wait would otherwise dominate.
-    bool SpinWait(uint32_t spinCount, uint32_t timeout = kWaitForever)
+    bool SpinWait(uint32_t spinCount, uint32_t timeout = kWaitForever, bool (*onIdle)(void*) = nullptr, void* user = nullptr)
     {
         while (true)
         {
@@ -59,6 +59,10 @@ public:
             }
             if (current > 0)
                 continue; // spun into a signal — go back and try to claim it
+
+            // Go idle?
+            if (onIdle && !onIdle(user))
+                continue;
 
             // still zero after spinning — go to sleep until count changes
             if (!m_count.Wait(current, timeout))
