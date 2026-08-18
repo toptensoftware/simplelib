@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../Platform/Platform.h"
+
 namespace SimpleLib
 {
 
@@ -8,34 +10,33 @@ class Mutex
 public:
 	Mutex()
 	{
-        InitializeCriticalSection(&m_cs);
-        SetCriticalSectionSpinCount(&m_cs, 4000);
+		Platform::mutexCreate(m_mutex);
 	}
 
 	virtual ~Mutex()
 	{
-        DeleteCriticalSection(&m_cs);
+		Platform::mutexDestroy(m_mutex);
 	}
 
 	void Enter()
 	{
-        EnterCriticalSection(&m_cs);
+		Platform::mutexEnter(m_mutex);
 	}
 	bool TryEnter()
 	{
-        return TryEnterCriticalSection(&m_cs);
+		return Platform::mutexTryEnter(m_mutex);
 	}
 	void Leave()
 	{
-        LeaveCriticalSection(&m_cs);
+		return Platform::mutexLeave(m_mutex);
 	}
 	bool IsHeld()
 	{
-    	return m_cs.OwningThread == (HANDLE)(size_t)GetCurrentThreadId();
+		return Platform::mutexIsHeld(m_mutex);
 	}
 
 private:
-	CRITICAL_SECTION m_cs;
+	Platform::TMutex m_mutex;
 };
 
 class EnterMutex

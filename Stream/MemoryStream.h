@@ -3,13 +3,10 @@
 #include <malloc.h>
 #include "Stream.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
+#include "../Platform/Platform.h"
 
 namespace SimpleLib
 {
-
 
 class MemoryStream : public Stream
 {
@@ -49,7 +46,7 @@ public:
         return 0;
     }
 
-    int Open(void* p, int64_t length, bool takeOwnership)
+    int Open(void* p, size_t length, bool takeOwnership)
     {
         assert(m_p == nullptr);
 
@@ -63,7 +60,7 @@ public:
         return 0;
     }
 
-    int Init(void* p, int64_t length)
+    int Init(void* p, size_t length)
     {
         assert(m_p == nullptr);
 
@@ -124,7 +121,7 @@ public:
     {
         Close();
 
-        int64_t len;
+        size_t len;
         void* pMem = other.CloseAndDetach(&len);
         Open(pMem, len, true);
     }
@@ -140,7 +137,7 @@ public:
         return memcmp(m_p, other.m_p, (size_t)m_length)==0;
     }
 
-    void* CloseAndDetach(int64_t* pcb)
+    void* CloseAndDetach(size_t* pcb)
     {
         assert(m_p!=nullptr);
 
@@ -158,15 +155,15 @@ public:
         return m_p != nullptr;
     }
 
-    virtual int Read(void* pv, uint32_t cb, uint32_t* pcb = nullptr) override
+    virtual int Read(void* pv, size_t cb, size_t* pcb = nullptr) override
     {
         assert(m_p!=nullptr);
-        uint32_t cbRequested = cb;
+        size_t cbRequested = cb;
 
         // Check for EOF
         if (m_pos + cb >= m_length)
         {
-            cb = (uint32_t)(m_length - m_pos);
+            cb = m_length - m_pos;
         }
 
         // Read em
@@ -185,7 +182,7 @@ public:
         return 0;
     }
 
-    virtual int Write(const void* pv, uint32_t cb, uint32_t* pcb = nullptr) override
+    virtual int Write(const void* pv, size_t cb, size_t* pcb = nullptr) override
     {
         assert(m_p!=nullptr);
 
@@ -201,12 +198,12 @@ public:
         if (m_pos + cb > m_allocated)
         {
             // Double the buffer size until it's big enough
-            int64_t newSize = m_allocated * 2;
+            size_t newSize = m_allocated * 2;
             while (m_pos + cb > newSize)
                 newSize *= 2;
 
             // Reallocate memory
-            void* p = realloc(m_p, (size_t)newSize);
+            void* p = realloc(m_p, newSize);
             if (p==nullptr)
             {
                 if (pcb)
@@ -258,13 +255,13 @@ public:
         return m_pos;
     }
 
-    virtual int64_t Length() override
+    virtual int64_t GetLength() override
     {
         assert(m_p!=nullptr);
         return m_length;
     }
 
-    virtual int SetLength() override
+    virtual int Truncate() override
     {
         RIFE(Write(nullptr, 0, nullptr));
         m_length = m_pos;
@@ -272,25 +269,32 @@ public:
     }
 
 
-	int Save(Stream& stream)
+	int WriteTo(Stream& stream)
 	{
-		stream.WriteInt32((int32_t)Length());
-		return stream.Write(GetBuffer(), (int32_t)Length());
+        if (GetLength() > 0xFFFFFFFF)
+        {
+            assert(false);
+            return false;
+        }
+        uint32_t len = (uint32_t)GetLength();
+		stream.WriteValue(len);
+		return stream.Write(GetBuffer(), GetLength());
 	}
 
-	int Load(Stream& stream)
+	int ReadFrom(Stream& stream)
 	{
-		int length = stream.ReadInt32();
+		size_t length = stream.ReadValue<uint32_t>();
 		void* pMem = malloc(length);
 		RIFE(stream.Read(pMem, length));
 		return Open(pMem, length, true);
 	}
 
+
 private:
 	void* m_p;
-	int64_t m_length;
-	int64_t m_pos;
-	int64_t m_allocated;
+	size_t m_length;
+	size_t m_pos;
+	size_t m_allocated;
 	bool m_owned;
 #ifdef _WIN32
 	void* m_hResMem;

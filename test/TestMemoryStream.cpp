@@ -11,11 +11,11 @@ Fact("MemoryStream Create Write Read")
 
 	const char data[] = "Hello World";
 	Assert(ms.Write(data, sizeof(data)) == 0);
-	Assert(ms.Length() == sizeof(data));
+	Assert(ms.GetLength() == sizeof(data));
 
 	ms.Seek(0, SEEK_SET);
 	char buf[sizeof(data)];
-	uint32_t cb;
+	size_t cb;
 	Assert(ms.Read(buf, sizeof(buf), &cb) == 0);
 	Assert(cb == sizeof(data));
 	Assert(memcmp(buf, data, sizeof(data)) == 0);
@@ -33,7 +33,7 @@ Fact("MemoryStream Write Grows Buffer")
 		src[i] = (char)(i & 0xFF);
 
 	Assert(ms.Write(src, kSize) == 0);
-	Assert(ms.Length() == kSize);
+	Assert(ms.GetLength() == kSize);
 	Assert(memcmp(ms.GetBuffer(), src, kSize) == 0);
 
 	free(src);
@@ -46,7 +46,7 @@ Fact("MemoryStream Open Existing Buffer Not Owned Is Read Only")
 	Assert(ms.Open(data, sizeof(data), false) == 0);
 
 	char buf[sizeof(data)];
-	uint32_t cb;
+	size_t cb;
 	Assert(ms.Read(buf, sizeof(buf), &cb) == 0);
 	Assert(cb == sizeof(data));
 	Assert(memcmp(buf, data, sizeof(data)) == 0);
@@ -62,7 +62,7 @@ Fact("MemoryStream Init Copies Data")
 	MemoryStream ms;
 	Assert(ms.Init(src, 5) == 0);
 
-	Assert(ms.Length() == 5);
+	Assert(ms.GetLength() == 5);
 	Assert(ms.GetBuffer() != (void*)src);	// must be an independent copy
 	Assert(memcmp(ms.GetBuffer(), src, 5) == 0);
 
@@ -75,7 +75,7 @@ Fact("MemoryStream Init With Null Allocates Uninitialized Buffer")
 {
 	MemoryStream ms;
 	Assert(ms.Init(nullptr, 100) == 0);
-	Assert(ms.Length() == 100);
+	Assert(ms.GetLength() == 100);
 	Assert(ms.GetBuffer() != nullptr);
 }
 
@@ -87,7 +87,7 @@ Fact("MemoryStream Read Past End Returns Partial")
 	ms.Seek(0, SEEK_SET);
 
 	char buf[20];
-	uint32_t cb;
+	size_t cb;
 	Assert(ms.Read(buf, 20, &cb) == 0);
 	Assert(cb == 10);
 	Assert(memcmp(buf, "0123456789", 10) == 0);
@@ -102,7 +102,7 @@ Fact("MemoryStream Read Exact Remaining Length")
 	ms.Seek(0, SEEK_SET);
 
 	char buf[10];
-	uint32_t cb;
+	size_t cb;
 	Assert(ms.Read(buf, 10, &cb) == 0);
 	Assert(cb == 10);
 	Assert(ms.IsEof());
@@ -133,16 +133,16 @@ Fact("MemoryStream Seek Set Cur End")
 	Assert(ch == '8');
 }
 
-Fact("MemoryStream SetLength Truncates")
+Fact("MemoryStream Truncates")
 {
 	MemoryStream ms;
 	ms.Create();
 	ms.Write("0123456789", 10);
 
 	ms.Seek(5, SEEK_SET);
-	Assert(ms.SetLength() == 0);
+	Assert(ms.Truncate() == 0);
 
-	Assert(ms.Length() == 5);
+	Assert(ms.GetLength() == 5);
 	Assert(memcmp(ms.GetBuffer(), "01234", 5) == 0);
 }
 
@@ -185,7 +185,7 @@ Fact("MemoryStream CloseAndDetach")
 	ms.Create();
 	ms.Write("Detach me", 9);
 
-	int64_t len = 0;
+	size_t len = 0;
 	void* p = ms.CloseAndDetach(&len);
 	Assert(len == 9);
 	Assert(memcmp(p, "Detach me", 9) == 0);
@@ -201,70 +201,52 @@ Fact("MemoryStream MoveFrom")
 	MemoryStream b;
 	b.MoveFrom(a);
 
-	Assert(b.Length() == 7);
+	Assert(b.GetLength() == 7);
 	Assert(memcmp(b.GetBuffer(), "Move me", 7) == 0);
 }
 
-Fact("MemoryStream Save And Load")
-{
-	MemoryStream src;
-	src.Create();
-	src.Write("Payload data", 12);
-
-	MemoryStream container;
-	container.Create();
-	Assert(src.Save(container) == 0);
-
-	container.Seek(0, SEEK_SET);
-
-	MemoryStream restored;
-	Assert(restored.Load(container) == 0);
-
-	Assert(restored.Length() == src.Length());
-	Assert(restored.IsEqual(src));
-}
 
 Fact("MemoryStream WriteInt32 ReadInt32")
 {
 	MemoryStream ms;
 	ms.Create();
-	ms.WriteInt32(-12345);
-	ms.WriteInt32(67890);
+	ms.WriteValue<int>(-12345);
+	ms.WriteValue<int>(67890);
 
 	ms.Seek(0, SEEK_SET);
-	Assert(ms.ReadInt32() == -12345);
-	Assert(ms.ReadInt32() == 67890);
+	Assert(ms.ReadValue<int>() == -12345);
+	Assert(ms.ReadValue<int>() == 67890);
 }
 
 Fact("MemoryStream WriteUInt32 ReadUInt32")
 {
 	MemoryStream ms;
 	ms.Create();
-	ms.WriteUInt32(0xFFFFFFFF);
-	ms.WriteUInt32(42);
+	ms.WriteValue<uint32_t>(0xFFFFFFFF);
+	ms.WriteValue<uint32_t>(42);
 
 	ms.Seek(0, SEEK_SET);
-	Assert(ms.ReadUInt32() == 0xFFFFFFFF);
-	Assert(ms.ReadUInt32() == 42);
+	Assert(ms.ReadValue<uint32_t>() == 0xFFFFFFFF);
+	Assert(ms.ReadValue<uint32_t>() == 42);
 }
 
-Fact("MemoryStream WriteString ReadString")
+Fact("MemoryStream WriteLenString ReadLenString")
 {
 	MemoryStream ms;
 	ms.Create();
-	ms.WriteString("Hello World");
-	ms.WriteString("");
-	ms.WriteString(nullptr);
+	ms.WriteLenString("Hello World");
+	ms.WriteLenString("");
+	ms.WriteLenString(nullptr);
 
 	ms.Seek(0, SEEK_SET);
-	Assert(ms.ReadString().IsEqualTo("Hello World"));
-	Assert(ms.ReadString().IsEmpty());
-	Assert(ms.ReadString().IsEmpty());
+	Assert(ms.ReadLenString().IsEqualTo("Hello World"));
+	Assert(ms.ReadLenString().IsEmpty());
+	Assert(ms.ReadLenString().IsEmpty());
 }
 
-Fact("MemoryStream ReadString At Buffer Boundary Does Not Overflow")
+Fact("MemoryStream ReadLenString At Buffer Boundary Does Not Overflow")
 {
-	// Regression test: ReadString() used to write one byte past the exact
+	// Regression test: ReadLenString() used to write one byte past the exact
 	// number of characters it reserved in the StringBuilder, which was only
 	// harmless by luck unless the length landed exactly on a capacity
 	// boundary (e.g. StringBuilder's 128 byte short buffer).
@@ -279,10 +261,10 @@ Fact("MemoryStream ReadString At Buffer Boundary Does Not Overflow")
 
 	MemoryStream ms;
 	ms.Create();
-	ms.WriteString(longStr.sz());
+	ms.WriteLenString(longStr.sz());
 
 	ms.Seek(0, SEEK_SET);
-	String readBack = ms.ReadString();
+	String readBack = ms.ReadLenString();
 	Assert(readBack.GetLength() == 128);
 	Assert(readBack.IsEqualTo(longStr.sz()));
 }
@@ -298,7 +280,7 @@ Fact("MemoryStream Copy Whole Stream")
 	dest.Create();
 	Assert(Stream::Copy(dest, src) == 0);
 
-	Assert(dest.Length() == 20);
+	Assert(dest.GetLength() == 20);
 	Assert(dest.IsEqual(src));
 }
 
@@ -320,7 +302,7 @@ Fact("MemoryStream Copy With Length Smaller Than Chunk Size")
 	dest.Create();
 	Assert(Stream::Copy(dest, src, 100) == 0);
 
-	Assert(dest.Length() == 100);
+	Assert(dest.GetLength() == 100);
 	Assert(memcmp(dest.GetBuffer(), bigData, 100) == 0);
 }
 
@@ -338,6 +320,28 @@ Fact("MemoryStream Copy With Length Spanning Multiple Chunks")
 	dest.Create();
 	Assert(Stream::Copy(dest, src, 9000) == 0);
 
-	Assert(dest.Length() == 9000);
+	Assert(dest.GetLength() == 9000);
 	Assert(memcmp(dest.GetBuffer(), bigData, 9000) == 0);
 }
+
+
+
+Fact("MemoryStream WriteTo And ReadFrom")
+{
+	MemoryStream src;
+	src.Create();
+	src.Write("Payload data", 12);
+
+	MemoryStream container;
+	container.Create();
+	Assert(src.WriteTo(container) == 0);
+
+	container.Seek(0, SEEK_SET);
+
+	MemoryStream restored;
+	Assert(restored.ReadFrom(container) == 0);
+
+	Assert(restored.GetLength() == src.GetLength());
+	Assert(restored.IsEqual(src));
+}
+

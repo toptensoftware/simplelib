@@ -13,4 +13,19 @@ static const uint32_t kWaitForever = 0xFFFFFFFF;
 static const int kCacheLineSize = 64;
 
 
+// Thread priority
+enum class ThreadPriority
+{
+	BelowNormal,
+	Normal,
+	AboveNormal,
+	RealTime,
+};
+
+namespace Platform
+{
+	typedef void (*ThreadProc)(void* param);
+}
+
+
 }

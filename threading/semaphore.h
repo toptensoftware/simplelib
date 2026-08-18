@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "../Platform/Platform.h"
 
 namespace SimpleLib
 {
@@ -10,30 +10,30 @@ class Semaphore
 public:
 	Semaphore(int initialValue)
 	{
-        m_handle = CreateSemaphore(nullptr, initialValue, 0x7FFFFFFF, nullptr);
+		Platform::semaCreate(m_sema, initialValue);
 	}
 	~Semaphore()
 	{
-        CloseHandle(m_handle);
+		Platform::semaDestroy(m_sema);
 	}
 
 	void Init(int initialValue)
 	{
-        CloseHandle(m_handle);
-        m_handle = CreateSemaphore(nullptr, initialValue, 0x7FFFFFFF, nullptr);
+		Platform::semaDestroy(m_sema);
+		Platform::semaCreate(m_sema, initialValue);
 	}
 
 	bool Wait(uint32_t timeout = kWaitForever)
 	{
-        return WaitForSingleObject(m_handle, timeout) == WAIT_OBJECT_0;
+		return Platform::semaWait(m_sema, timeout);
 	}
 
 	void Release(int count = 1)
 	{
-	    ReleaseSemaphore(m_handle, count, nullptr);
+		Platform::semaRelease(m_sema, count);
 	}
 
-	HANDLE m_handle;
+	Platform::TSema m_sema;
 };
 
 

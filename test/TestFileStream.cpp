@@ -29,7 +29,7 @@ Fact("FileStream Create Write Read")
 
 	fs.Seek(0, SEEK_SET);
 	char buf[sizeof(data)];
-	uint32_t cb;
+	size_t cb;
 	Assert(fs.Read(buf, sizeof(buf), &cb) == 0);
 	Assert(cb == sizeof(data));
 	Assert(memcmp(buf, data, sizeof(data)) == 0);
@@ -53,7 +53,7 @@ Fact("FileStream Open Existing For Read")
 	Assert(fs2.Open(path.sz(), "rb") == 0);
 
 	char buf[9];
-	uint32_t cb;
+	size_t cb;
 	Assert(fs2.Read(buf, sizeof(buf), &cb) == 0);
 	Assert(cb == 9);
 	Assert(memcmp(buf, "Persisted", 9) == 0);
@@ -78,7 +78,7 @@ Fact("FileStream Seek Tell Length")
 	FileStream fs;
 	fs.Open(path.sz(), "wb+");
 	fs.Write("0123456789", 10);
-	Assert(fs.Length() == 10);
+	Assert(fs.GetLength() == 10);
 
 	fs.Seek(3, SEEK_SET);
 	Assert(fs.Tell() == 3);
@@ -98,16 +98,16 @@ Fact("FileStream Seek Tell Length")
 	fs.Read(&ch, 1);
 	Assert(ch == '8');
 
-	// Length() must not disturb the current position
+	// GetLength() must not disturb the current position
 	fs.Seek(4, SEEK_SET);
-	Assert(fs.Length() == 10);
+	Assert(fs.GetLength() == 10);
 	Assert(fs.Tell() == 4);
 
 	fs.Close();
 	remove(path.sz());
 }
 
-Fact("FileStream SetLength Truncates")
+Fact("FileStream Truncates")
 {
 	String path = TempFilePath("setlength_truncate");
 
@@ -116,8 +116,8 @@ Fact("FileStream SetLength Truncates")
 	fs.Write("0123456789", 10);
 
 	fs.Seek(5, SEEK_SET);
-	Assert(fs.SetLength() == 0);
-	Assert(fs.Length() == 5);
+	Assert(fs.Truncate() == 0);
+	Assert(fs.GetLength() == 5);
 
 	fs.Seek(0, SEEK_SET);
 	char buf[5];
@@ -152,31 +152,31 @@ Fact("FileStream WriteInt32 ReadInt32")
 
 	FileStream fs;
 	fs.Open(path.sz(), "wb+");
-	fs.WriteInt32(-12345);
-	fs.WriteInt32(67890);
+	fs.WriteValue<int>(-12345);
+	fs.WriteValue<int>(67890);
 
 	fs.Seek(0, SEEK_SET);
-	Assert(fs.ReadInt32() == -12345);
-	Assert(fs.ReadInt32() == 67890);
+	Assert(fs.ReadValue<int>() == -12345);
+	Assert(fs.ReadValue<int>() == 67890);
 
 	fs.Close();
 	remove(path.sz());
 }
 
-Fact("FileStream WriteString ReadString")
+Fact("FileStream WriteLenString ReadLenString")
 {
 	String path = TempFilePath("string");
 
 	FileStream fs;
 	fs.Open(path.sz(), "wb+");
-	fs.WriteString("Hello World");
-	fs.WriteString("");
-	fs.WriteString(nullptr);
+	fs.WriteLenString("Hello World");
+	fs.WriteLenString("");
+	fs.WriteLenString(nullptr);
 
 	fs.Seek(0, SEEK_SET);
-	Assert(fs.ReadString().IsEqualTo("Hello World"));
-	Assert(fs.ReadString().IsEmpty());
-	Assert(fs.ReadString().IsEmpty());
+	Assert(fs.ReadLenString().IsEqualTo("Hello World"));
+	Assert(fs.ReadLenString().IsEmpty());
+	Assert(fs.ReadLenString().IsEmpty());
 
 	fs.Close();
 	remove(path.sz());
@@ -196,7 +196,7 @@ Fact("FileStream Copy Whole Stream")
 	dest.Open(destPath.sz(), "wb+");
 	Assert(Stream::Copy(dest, src) == 0);
 
-	Assert(dest.Length() == 20);
+	Assert(dest.GetLength() == 20);
 	dest.Seek(0, SEEK_SET);
 	char buf[20];
 	dest.Read(buf, 20);
@@ -227,7 +227,7 @@ Fact("FileStream Copy With Length Smaller Than Chunk Size")
 	dest.Open(destPath.sz(), "wb+");
 	Assert(Stream::Copy(dest, src, 100) == 0);
 
-	Assert(dest.Length() == 100);
+	Assert(dest.GetLength() == 100);
 	dest.Seek(0, SEEK_SET);
 	char buf[100];
 	dest.Read(buf, 100);
@@ -246,14 +246,14 @@ Fact("FileStream Reopen Preserves Content Across Close")
 	{
 		FileStream fs;
 		fs.Open(path.sz(), "wb+");
-		fs.WriteInt32(42);
+		fs.WriteValue<int>(42);
 		fs.Close();
 	}
 
 	{
 		FileStream fs;
 		Assert(fs.Open(path.sz(), "rb+") == 0);
-		Assert(fs.ReadInt32() == 42);
+		Assert(fs.ReadValue<int>() == 42);
 		fs.Close();
 	}
 

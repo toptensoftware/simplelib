@@ -8,36 +8,37 @@ class SlimLock
 public:
 	SlimLock()
 	{
-    	InitializeSRWLock(&m_slimlock);
+		Platform::slimlockCreate(m_slimlock);
 	}
 
 	virtual ~SlimLock()
 	{
+		Platform::slimlockDestroy(m_slimlock);
 	}
 
 	void EnterExclusive()
 	{
-    	AcquireSRWLockExclusive(&m_slimlock);
+		Platform::slimlockEnterExclusive(m_slimlock);
 	}
 	bool TryEnterExclusive()
 	{
-        return TryAcquireSRWLockExclusive(&m_slimlock);
+		return Platform::slimlockTryEnterExclusive(m_slimlock);
 	}
 	void LeaveExclusive()
 	{
-        ReleaseSRWLockExclusive(&m_slimlock);
+		Platform::slimlockLeaveExclusive(m_slimlock);
 	}
 	void EnterShared()
 	{
-    	AcquireSRWLockShared(&m_slimlock);
+		Platform::slimlockEnterShared(m_slimlock);
 	}
 	bool TryEnterShared()
 	{
-    	return TryAcquireSRWLockShared(&m_slimlock);
+		return Platform::slimlockTryEnterShared(m_slimlock);
 	}
 	void LeaveShared()
 	{
-        ReleaseSRWLockShared(&m_slimlock);
+		Platform::slimlockLeaveShared(m_slimlock);
 	}
 
     void Enter(bool exclusive)

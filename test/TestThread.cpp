@@ -61,7 +61,7 @@ Fact("Thread Runs ThreadProc")
 {
 	FlagThread t;
 	t.Start();
-	t.Wait();
+	t.Join();
 	Assert(t.ran);
 }
 
@@ -72,25 +72,25 @@ Fact("Thread Destructor Without Start Is Safe")
 	Assert(!t.ran);
 }
 
-Fact("Thread Wait Blocks Until Completion")
+Fact("Thread Join Blocks Until Completion")
 {
 	SleepThread t(100);
 	t.Start();
-	t.Wait();
-	Assert(t.finished);	// Wait() must not return before ThreadProc finishes
+	t.Join();
+	Assert(t.finished);	// Join() must not return before ThreadProc finishes
 }
 
-Fact("Thread Can Be Restarted After Wait")
+Fact("Thread Can Be Restarted After Join")
 {
 	std::atomic<int> counter{ 0 };
 	CountingThread t(&counter);
 
 	t.Start();
-	t.Wait();
+	t.Join();
 	Assert(counter == 1);
 
 	t.Start();
-	t.Wait();
+	t.Join();
 	Assert(counter == 2);
 }
 
@@ -102,7 +102,7 @@ Fact("Thread SetPriority Does Not Crash")
 	t.SetPriority(ThreadPriority::Normal);
 	t.SetPriority(ThreadPriority::AboveNormal);
 	t.SetPriority(ThreadPriority::RealTime);
-	t.Wait();
+	t.Join();
 	Assert(t.finished);
 }
 
@@ -111,7 +111,7 @@ Fact("Thread SetDescription Does Not Crash")
 	SleepThread t(20);
 	t.Start();
 	t.SetDescription("SimpleLib Test Thread");
-	t.Wait();
+	t.Join();
 	Assert(t.finished);
 }
 
@@ -119,7 +119,7 @@ Fact("Thread GetId Matches Current Id Seen From ThreadProc")
 {
 	IdCapturingThread t;
 	t.Start();
-	t.Wait();
+	t.Join();
 
 	Assert(t.finished);
 	Assert(t.idFromThreadProc != 0);
@@ -132,7 +132,7 @@ Fact("Thread GetCurrentId Differs Between Threads")
 
 	IdCapturingThread t;
 	t.Start();
-	t.Wait();
+	t.Join();
 
 	Assert(t.idFromThreadProc != mainId);
 }
@@ -167,7 +167,7 @@ Fact("Thread Can Set Its Own Priority And Description From ThreadProc")
 	{
 		SelfPriorityThread t;
 		t.Start();
-		t.Wait();
+		t.Join();
 		Assert(t.finished);
 		Assert(t.handleWasValid);
 	}
@@ -185,7 +185,7 @@ Fact("Thread Multiple Threads Run Concurrently")
 	for (int i = 0; i < kThreads; i++)
 		threads[i]->Start();
 	for (int i = 0; i < kThreads; i++)
-		threads[i]->Wait();
+		threads[i]->Join();
 
 	Assert(counter == kThreads);
 

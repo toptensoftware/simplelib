@@ -75,7 +75,7 @@ Fact("ThreadLocal Free Called On SimpleLib Thread Exit")
 
 	TlsThread t(&tl);
 	t.Start();
-	t.Wait();
+	t.Join();
 
 	// ThreadProcStub must have called ThreadLocalBase::FreeAll() after
 	// ThreadProc returned, destroying that thread's TlsInstanceCounter
@@ -95,7 +95,7 @@ Fact("ThreadLocal Free Called Independently Per Thread")
 	for (int i = 0; i < kThreads; i++)
 		threads[i]->Start();
 	for (int i = 0; i < kThreads; i++)
-		threads[i]->Wait();
+		threads[i]->Join();
 
 	Assert(TlsInstanceCounter::s_iInstances == 0);
 

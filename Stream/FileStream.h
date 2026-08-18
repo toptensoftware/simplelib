@@ -71,11 +71,11 @@ public:
 	}
 
 
-	virtual int Read(void* pv, uint32_t cb, uint32_t* pcb = nullptr) override
+	virtual int Read(void* pv, size_t cb, size_t* pcb = nullptr) override
 	{
 		assert(m_file != nullptr);
 		errno = 0;
-		uint32_t cbRead = (uint32_t)fread(pv, 1, cb, m_file);
+		size_t cbRead = fread(pv, 1, cb, m_file);
 		if (errno != 0)
 			return errno;
 
@@ -86,11 +86,11 @@ public:
 		return 0;
 	}
 
-	virtual int Write(const void* pv, uint32_t cb, uint32_t* pcb = nullptr) override
+	virtual int Write(const void* pv, size_t cb, size_t* pcb = nullptr) override
 	{
 		assert(m_file != nullptr);
 		errno = 0;
-		uint32_t cbWrite = (uint32_t)fwrite(pv, 1, cb, m_file);
+		size_t cbWrite = fwrite(pv, 1, cb, m_file);
 		if (errno != 0)
 			return errno;
 		if (pcb)
@@ -112,7 +112,7 @@ public:
 		return _ftelli64(m_file);
 	}
 
-	virtual int64_t Length() override
+	virtual int64_t GetLength() override
 	{
 		assert(m_file != nullptr);
 		int64_t save = Tell();
@@ -122,7 +122,7 @@ public:
 		return length;
 	}
 
-	virtual int SetLength() override
+	virtual int Truncate() override
 	{
 		assert(m_file != nullptr);
 		return _chsize_s(_fileno(m_file), Tell());

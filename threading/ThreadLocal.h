@@ -10,14 +10,13 @@ class ThreadLocalBase
 public:
     ThreadLocalBase()
     {
-        m_slot = TlsAlloc();
+        Platform::tlsAlloc(m_tls);
         EnterMutex emx(m_mx);
         m_slots.Add(this);
     }
     ~ThreadLocalBase()
     {
-        if (m_slot != 0)
-            TlsFree(m_slot);
+        Platform::tlsFree(m_tls);
         EnterMutex emx(m_mx);
         m_slots.Remove(this);
     }
@@ -36,14 +35,9 @@ public:
     }
 
 protected:
-    uint32_t GetSlot()
-    {
-        assert(m_slot != 0);
-        return m_slot;
-    }
-
+    Platform::TTls m_tls;
+    
 private:
-    uint32_t m_slot;
     inline static Mutex m_mx;
     inline static List<ThreadLocalBase*> m_slots;
     friend class Thread;
@@ -64,7 +58,7 @@ public:
     // (Creates instance if not already set)
     T* Get()
     {
-        T* p = (T*)TlsGetValue(GetSlot());
+        T* p = (T*)Platform::tlsGet(m_tls);
         if constexpr (autoCreate)
         {
             if (!p)
@@ -79,7 +73,7 @@ public:
     // (Note: old instance won't be automatically deleted)
     T* Set(T* val)
     {
-        TlsSetValue(GetSlot(), (void*)val);
+        Platform::tlsSet(m_tls, (void*)val);
         return val;
     }
 
@@ -88,8 +82,7 @@ public:
     {
         if constexpr (autoCreate)
         {
-            T* p = (T*)TlsGetValue(GetSlot());
-            delete p;
+            delete Get();
         }
     }
 };  

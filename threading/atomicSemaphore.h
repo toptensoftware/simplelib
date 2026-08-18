@@ -1,8 +1,7 @@
 #pragma once
 
-#include "common.h"
 #include "Atomic.h"
-
+#include "Thread.h"
 
 namespace SimpleLib
 {
@@ -55,7 +54,7 @@ public:
             // current == 0 — busy-spin for a bit before sleeping
             for (uint32_t spins = spinCount; spins > 0 && current == 0; spins--)
             {
-                YieldProcessor();
+                Thread::Yield();
                 current = m_count.Get();
             }
             if (current > 0)

@@ -17,89 +17,69 @@ public:
     }
 
     virtual bool IsOpen() = 0;
-	virtual int Read(void* pv, uint32_t cb, uint32_t* pcb = nullptr) = 0;
-	virtual int Write(const void* pv, uint32_t cb, uint32_t* pcb = nullptr) = 0;
+	virtual int Read(void* pv, size_t cb, size_t* pcb = nullptr) = 0;
+	virtual int Write(const void* pv, size_t cb, size_t* pcb = nullptr) = 0;
 	virtual int Seek(int64_t offset, int origin = SEEK_SET) = 0;
 	virtual int64_t Tell() = 0;
-	virtual int64_t Length() = 0;
-	virtual int SetLength() = 0;
+	virtual int64_t GetLength() = 0;
+	virtual int Truncate() = 0;
     virtual int Flush() { return 0; };
 
-    bool IsEof() { return Tell() == Length(); }
+    bool IsEof() { return Tell() == GetLength(); }
 
 
-    void WriteInt32(int32_t value)
+    template <typename T>
+    int WriteValue(const T& value)
     {
-        Write(&value, sizeof(value));
+        return Write(&value, sizeof(value));
     }
 
-    int32_t ReadInt32()
+    template <typename T>
+    int ReadValue(T& value)
     {
-        int32_t value;
+        return Read(&value, sizeof(value));
+    }
+
+    template <typename T>
+    T ReadValue()
+    {
+        T value;
         Read(&value, sizeof(value));
         return value;
     }
 
-    void WriteUInt32(uint32_t value)
-    {
-        Write(&value, sizeof(value));
-    }
-
-    uint32_t ReadUInt32()
-    {
-        uint32_t value;
-        Read(&value, sizeof(value));
-        return value;
-    }
-
-/*
-    void WriteInt32BE(int32_t value)
-    {
-        Reverse(value);
-        Write(&value, sizeof(value));
-    }
-
-    int ReadInt32BE()
-    {
-        int value;
-        Read(&value, sizeof(value));
-        Reverse(value);
-        return value;
-    }
-*/
-
-    int Stream::PutString(const char* psz)
+    int Write(const char* psz)
     {
         auto len = strlen(psz);
         return Write(psz, (uint32_t)len);
     }
 
-    int Stream::PutStringW(const wchar_t* psz)
+    int Write(const wchar_t* psz)
     {
         auto len = wcslen(psz);
         return Write(psz, (uint32_t)(len * sizeof(wchar_t*)));
     }
 
-    void Stream::WriteString(const char* psz)
+    void WriteLenString(const char* psz)
     {
         if (psz == nullptr)
         {
-            WriteInt32(0);
+            WriteValue<uint32_t>(0);
             return;
         }
 
         // Convert to utf-8
-        uint32_t length = (uint32_t)strlen(psz);
+        size_t length = strlen(psz);
 
         // Write it
-        WriteUInt32(length);
+        WriteValue<uint32_t>((uint32_t)length);
         Write(psz, length);
     }
 
-    String ReadString()
+    String ReadLenString()
     {
         // Read length
-        uint32_t utf8Length = ReadUInt32();
+        uint32_t utf8Length = ReadValue<uint32_t>();
         if (utf8Length == 0)
             return "";
 
@@ -120,7 +100,7 @@ public:
         while (!src.IsEof())
         {
             // Read 
-            uint32_t cb;
+            size_t cb;
             RIFE(src.Read(buf, sizeof(buf), &cb));
 
             // Write
@@ -140,7 +120,7 @@ public:
                 blockLength = length;
 
             // Read 
-            uint32_t cb;
+            size_t cb;
             RIFE(src.Read(buf, blockLength, &cb));
 
             // Write

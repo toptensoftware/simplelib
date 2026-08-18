@@ -7,15 +7,6 @@
 namespace SimpleLib
 {
 
-// Thread priority
-enum class ThreadPriority
-{
-	BelowNormal,
-	Normal,
-	AboveNormal,
-	RealTime,
-};
-
 class Thread
 {
 public:
@@ -23,81 +14,53 @@ public:
 	{
 		m_priority = priority;
 		m_description = description;
+		Platform::threadInit(m_thread);
 	}
 
 	virtual ~Thread()
 	{
-		assert(m_handle == nullptr);
-        if (m_handle)
-            CloseHandle(m_handle);
+		Platform::threadDestroy(m_thread);
 	}
 
-	void Start()
+	bool Start()
 	{
-		assert(m_handle == nullptr);
+		assert(!Platform::threadIsCreated(m_thread));
 
-        // Start suspended so m_handle (and the priority/description below)
-        // are fully set up before ThreadProc can run. Otherwise, since the
-        // new thread can start running as soon as CreateThread is called,
-        // ThreadProc could call SetPriority/SetDescription/GetHandle on
-        // itself while this thread is still storing m_handle -- a race.
-        // ResumeThread implies a memory barrier, so the child is guaranteed
-        // to see everything set up here once it wakes up.
-        DWORD dwId;
-        m_handle = CreateThread(nullptr, 0, &ThreadProcStub, this, CREATE_SUSPENDED, &dwId);
-        m_id = dwId;
+		// Star the thread
+		m_id = Platform::threadStart(m_thread, &ThreadProcStub, this);
+		if (m_id == 0)
+			return false;
 
+		// Setup attributes
 		if (m_priority != ThreadPriority::Normal)
 			SetPriority(m_priority);
 		if (!m_description.IsEmpty())
 			SetDescription(m_description);
 
-		ResumeThread(m_handle);
+		// Resume it
+		Platform::threadResume(m_thread);
+
+		return true;
 	}
 
-	void Wait(uint32_t timeout = kWaitForever)
+	bool Join(uint32_t timeout = kWaitForever)
 	{
-		if (m_handle)
-		{
-            WaitForSingleObject(m_handle, timeout);
-            CloseHandle(m_handle);
-            m_handle = nullptr;
-		}
+		return Platform::threadJoin(m_thread, timeout);
 	}
 
 	void SetDescription(const char* psz)
 	{
-		assert(m_handle != nullptr);
-		SetThreadDescription(m_handle, Encode<wchar_t>(psz).sz());
+		Platform::threadSetDescription(m_thread, psz);
 	}
 
 	void SetPriority(ThreadPriority priority)
 	{
-		assert(m_handle != nullptr);
-		switch (priority)
-		{
-			case ThreadPriority::RealTime:
-				// High priority
-				SetThreadPriority(m_handle, THREAD_PRIORITY_TIME_CRITICAL);
-				break;
-
-			case ThreadPriority::Normal:
-				SetThreadPriority(m_handle, THREAD_PRIORITY_NORMAL);
-				break;
-
-			case ThreadPriority::AboveNormal:
-				SetThreadPriority(m_handle, THREAD_PRIORITY_ABOVE_NORMAL);
-				break;
-
-			case ThreadPriority::BelowNormal:
-				SetThreadPriority(m_handle, THREAD_PRIORITY_BELOW_NORMAL);
-				break;
-		}
+		Platform::threadSetPriority(m_thread, priority);
 	}
 
-	void* GetHandle()
+	Platform::TThread GetHandle()
 	{
-		return m_handle;
+		return m_thread;
 	}
 
 	// Id of this thread instance
@@ -109,22 +72,32 @@ public:
 	// Id of the calling thread
 	static size_t GetCurrentId()
 	{
-		return (size_t)GetCurrentThreadId();
+		return Platform::threadCurrentId();
 	}
 
 	// Pseudo-handle of the calling thread. Only valid for use by that same
 	// thread (eg: passing to SetThreadPriority) - it can't be used from
 	// another thread to wait on or otherwise reference this thread.
-	static void* GetCurrentHandle()
+	static Platform::TThread GetCurrentHandle()
 	{
-		return (void*)GetCurrentThread();
+		return Platform::threadCurrentHandle();
+	}
+
+	static void Yield()
+	{
+		Platform::Yield();
+	}
+
+	static void Sleep(uint32_t ms)
+	{
+		Platform::Sleep(ms);
 	}
 
 protected:
 	virtual void ThreadProc()=0;
 
 private:
-	void* m_handle = nullptr;
+	Platform::TThread m_thread;
 	size_t m_id = 0;
 	ThreadPriority m_priority;
 	String m_description;
@@ -135,10 +108,9 @@ private:
 		ThreadLocalBase::FreeAll();
 	}
 
-	static DWORD WINAPI ThreadProcStub(void* param)
+	static void ThreadProcStub(void* param)
 	{
 		((Thread*)param)->ThreadProcEntry();
-		return 0;
 	}
 
 };
