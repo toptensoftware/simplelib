@@ -2,7 +2,7 @@
 
 #include <assert.h>
 #include "Atomic.h"
-#include "../Core/BitOps.h"
+//#include "../Core/Bit.h"
 #include "../Core/Endian.h"
 
 #include <malloc.h>
