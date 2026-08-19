@@ -394,6 +394,15 @@ class List
 		return m_data[iPosition];
 	}
 
+	// Get reference to element
+	const TStorage& GetRefAt(int position) const
+	{
+		assert(position >= 0);
+		assert(position < GetCount());
+
+		return m_data[position];
+	}
+
 	// operator[]
 	TArg operator[](int iPosition) const
 	{
