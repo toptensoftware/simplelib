@@ -116,9 +116,9 @@ Fact("CowList Snapshot Reflects Full Contents")
 
 	CowListSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
-	Assert(snap.GetItem(0) == 1);
-	Assert(snap.GetItem(1) == 2);
-	Assert(snap.GetItem(2) == 3);
+	Assert(snap.GetAt(0) == 1);
+	Assert(snap.GetAt(1) == 2);
+	Assert(snap.GetAt(2) == 3);
 }
 
 Fact("CowList First Snapshot Reports Everything As Inserted")
@@ -189,8 +189,8 @@ Fact("CowList Insert Then Remove Before Snapshot Cancels Out")
 
 	CowListSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 2);
-	Assert(snap.GetItem(0) == 1);
-	Assert(snap.GetItem(1) == 2);
+	Assert(snap.GetAt(0) == 1);
+	Assert(snap.GetAt(1) == 2);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
 }
@@ -207,9 +207,9 @@ Fact("CowList Move Does Not Appear In Inserted Or Deleted")
 	CowListSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
-	Assert(snap.GetItem(0) == 2);
-	Assert(snap.GetItem(1) == 3);
-	Assert(snap.GetItem(2) == 1);
+	Assert(snap.GetAt(0) == 2);
+	Assert(snap.GetAt(1) == 3);
+	Assert(snap.GetAt(2) == 1);
 }
 
 Fact("CowList Grows Beyond Initial Capacity")
@@ -225,7 +225,161 @@ Fact("CowList Grows Beyond Initial Capacity")
 	CowListSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 100);
 	for (int i = 0; i < 100; i++)
-		Assert(snap.GetItem(i) == i);
+		Assert(snap.GetAt(i) == i);
+}
+
+// Deliberately has no operator== - only compiles against a CowList that
+// doesn't require T to be comparable (TrackChanges = false).
+struct NonComparablePoint
+{
+	int x;
+	int y;
+};
+
+Fact("CowList TrackChanges False Compiles For Non Comparable T")
+{
+	CowList<NonComparablePoint, false> list;
+	list.Add({ 1, 2 });
+	list.Add({ 3, 4 });
+	list.RemoveAt(0);
+
+	Assert(list.GetCount() == 1);
+	Assert(list.GetAt(0).x == 3);
+	Assert(list.GetAt(0).y == 4);
+}
+
+Fact("CowList TrackChanges False Snapshot Reports Full Contents But No Inserted Deleted")
+{
+	CowList<NonComparablePoint, false> list;
+	list.Add({ 1, 2 });
+	list.GetSnapshot();	// baseline
+
+	list.Add({ 3, 4 });
+	list.RemoveAt(0);
+
+	CowListSnapshot<NonComparablePoint, false>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 1);
+	Assert(snap.GetAt(0).x == 3);
+	Assert(snap.GetAt(0).y == 4);
+
+	// Change tracking is disabled - always reports nothing, even though
+	// items were in fact added/removed
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowList TrackChanges False StartUpdate EndUpdate Still Batches")
+{
+	CowList<NonComparablePoint, false> list;
+	list.Add({ 1, 1 });
+	list.GetSnapshot();	// baseline
+
+	list.StartUpdate();
+	list.Add({ 2, 2 });
+	list.Add({ 3, 3 });
+	list.EndUpdate();
+
+	CowListSnapshot<NonComparablePoint, false>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 3);
+	Assert(snap.GetInsertedCount() == 0);
+}
+
+Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
+{
+	CowList<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.GetSnapshot();	// baseline
+
+	list.StartUpdate();
+	list.Add(3);
+	list.Add(4);
+	list.RemoveAt(0);	// removes 1
+	list.EndUpdate();
+
+	CowListSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 3);
+	Assert(snap.GetAt(0) == 2);
+	Assert(snap.GetAt(1) == 3);
+	Assert(snap.GetAt(2) == 4);
+	Assert(snap.GetInsertedCount() == 2);
+	Assert(snap.GetDeletedCount() == 1);
+	Assert(snap.GetDeletedItem(0) == 1);
+}
+
+Fact("CowList StartUpdate EndUpdate Nests")
+{
+	CowList<int> list;
+	list.GetSnapshot();	// baseline
+
+	list.StartUpdate();
+	list.StartUpdate();
+	list.Add(1);
+	list.EndUpdate();
+	Assert(list.GetCount() == 1);
+	list.Add(2);
+	list.EndUpdate();
+
+	// Nothing should be visible until the outermost EndUpdate()
+	CowListSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 2);
+	Assert(snap.GetInsertedCount() == 2);
+}
+
+Fact("CowList EndUpdate With No Changes Publishes Nothing New")
+{
+	CowList<int> list;
+	list.Add(1);
+	list.GetSnapshot();	// baseline
+
+	list.StartUpdate();
+	list.EndUpdate();
+
+	CowListSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 1);
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowList Reader Never Sees A Torn Batch")
+{
+	// Reader thread polls concurrently while the writer runs many
+	// StartUpdate()/Add()xN/EndUpdate() batches. Each batch's net item
+	// count is known ahead of time, so if the reader ever observes a
+	// count that isn't one of the expected "settled" totals, it caught a
+	// partially-applied batch.
+	CowList<int> list;
+	const int kBatches = 5000;
+	const int kOpsPerBatch = 4;
+	std::atomic<bool> done{ false };
+	std::atomic<bool> tornBatchSeen{ false };
+
+	std::thread writer([&]() {
+		int next = 0;
+		for (int b = 0; b < kBatches; b++)
+		{
+			list.StartUpdate();
+			for (int i = 0; i < kOpsPerBatch; i++)
+				list.Add(next++);
+			list.EndUpdate();
+		}
+		done = true;
+	});
+
+	std::thread reader([&]() {
+		while (!done)
+		{
+			CowListSnapshot<int>& snap = list.GetSnapshot();
+			if (snap.GetCount() % kOpsPerBatch != 0)
+				tornBatchSeen = true;
+		}
+	});
+
+	writer.join();
+	reader.join();
+
+	Assert(!tornBatchSeen);
+	Assert(list.GetCount() == kBatches * kOpsPerBatch);
 }
 
 Fact("CowList Writer Reader Threads Stay Consistent")
@@ -265,7 +419,7 @@ Fact("CowList Writer Reader Threads Stay Consistent")
 			int touchedCount = 0;
 			for (int i = 0; i < snap.GetCount(); i++)
 			{
-				int v = snap.GetItem(i);
+				int v = snap.GetAt(i);
 				if (v < 0 || v >= kOps)
 				{
 					inconsistent = true;
