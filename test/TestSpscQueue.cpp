@@ -3,6 +3,20 @@
 #include "../Threading.h"
 using namespace SimpleLib;
 
+// A default-constructible element that tracks live instances, so we can
+// verify Reset()/RemoveAll() correctly destroy elements still sitting in
+// the queue rather than just abandoning their storage.
+class TrackedValue
+{
+public:
+	TrackedValue(int val = 0) : Value(val) { s_iInstances++; }
+	TrackedValue(const TrackedValue& other) : Value(other.Value) { s_iInstances++; }
+	~TrackedValue() { s_iInstances--; }
+
+	int Value;
+	inline static int s_iInstances = 0;
+};
+
 Fact("SpscQueue Basic Write Read")
 {
 	SpscQueue<int> q(8);
@@ -150,6 +164,34 @@ Fact("SpscQueue Reset New Size")
 	q.Reset(16);
 	Assert(q.IsLikelyEmpty());
 	Assert(q.GetCapacity() == 16);
+}
+
+Fact("SpscQueue Reset Destroys Pending Elements")
+{
+	TrackedValue::s_iInstances = 0;
+	{
+		SpscQueue<TrackedValue> q(8);
+		q.TryWrite(TrackedValue(1));
+		q.TryWrite(TrackedValue(2));
+		q.TryWrite(TrackedValue(3));
+		Assert(TrackedValue::s_iInstances == 3);
+
+		// Same capacity - must still destroy the abandoned elements
+		q.Reset();
+		Assert(TrackedValue::s_iInstances == 0);
+
+		q.TryWrite(TrackedValue(4));
+		Assert(TrackedValue::s_iInstances == 1);
+
+		// New capacity - old buffer is freed, elements must be destroyed first
+		q.Reset(16);
+		Assert(TrackedValue::s_iInstances == 0);
+
+		// Destructor must also destroy anything left in the queue
+		q.TryWrite(TrackedValue(5));
+		Assert(TrackedValue::s_iInstances == 1);
+	}
+	Assert(TrackedValue::s_iInstances == 0);
 }
 
 Fact("SpscQueue Wraparound Preserves FIFO Order")

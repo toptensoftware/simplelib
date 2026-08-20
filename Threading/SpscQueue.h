@@ -25,6 +25,7 @@ public:
 
 	virtual ~SpscQueue()
 	{
+		RemoveAll();
 		free(m_pMem);
 	}
 
@@ -32,6 +33,12 @@ public:
 
 	void Reset(int iNewCapacity=-1)
 	{
+		// Destroy any elements still in the queue before discarding them -
+		// their storage is either about to be freed (capacity change) or
+		// silently overwritten by future writes (same capacity), and neither
+		// path would otherwise ever run their destructors.
+		RemoveAll();
+
 		if (iNewCapacity>=0 && iNewCapacity!=m_iCapacity)
 		{
 			free(m_pMem);

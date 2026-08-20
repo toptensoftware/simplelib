@@ -24,7 +24,10 @@ public:
 	virtual ~MpmcQueue()
 	{
 		if (m_pCells)
+		{
+			RemoveAll();
 			free(m_pCells);
+		}
 	}
 
 	void Reset(int iCapacity)
@@ -38,7 +41,12 @@ public:
 		assert((iCapacity & (iCapacity - 1)) == 0);		// Must be a power of two
 
 		if (m_pCells)
+		{
+			// Destroy any elements still in the queue before their storage
+			// is freed below - free() won't run their destructors.
+			RemoveAll();
 			free(m_pCells);
+		}
 
 		m_iCapacity = iCapacity;
 		m_iMask = (uint32_t)iCapacity - 1;
@@ -56,6 +64,14 @@ public:
 	bool IsLikelyEmpty()
 	{
 		return GetLikelyCount() == 0;
+	}
+
+	void RemoveAll()
+	{
+		T temp;
+		while (Read(temp))
+		{
+		}
 	}
 
 	bool IsLikelyFull()

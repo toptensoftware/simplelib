@@ -5,6 +5,20 @@
 #include "../Threading.h"
 using namespace SimpleLib;
 
+// A default-constructible element that tracks live instances, so we can
+// verify Reset()/RemoveAll() correctly destroy elements still sitting in
+// the queue rather than just abandoning their storage.
+class TrackedValue
+{
+public:
+	TrackedValue(int val = 0) : Value(val) { s_iInstances++; }
+	TrackedValue(const TrackedValue& other) : Value(other.Value) { s_iInstances++; }
+	~TrackedValue() { s_iInstances--; }
+
+	int Value;
+	inline static int s_iInstances = 0;
+};
+
 Fact("MpmcQueue Basic Write Read")
 {
 	MpmcQueue<int> q(8);
@@ -74,6 +88,25 @@ Fact("MpmcQueue Reset")
 
 	Assert(q.TryWrite(5));
 	Assert(q.GetLikelyCount() == 1);
+}
+
+Fact("MpmcQueue Reset Destroys Pending Elements")
+{
+	TrackedValue::s_iInstances = 0;
+	{
+		MpmcQueue<TrackedValue> q(8);
+		q.TryWrite(TrackedValue(1));
+		q.TryWrite(TrackedValue(2));
+		q.TryWrite(TrackedValue(3));
+		Assert(TrackedValue::s_iInstances == 3);
+
+		q.Reset(16);
+		Assert(TrackedValue::s_iInstances == 0);
+
+		q.TryWrite(TrackedValue(4));
+		Assert(TrackedValue::s_iInstances == 1);
+	}
+	Assert(TrackedValue::s_iInstances == 0);
 }
 
 Fact("MpmcQueue Wraparound Preserves FIFO Order")
