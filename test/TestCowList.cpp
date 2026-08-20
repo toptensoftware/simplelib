@@ -123,24 +123,24 @@ Fact("CowList Snapshot Reflects Full Contents")
 
 Fact("CowList First Snapshot Reports Everything As Inserted")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetInsertedCount() == 3);
 	Assert(snap.GetDeletedCount() == 0);
 }
 
 Fact("CowList Snapshot With No Changes Reports Nothing")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.GetSnapshot();
 
 	// No mutations since the last snapshot
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 1);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
@@ -148,13 +148,13 @@ Fact("CowList Snapshot With No Changes Reports Nothing")
 
 Fact("CowList Snapshot Reports Only Items Added Since Last Snapshot")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.GetSnapshot();	// baseline
 
 	list.Add(3);
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetInsertedCount() == 1);
 	Assert(snap.GetInsertedItem(0) == 3);
@@ -163,14 +163,14 @@ Fact("CowList Snapshot Reports Only Items Added Since Last Snapshot")
 
 Fact("CowList Snapshot Reports Only Items Removed Since Last Snapshot")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
 	list.GetSnapshot();	// baseline
 
 	list.RemoveAt(1);	// removes 2
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 2);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 1);
@@ -179,7 +179,7 @@ Fact("CowList Snapshot Reports Only Items Removed Since Last Snapshot")
 
 Fact("CowList Insert Then Remove Before Snapshot Cancels Out")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.GetSnapshot();	// baseline
@@ -187,7 +187,7 @@ Fact("CowList Insert Then Remove Before Snapshot Cancels Out")
 	list.Add(3);
 	list.RemoveAt(list.Find(3));
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 2);
 	Assert(snap.GetAt(0) == 1);
 	Assert(snap.GetAt(1) == 2);
@@ -197,14 +197,14 @@ Fact("CowList Insert Then Remove Before Snapshot Cancels Out")
 
 Fact("CowList Move Does Not Appear In Inserted Or Deleted")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
 	list.GetSnapshot();	// baseline
 
 	list.Move(0, 2);
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
 	Assert(snap.GetAt(0) == 2);
@@ -229,16 +229,17 @@ Fact("CowList Grows Beyond Initial Capacity")
 }
 
 // Deliberately has no operator== - only compiles against a CowList that
-// doesn't require T to be comparable (TrackChanges = false).
+// doesn't require T to be comparable, i.e. one using the default
+// TrackChanges = false.
 struct NonComparablePoint
 {
 	int x;
 	int y;
 };
 
-Fact("CowList TrackChanges False Compiles For Non Comparable T")
+Fact("CowList Default TrackChanges Compiles For Non Comparable T")
 {
-	CowList<NonComparablePoint, false> list;
+	CowList<NonComparablePoint> list;
 	list.Add({ 1, 2 });
 	list.Add({ 3, 4 });
 	list.RemoveAt(0);
@@ -248,29 +249,29 @@ Fact("CowList TrackChanges False Compiles For Non Comparable T")
 	Assert(list.GetAt(0).y == 4);
 }
 
-Fact("CowList TrackChanges False Snapshot Reports Full Contents But No Inserted Deleted")
+Fact("CowList Default TrackChanges Snapshot Reports Full Contents But No Inserted Deleted")
 {
-	CowList<NonComparablePoint, false> list;
+	CowList<NonComparablePoint> list;
 	list.Add({ 1, 2 });
 	list.GetSnapshot();	// baseline
 
 	list.Add({ 3, 4 });
 	list.RemoveAt(0);
 
-	CowListSnapshot<NonComparablePoint, false>& snap = list.GetSnapshot();
+	CowListSnapshot<NonComparablePoint>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 1);
 	Assert(snap.GetAt(0).x == 3);
 	Assert(snap.GetAt(0).y == 4);
 
-	// Change tracking is disabled - always reports nothing, even though
-	// items were in fact added/removed
+	// Change tracking is disabled by default - always reports nothing, even
+	// though items were in fact added/removed
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);
 }
 
-Fact("CowList TrackChanges False StartUpdate EndUpdate Still Batches")
+Fact("CowList Default TrackChanges StartUpdate EndUpdate Still Batches")
 {
-	CowList<NonComparablePoint, false> list;
+	CowList<NonComparablePoint> list;
 	list.Add({ 1, 1 });
 	list.GetSnapshot();	// baseline
 
@@ -279,14 +280,14 @@ Fact("CowList TrackChanges False StartUpdate EndUpdate Still Batches")
 	list.Add({ 3, 3 });
 	list.EndUpdate();
 
-	CowListSnapshot<NonComparablePoint, false>& snap = list.GetSnapshot();
+	CowListSnapshot<NonComparablePoint>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetInsertedCount() == 0);
 }
 
 Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.Add(2);
 	list.GetSnapshot();	// baseline
@@ -297,7 +298,7 @@ Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
 	list.RemoveAt(0);	// removes 1
 	list.EndUpdate();
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetAt(0) == 2);
 	Assert(snap.GetAt(1) == 3);
@@ -309,7 +310,7 @@ Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
 
 Fact("CowList StartUpdate EndUpdate Nests")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.GetSnapshot();	// baseline
 
 	list.StartUpdate();
@@ -321,21 +322,21 @@ Fact("CowList StartUpdate EndUpdate Nests")
 	list.EndUpdate();
 
 	// Nothing should be visible until the outermost EndUpdate()
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 2);
 	Assert(snap.GetInsertedCount() == 2);
 }
 
 Fact("CowList EndUpdate With No Changes Publishes Nothing New")
 {
-	CowList<int> list;
+	CowList<int, true> list;
 	list.Add(1);
 	list.GetSnapshot();	// baseline
 
 	list.StartUpdate();
 	list.EndUpdate();
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 1);
 	Assert(snap.GetInsertedCount() == 0);
 	Assert(snap.GetDeletedCount() == 0);

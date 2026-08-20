@@ -81,20 +81,20 @@ namespace SimpleLib
 // non-comparable T just means don't call those.
 //
 // The `TrackChanges` template parameter controls the inserted/deleted
-// tracking described above. It defaults to true (the behaviour described
-// everywhere else in this comment). With TrackChanges = false, snapshots'
+// tracking described above. It defaults to false: snapshots'
 // GetInsertedCount()/GetDeletedCount() are always 0 - Add/InsertAt/RemoveAt
-// no longer record which items changed, only that something did - and the
+// don't record which items changed, only that something did - and the
 // cancel-out reconciliation in GetSnapshot() (the one piece of this class
 // that needs T to be == comparable unconditionally, since it runs every
 // snapshot regardless of whether the caller ever looks at the result) is
-// compiled out entirely. Use this for a T that isn't == comparable (e.g. an
-// arbitrary struct) when only the full-contents view is needed.
+// compiled out entirely. Pass TrackChanges = true to opt into the
+// inserted/deleted tracking described everywhere else in this comment - it
+// additionally requires T to be == comparable.
 
-template <typename T, bool TrackChanges = true>
+template <typename T, bool TrackChanges = false>
 class CowList;
 
-template <typename T, bool TrackChanges = true>
+template <typename T, bool TrackChanges = false>
 class CowListSnapshot
 {
 public:
