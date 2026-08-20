@@ -1,5 +1,9 @@
 #pragma once
 
+#include <stdlib.h>
+
+#include "../core/Compare.h"
+
 namespace SimpleLib
 {
 
@@ -449,7 +453,65 @@ public:
 		}
 	}
 
-		// Starts (or, if already inside one, extends) a batch of mutating calls
+private:
+	struct sort_ctx_s
+	{
+		int (*callback)(T a, T b, void* user);
+		void* user;
+	};
+
+#ifdef _MSC_VER
+	static int sort_function_s(void* pvctx, const void* a, const void* b)
+#else
+	static int sort_function_s(const void* a, const void* b, void* pvctx)
+#endif
+	{
+		sort_ctx_s& ctx = *(sort_ctx_s*)pvctx;
+		return ctx.callback(*(T*)a, *(T*)b, ctx.user);
+	}
+
+public:
+	// Sorts the list in place using `callback`. Like Move(), this reorders
+	// items without touching the inserted/deleted lists, so it's wrapped in
+	// a batch (StartUpdate/EndUpdate) rather than hand-rolling the
+	// dirty-marking/publish logic Move() uses directly - a sort touches the
+	// whole array, not a single pair of slots, so there's no cheaper
+	// single-call path worth special-casing here.
+	void Sort(int (*callback)(T a, T b, void* user), void* user)
+	{
+		StartUpdate();
+
+		sort_ctx_s ctx;
+		ctx.callback = callback;
+		ctx.user = user;
+#ifdef _MSC_VER
+		qsort_s(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
+#else
+		qsort_r(m_pData, m_iCount, sizeof(T), sort_function_s, &ctx);
+#endif
+		m_bBatchDirty = true;
+
+		EndUpdate();
+	}
+
+	void Sort(int (*callback)(T a, T b))
+	{
+		Sort([](T a, T b, void* user) {
+			auto cb = (int (*)(T, T))user;
+			return cb(a, b);
+		}, (void*)callback);
+	}
+
+	// Sort using the default comparer
+	template <typename TCompare = SDefaultCompare>
+	void Sort()
+	{
+		Sort([](T a, T b) {
+			return TCompare::Compare(a, b);
+		});
+	}
+
+	// Starts (or, if already inside one, extends) a batch of mutating calls
 	// whose combined effect becomes visible to the reader atomically - only
 	// the outermost StartUpdate()/EndUpdate() pair actually defers/publishes,
 	// so it's safe to wrap already-batched code in another layer of these.

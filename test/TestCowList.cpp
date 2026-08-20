@@ -80,6 +80,90 @@ Fact("CowList Move")
 	Assert(list.GetAt(3) == 2);
 }
 
+Fact("CowList Sort Default Comparer")
+{
+	CowList<int> list;
+	list.Add(3);
+	list.Add(1);
+	list.Add(2);
+
+	list.Sort();
+	Assert(list.GetCount() == 3);
+	Assert(list.GetAt(0) == 1);
+	Assert(list.GetAt(1) == 2);
+	Assert(list.GetAt(2) == 3);
+}
+
+Fact("CowList Sort With Callback")
+{
+	CowList<int> list;
+	list.Add(1);
+	list.Add(3);
+	list.Add(2);
+
+	// Descending
+	list.Sort([](int a, int b) { return b - a; });
+	Assert(list.GetAt(0) == 3);
+	Assert(list.GetAt(1) == 2);
+	Assert(list.GetAt(2) == 1);
+}
+
+Fact("CowList Sort With Callback And User Data")
+{
+	CowList<int> list;
+	list.Add(1);
+	list.Add(3);
+	list.Add(2);
+
+	int multiplier = -1;
+	list.Sort([](int a, int b, void* user) {
+		int m = *(int*)user;
+		return (a - b) * m;
+	}, &multiplier);
+
+	Assert(list.GetAt(0) == 3);
+	Assert(list.GetAt(1) == 2);
+	Assert(list.GetAt(2) == 1);
+}
+
+Fact("CowList Sort Publishes A Single Batched Snapshot")
+{
+	CowList<int, true> list;
+	list.Add(3);
+	list.Add(1);
+	list.Add(2);
+	list.GetSnapshot();	// baseline
+
+	list.Sort();
+
+	CowListSnapshot<int, true>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 3);
+	Assert(snap.GetAt(0) == 1);
+	Assert(snap.GetAt(1) == 2);
+	Assert(snap.GetAt(2) == 3);
+
+	// Reordering only, not an insert/delete
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowList Sort Inside An Explicit Batch")
+{
+	CowList<int> list;
+	list.Add(2);
+	list.Add(1);
+
+	list.StartUpdate();
+	list.Add(0);
+	list.Sort();
+	list.EndUpdate();
+
+	Assert(list.GetCount() == 3);
+	Assert(list.GetAt(0) == 0);
+	Assert(list.GetAt(1) == 1);
+	Assert(list.GetAt(2) == 2);
+}
+
 Fact("CowList Find And IndexOf")
 {
 	CowList<int> list;
