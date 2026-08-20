@@ -124,13 +124,16 @@ public:
 	}
 
 	// Write to end
-	void MustWrite(const T& t)
+	// Returns true if the queue transitioned from empty to non-empty
+	bool MustWrite(const T& t)
 	{
 		if (IsLikelyFull())
 		{
 			assert(false);
-			return;
+			return false;
 		}
+
+		bool wasEmpty = IsLikelyEmpty();
 
 		// Copy it
 		T* writePos = m_pWritePos.Get();
@@ -138,6 +141,8 @@ public:
 
 		// Store next write pos
 		m_pWritePos.Set(AdvancePtr(writePos));
+
+		return wasEmpty;
 	}
 
 	// Write to end
