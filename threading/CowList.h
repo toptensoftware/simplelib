@@ -28,12 +28,10 @@ namespace SimpleLib
 // previous snapshot is deleted at that point) - don't hold onto it across
 // cycles.
 //
-// Each snapshot exposes three views:
-//   - GetCount()/GetItem(i)         - the full current contents, in order.
-//   - GetInsertedCount()/GetInsertedItem(i) - items added since the reader's
-//                                     previous snapshot.
-//   - GetDeletedCount()/GetDeletedItem(i)   - items removed since the
-//                                     reader's previous snapshot.
+// Unlike CowListWops<T>, snapshots here only expose the full current
+// contents (GetCount()/GetAt(i)) - there's no inserted/deleted item
+// tracking. If you need to know which items were added/removed since the
+// reader's previous snapshot, use CowListWops<T> instead.
 //
 // StartUpdate()/EndUpdate() let the writer group several mutating calls
 // (Add/InsertAt/RemoveAt/Move, in any combination) into a single unit that
@@ -44,30 +42,14 @@ namespace SimpleLib
 // any time) sees a torn, partially-applied batch. Calls nest - only the
 // outermost StartUpdate()/EndUpdate() pair actually defers/publishes.
 //
-// The inserted/deleted lists are a SET of items, not a log of operations:
-// they tell you *which* objects were added or removed since the last
-// snapshot, not the order, count, or interleaving of the Insert/Remove/Move
-// calls that produced them, and not their position/index. In particular:
-//   - If the same logical slot is inserted into and then removed from again
-//     before the reader ever takes a snapshot, neither shows up at all (they
-//     cancel out - see the reconciliation step in GetSnapshot()).
-//   - Move() never appears in the inserted/deleted lists at all - a
-//     reordering only shows up as a different item order in the full
-//     GetItem() view.
-// This is sufficient for identity-based bookkeeping (e.g. registering/
-// revoking precedents for objects that came and went), but this class
-// cannot be used to replay a positional edit history.
-//
-// Threading note: the writer reads fields directly off the previously
-// "pending" snapshot object (to build the next merged one) while the reader
-// may concurrently take that same object via GetSnapshot() and mutate it
-// in-place during reconciliation. This is only race-free because of how
-// StorePendingSnapshot's compare-exchange result is used: a successful CAS
-// proves the reader could not yet have touched the object, and a failed CAS
-// discards the writer's copy before its counts are ever consulted. That
-// argument depends entirely on the strict single-writer/single-reader
-// pattern above - it does not generalize to any other usage, so don't reuse
-// this class outside that pattern without re-deriving the proof.
+// Threading note: the writer builds each new snapshot from scratch off
+// m_pData and publishes it via a compare-exchange against whatever
+// `pending` currently holds - a failed CAS just means the reader concurrently
+// consumed the old pending via GetSnapshot(), so the writer can safely
+// overwrite it with a plain Set() instead. That argument depends entirely on
+// the strict single-writer/single-reader pattern above - it does not
+// generalize to any other usage, so don't reuse this class outside that
+// pattern without re-deriving the proof.
 //
 // Freeing note: GetSnapshot() runs on the audio thread and must not call
 // into the heap allocator. So rather than deleting the outgoing m_current
@@ -83,22 +65,11 @@ namespace SimpleLib
 // objects. Find/IndexOf/Remove additionally require T to be == comparable,
 // but (like any template member function) only if actually called - a
 // non-comparable T just means don't call those.
-//
-// The `TrackChanges` template parameter controls the inserted/deleted
-// tracking described above. It defaults to false: snapshots'
-// GetInsertedCount()/GetDeletedCount() are always 0 - Add/InsertAt/RemoveAt
-// don't record which items changed, only that something did - and the
-// cancel-out reconciliation in GetSnapshot() (the one piece of this class
-// that needs T to be == comparable unconditionally, since it runs every
-// snapshot regardless of whether the caller ever looks at the result) is
-// compiled out entirely. Pass TrackChanges = true to opt into the
-// inserted/deleted tracking described everywhere else in this comment - it
-// additionally requires T to be == comparable.
 
-template <typename T, bool TrackChanges = false>
+template <typename T>
 class CowList;
 
-template <typename T, bool TrackChanges = false>
+template <typename T>
 class CowListSnapshot
 {
 public:
@@ -118,38 +89,11 @@ public:
 		return GetAt(index);
 	}
 
-	int GetInsertedCount() const
-	{
-		return insertedCount;
-	}
-
-	T GetInsertedItem(int index) const
-	{
-		assert(index >= 0 && index < insertedCount);
-		return data[count + index];
-	}
-
-	int GetDeletedCount() const
-	{
-		return deletedCount;
-	}
-
-	T GetDeletedItem(int index) const
-	{
-		assert(index >= 0 && index < deletedCount);
-		return data[count + insertedRoom + index];
-	}
-
-
 private:
-	CowListSnapshot(int count, int inserted, int deleted) :
-		count(count),
-		insertedCount(inserted),
-		insertedRoom(inserted),
-		deletedCount(deleted),
-		deletedRoom(deleted)
+	CowListSnapshot(int count) :
+		count(count)
 	{
-		data = (T*)malloc(sizeof(T) * (count + insertedRoom + deletedRoom));
+		data = (T*)malloc(sizeof(T) * count);
 	}
 
 	~CowListSnapshot()
@@ -159,74 +103,25 @@ private:
 
 	// Intrusive link for the writer-reclaimed retirement stack (see
 	// CowList::m_retired) - GetSnapshot()'s own retire step isn't atomic
-	// (there's reconciliation work between consuming `pending` and actually
-	// retiring m_current), so an arbitrary number of writer mutating calls
-	// can complete in that window before the writer gets a chance to
-	// reclaim. m_retired must therefore be able to hold more than one
-	// outstanding retirement, not just the most recent.
-	CowListSnapshot<T, TrackChanges>* next = nullptr;
+	// (there's a compare-exchange loop that pushes onto m_retired), so an
+	// arbitrary number of writer mutating calls can complete in that window
+	// before the writer gets a chance to reclaim. m_retired must therefore
+	// be able to hold more than one outstanding retirement, not just the
+	// most recent.
+	CowListSnapshot<T>* next = nullptr;
 
 	T* GetItemBuffer()
 	{
 		return data;
 	}
 
-	T* GetInsertedBuffer()
-	{
-		return data + count;
-	}
-
-	T* GetDeletedBuffer()
-	{
-		return data + count + insertedRoom;
-	}
-
-	void ClearModifications()
-	{
-		insertedCount = 0;
-		deletedCount = 0;
-	}
-
-	void TrimFromDeleted(int index)
-	{
-		assert(index >= 0 && index < deletedCount);
-
-		T* delBuffer = GetDeletedBuffer();
-		delBuffer[index] = delBuffer[deletedCount - 1];
-		deletedCount--;
-	}
-
-	// Only ever called from GetSnapshot()'s reconciliation step, which is
-	// itself compiled out when TrackChanges is false (see CowList::
-	// GetSnapshot()) - so this never needs to be instantiated, and T is
-	// never required to be == comparable, for a TrackChanges = false list.
-	bool TrimFromInserted(T item)
-	{
-		T* insBuffer = GetInsertedBuffer();
-		for (int i = 0; i < insertedCount; i++)
-		{
-			if (insBuffer[i] == item)
-			{
-				// Move the last inserted item into this slot
-				insBuffer[i] = insBuffer[insertedCount - 1];
-				insertedCount--;
-				return true;
-			}
-		}
-		return false;
-	}
-
 	int count;
-	int insertedCount;
-	int insertedRoom;
-	int deletedCount;
-	int deletedRoom;
 	T* data;
 
-	friend class CowList<T, TrackChanges>;
+	friend class CowList<T>;
 };
 
-template <typename T, bool TrackChanges>
+template <typename T>
 class CowList
 {
 	static_assert(std::is_trivially_copyable_v<T>,
@@ -242,24 +137,15 @@ public:
 		m_iCount = 0;
 		m_pending.Set(nullptr);
 		m_retired.Set(nullptr);
-		m_current = new CowListSnapshot<T, TrackChanges>(0, 0, 0);
-		m_pBatchBaseline = nullptr;
-		m_bBatchDirty = false;
-		m_pBatchInserted = NULL;
-		m_iBatchInsertedCount = 0;
-		m_iBatchInsertedCapacity = 0;
-		m_pBatchDeleted = NULL;
-		m_iBatchDeletedCount = 0;
-		m_iBatchDeletedCapacity = 0;
+		m_current = new CowListSnapshot<T>(0);
 		m_iUpdateDepth = 0;
+		m_bBatchDirty = false;
 	}
 
 	~CowList()
 	{
 		Reset();
 		delete m_current;
-		free(m_pBatchInserted);
-		free(m_pBatchDeleted);
 	}
 
 	// Must not be called while a StartUpdate()/EndUpdate() batch is open -
@@ -275,7 +161,7 @@ public:
 		delete m_pending.Set(nullptr);
 		ReclaimRetired();
 		delete m_current;
-		m_current = new CowListSnapshot<T, TrackChanges>(0, 0, 0);
+		m_current = new CowListSnapshot<T>(0);
 	}
 
 	// Frees whatever snapshot(s) GetSnapshot() retired on the reader thread
@@ -283,18 +169,18 @@ public:
 	// start of every mutating operation, before anything else.
 	//
 	// m_retired is a lock-free stack (Treiber stack), not a single slot:
-	// GetSnapshot()'s retire step isn't atomic (there's reconciliation work
-	// between consuming `pending` and actually pushing the retired
+	// GetSnapshot()'s retire step isn't atomic (there's a compare-exchange
+	// loop between consuming `pending` and actually pushing the retired
 	// m_current), so an arbitrary number of writer mutating calls can run to
 	// completion in that window, each finding nothing here yet. Whichever
 	// writer call runs after the reader's retirement(s) finally land must be
 	// able to reclaim all of them, not just the most recent one.
 	void ReclaimRetired()
 	{
-		CowListSnapshot<T, TrackChanges>* node = m_retired.Set(nullptr);
+		CowListSnapshot<T>* node = m_retired.Set(nullptr);
 		while (node)
 		{
-			CowListSnapshot<T, TrackChanges>* next = node->next;
+			CowListSnapshot<T>* next = node->next;
 			delete node;
 			node = next;
 		}
@@ -347,26 +233,9 @@ public:
 
 		// Update snapshot
 		if (m_iUpdateDepth == 0)
-		{
-			CowListSnapshot<T, TrackChanges>* pending = m_pending.Get();
-			CowListSnapshot<T, TrackChanges>* newSnapshot;
-			if constexpr (TrackChanges)
-			{
-				newSnapshot = BuildSnapshot(pending, &val, 1, nullptr, 0);
-				StorePendingSnapshot(newSnapshot, pending, &val, 1, nullptr, 0);
-			}
-			else
-			{
-				newSnapshot = BuildSnapshot(pending, nullptr, 0, nullptr, 0);
-				StorePendingSnapshot(newSnapshot, pending, nullptr, 0, nullptr, 0);
-			}
-		}
+			PublishSnapshot();
 		else
-		{
-			if constexpr (TrackChanges)
-				AppendBatchInserted(val);
 			m_bBatchDirty = true;
-		}
 
 		return iPosition;
 	}
@@ -380,9 +249,6 @@ public:
 		if (m_iUpdateDepth == 0)
 			ReclaimRetired();
 
-		// Capture deleted value
-		T val = GetAt(iPosition);
-
 		// Shuffle memory
 		if (iPosition < GetCount() - 1)
 			memmove(m_pData + iPosition, m_pData + iPosition + 1, (m_iCount - iPosition - 1) * sizeof(T));
@@ -392,26 +258,9 @@ public:
 
 		// Update snapshot
 		if (m_iUpdateDepth == 0)
-		{
-			CowListSnapshot<T, TrackChanges>* pending = m_pending.Get();
-			CowListSnapshot<T, TrackChanges>* newSnapshot;
-			if constexpr (TrackChanges)
-			{
-				newSnapshot = BuildSnapshot(pending, nullptr, 0, &val, 1);
-				StorePendingSnapshot(newSnapshot, pending, nullptr, 0, &val, 1);
-			}
-			else
-			{
-				newSnapshot = BuildSnapshot(pending, nullptr, 0, nullptr, 0);
-				StorePendingSnapshot(newSnapshot, pending, nullptr, 0, nullptr, 0);
-			}
-		}
+			PublishSnapshot();
 		else
-		{
-			if constexpr (TrackChanges)
-				AppendBatchDeleted(val);
 			m_bBatchDirty = true;
-		}
 	}
 
 	void Move(int iFrom, int iTo)
@@ -438,19 +287,11 @@ public:
 		}
 		m_pData[iTo] = temp;
 
-		// Update snapshot. Move never touches the inserted/deleted lists,
-		// but the item order changed so a fresh snapshot still needs to be
-		// published (or, mid-batch, still needs to mark the batch dirty).
+		// Update snapshot
 		if (m_iUpdateDepth == 0)
-		{
-			CowListSnapshot<T, TrackChanges>* pending = m_pending.Get();
-			CowListSnapshot<T, TrackChanges>* newSnapshot = BuildSnapshot(pending, nullptr, 0, nullptr, 0);
-			StorePendingSnapshot(newSnapshot, pending, nullptr, 0, nullptr, 0);
-		}
+			PublishSnapshot();
 		else
-		{
 			m_bBatchDirty = true;
-		}
 	}
 
 private:
@@ -472,11 +313,10 @@ private:
 
 public:
 	// Sorts the list in place using `callback`. Like Move(), this reorders
-	// items without touching the inserted/deleted lists, so it's wrapped in
-	// a batch (StartUpdate/EndUpdate) rather than hand-rolling the
-	// dirty-marking/publish logic Move() uses directly - a sort touches the
-	// whole array, not a single pair of slots, so there's no cheaper
-	// single-call path worth special-casing here.
+	// items, so it's wrapped in a batch (StartUpdate/EndUpdate) rather than
+	// hand-rolling the dirty-marking/publish logic Move() uses directly - a
+	// sort touches the whole array, not a single pair of slots, so there's
+	// no cheaper single-call path worth special-casing here.
 	void Sort(int (*callback)(T a, T b, void* user), void* user)
 	{
 		StartUpdate();
@@ -515,26 +355,14 @@ public:
 	// whose combined effect becomes visible to the reader atomically - only
 	// the outermost StartUpdate()/EndUpdate() pair actually defers/publishes,
 	// so it's safe to wrap already-batched code in another layer of these.
-	//
-	// m_pending is only peeked (not consumed) here, and only on the
-	// outermost call - individual mutating calls made while a batch is open
-	// accumulate into m_pBatchInserted/m_pBatchDeleted instead of touching
-	// m_pending at all, so the reader sees either the pre-batch state or the
-	// fully-published post-batch state, never something in between.
 	void StartUpdate()
 	{
 		assert(m_iUpdateDepth >= 0);
 		if (m_iUpdateDepth == 0)
 		{
 			// Reclaim anything retired before the batch started. Once the
-			// batch is open, mutating calls must NOT reclaim - m_pBatchBaseline
-			// (below) may itself get retired by a concurrent GetSnapshot()
-			// mid-batch, and it has to survive un-freed until EndUpdate()
-			// resolves it (see StorePendingSnapshot's CAS-failure path).
+			// batch is open, mutating calls must NOT reclaim.
 			ReclaimRetired();
-			m_pBatchBaseline = m_pending.Get();
-			m_iBatchInsertedCount = 0;
-			m_iBatchDeletedCount = 0;
 			m_bBatchDirty = false;
 		}
 		m_iUpdateDepth++;
@@ -542,9 +370,7 @@ public:
 
 	// Ends (or, if nested, un-nests) a batch started with StartUpdate(). On
 	// the outermost call, if anything actually changed, publishes a single
-	// snapshot covering the whole batch - same publish/CAS-retry logic as a
-	// single mutating call, just fed the batch's accumulated item lists
-	// instead of one item.
+	// snapshot covering the whole batch.
 	void EndUpdate()
 	{
 		assert(m_iUpdateDepth > 0);
@@ -552,67 +378,35 @@ public:
 			return;
 
 		if (m_bBatchDirty)
-		{
-			CowListSnapshot<T, TrackChanges>* newSnapshot = BuildSnapshot(m_pBatchBaseline,
-				m_pBatchInserted, m_iBatchInsertedCount,
-				m_pBatchDeleted, m_iBatchDeletedCount);
-			StorePendingSnapshot(newSnapshot, m_pBatchBaseline,
-				m_pBatchInserted, m_iBatchInsertedCount,
-				m_pBatchDeleted, m_iBatchDeletedCount);
-		}
-		m_pBatchBaseline = nullptr;
+			PublishSnapshot();
 	}
 
-	CowListSnapshot<T, TrackChanges>& GetSnapshot()
+	CowListSnapshot<T>& GetSnapshot()
 	{
-		CowListSnapshot<T, TrackChanges>* pending = m_pending.Set(nullptr);
+		CowListSnapshot<T>* pending = m_pending.Set(nullptr);
 		if (pending)
 		{
-			// Clean up items both added and removed. `if constexpr` here -
-			// not just a runtime check - is what lets T skip being ==
-			// comparable when TrackChanges is false: it stops
-			// TrimFromInserted/TrimFromDeleted from ever being instantiated
-			// for this T, since insertedCount/deletedCount are always 0 in
-			// that case anyway and this block would never fire at runtime.
-			if constexpr (TrackChanges)
-			{
-				if (pending->GetInsertedCount() > 0 && pending->GetDeletedCount() > 0)
-				{
-					for (int i = pending->GetDeletedCount() - 1; i >= 0; i--)
-					{
-						if (pending->TrimFromInserted(pending->GetDeletedItem(i)))
-						{
-							pending->TrimFromDeleted(i);
-						}
-					}
-				}
-			}
-
 			// Retire the current one and replace with the pending one. Must not
 			// delete m_current here - this runs on the audio thread. Hand it
 			// off for the writer thread to free instead (see ReclaimRetired).
 			//
 			// Pushed onto the m_retired stack rather than stored in a single
 			// slot: this retire step isn't atomic with consuming `pending`
-			// above (the reconciliation loop runs in between), so by the time
-			// we get here an arbitrary number of writer calls may already
-			// have published and been retired again since we last checked -
-			// m_retired may already be non-empty, and that's fine.
-			CowListSnapshot<T, TrackChanges>* oldCurrent = m_current;
-			CowListSnapshot<T, TrackChanges>* head = m_retired.Get();
+			// above, so by the time we get here an arbitrary number of writer
+			// calls may already have published and been retired again since
+			// we last checked - m_retired may already be non-empty, and
+			// that's fine.
+			CowListSnapshot<T>* oldCurrent = m_current;
+			CowListSnapshot<T>* head = m_retired.Get();
 			for (;;)
 			{
 				oldCurrent->next = head;
-				CowListSnapshot<T, TrackChanges>* prevHead = m_retired.CompareExchange(oldCurrent, head);
+				CowListSnapshot<T>* prevHead = m_retired.CompareExchange(oldCurrent, head);
 				if (prevHead == head)
 					break;
 				head = prevHead;
 			}
 			m_current = pending;
-		}
-		else
-		{
-			m_current->ClearModifications();
 		}
 
 		return *m_current;
@@ -666,98 +460,37 @@ public:
 
 
 private:
-	// Builds a new snapshot of the current m_pData, carrying forward
-	// `pending`'s inserted/deleted lists (if any - pass nullptr for none)
-	// plus `insertedItems`/`deletedItems` (this call's own contribution, or
-	// an entire batch's worth accumulated by StartUpdate()/EndUpdate() -
-	// either way, just items to append after whatever `pending` carries).
-	CowListSnapshot<T, TrackChanges>* BuildSnapshot(CowListSnapshot<T, TrackChanges>* pending,
-		const T* insertedItems, int insertedItemsCount,
-		const T* deletedItems, int deletedItemsCount)
+	// Builds a fresh snapshot of the current m_pData and publishes it to
+	// m_pending, retrying against whatever the reader concurrently consumed
+	// (see GetSnapshot()) - a failed CAS just means the reader already took
+	// the old pending, so there's nothing left to merge and a plain Set()
+	// is safe.
+	void PublishSnapshot()
 	{
-		int pendingInsertedCount = pending ? pending->GetInsertedCount() : 0;
-		int pendingDeletedCount = pending ? pending->GetDeletedCount() : 0;
-		int insertedCount = pendingInsertedCount + insertedItemsCount;
-		int deletedCount = pendingDeletedCount + deletedItemsCount;
+		CowListSnapshot<T>* pending = m_pending.Get();
+		CowListSnapshot<T>* newSnapshot = BuildSnapshot();
 
-		CowListSnapshot<T, TrackChanges>* newSnapshot = new CowListSnapshot<T, TrackChanges>(m_iCount, insertedCount, deletedCount);
-		memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iCount);
-
-		if (pending)
+		if (!m_pending.TrySet(newSnapshot, pending))
 		{
-			memcpy(newSnapshot->GetInsertedBuffer(), pending->GetInsertedBuffer(), sizeof(T) * pendingInsertedCount);
-			memcpy(newSnapshot->GetDeletedBuffer(), pending->GetDeletedBuffer(), sizeof(T) * pendingDeletedCount);
-		}
-
-		if (insertedItemsCount)
-			memcpy(newSnapshot->GetInsertedBuffer() + pendingInsertedCount, insertedItems, sizeof(T) * insertedItemsCount);
-		if (deletedItemsCount)
-			memcpy(newSnapshot->GetDeletedBuffer() + pendingDeletedCount, deletedItems, sizeof(T) * deletedItemsCount);
-
-		return newSnapshot;
-	}
-
-	void StorePendingSnapshot(CowListSnapshot<T, TrackChanges>* newSnapshot, CowListSnapshot<T, TrackChanges>* oldSnapshot,
-		const T* insertedItems, int insertedItemsCount,
-		const T* deletedItems, int deletedItemsCount)
-	{
-		// Try to store it
-		if (!m_pending.TrySet(newSnapshot, oldSnapshot))
-		{
-			// Under the single-writer/single-reader contract, the only way
-			// this CAS can fail is the reader's GetSnapshot() concurrently
-			// swapping pending out via Set(nullptr) - and pulling out a
-			// non-null value (i.e. oldSnapshot) always makes GetSnapshot()
-			// retire m_current. So a CAS failure here means a retirement
-			// just happened that nobody has reclaimed yet, and that
-			// `newSnapshot` (built by merging with oldSnapshot's now-stale
-			// inserted/deleted lists) is wrong - the reader already folded
-			// all of that into its new baseline.
-			//
-			// Reclaim the unclaimed retirement, then rebuild containing only
-			// *this* call's own delta (as if pending were null) and publish
-			// that instead. Nothing else can be racing m_pending at this
-			// point (the reader won't touch it again until its next
-			// GetSnapshot(), and there's only one writer), so a plain Set()
-			// is safe here.
-			ReclaimRetired();
-
-			delete newSnapshot;
-			newSnapshot = BuildSnapshot(nullptr, insertedItems, insertedItemsCount, deletedItems, deletedItemsCount);
+			// The reader concurrently consumed `pending` via GetSnapshot() -
+			// nothing else can be racing m_pending at this point (single
+			// writer, and the reader won't touch it again until its next
+			// GetSnapshot()), so a plain Set() is safe here.
 			m_pending.Set(newSnapshot);
 		}
 		else
 		{
-			// The previous snap shot was never used, discard it
-			delete oldSnapshot;
+			// The previous pending snapshot was never used, discard it
+			delete pending;
 		}
 	}
 
-	// Grow `buffer` (capacity `capacity`) so it can hold at least `needed`
-	// items. Used for the StartUpdate()/EndUpdate() batch scratch buffers.
-	static void EnsureBatchCapacity(T*& buffer, int& capacity, int needed)
+	CowListSnapshot<T>* BuildSnapshot()
 	{
-		if (needed <= capacity)
-			return;
-		int newCapacity = capacity == 0 ? 16 : capacity * 2;
-		if (newCapacity < needed)
-			newCapacity = needed;
-		buffer = (T*)realloc(buffer, sizeof(T) * newCapacity);
-		capacity = newCapacity;
+		CowListSnapshot<T>* newSnapshot = new CowListSnapshot<T>(m_iCount);
+		memcpy(newSnapshot->GetItemBuffer(), m_pData, sizeof(T) * m_iCount);
+		return newSnapshot;
 	}
-
-	void AppendBatchInserted(const T& val)
-	{
-		EnsureBatchCapacity(m_pBatchInserted, m_iBatchInsertedCapacity, m_iBatchInsertedCount + 1);
-		m_pBatchInserted[m_iBatchInsertedCount++] = val;
-	}
-
-	void AppendBatchDeleted(const T& val)
-	{
-		EnsureBatchCapacity(m_pBatchDeleted, m_iBatchDeletedCapacity, m_iBatchDeletedCount + 1);
-		m_pBatchDeleted[m_iBatchDeletedCount++] = val;
-	}
-
 
 	// Writer side mutable data
 	T* m_pData;
@@ -767,30 +500,19 @@ private:
 	int m_iInitialCapacity;
 
 	// Pending immutable vector will be picked up on next snapshot
-	Atomic<CowListSnapshot<T, TrackChanges>*> m_pending;
+	Atomic<CowListSnapshot<T>*> m_pending;
 
 	// Current snapshot of the vector used by reader side
-	CowListSnapshot<T, TrackChanges>* m_current;
+	CowListSnapshot<T>* m_current;
 
 	// Snapshot retired by the reader (GetSnapshot), awaiting deletion by the
 	// writer thread - see ReclaimRetired() and the freeing note up top.
-	Atomic<CowListSnapshot<T, TrackChanges>*> m_retired;
+	Atomic<CowListSnapshot<T>*> m_retired;
 
-	// StartUpdate()/EndUpdate() batching state - all writer-thread-only,
-	// none of it is ever visible to the reader. m_pBatchBaseline is what
-	// m_pending held when the outermost StartUpdate() was called (peeked,
-	// not consumed - see StartUpdate()); m_pBatchInserted/m_pBatchDeleted
-	// accumulate this batch's own contribution, grown geometrically like
-	// m_pData and reused across batches rather than freed each time.
+	// StartUpdate()/EndUpdate() batching state - writer-thread-only, never
+	// visible to the reader.
 	int m_iUpdateDepth;
-	CowListSnapshot<T, TrackChanges>* m_pBatchBaseline;
 	bool m_bBatchDirty;
-	T* m_pBatchInserted;
-	int m_iBatchInsertedCount;
-	int m_iBatchInsertedCapacity;
-	T* m_pBatchDeleted;
-	int m_iBatchDeletedCount;
-	int m_iBatchDeletedCapacity;
 };
 
 

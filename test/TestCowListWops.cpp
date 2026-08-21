@@ -5,9 +5,9 @@
 #include "../Threading.h"
 using namespace SimpleLib;
 
-Fact("CowList Basic Add And GetAt")
+Fact("CowListWops Basic Add And GetAt")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	Assert(list.GetCount() == 0);
 
 	list.Add(10);
@@ -20,9 +20,9 @@ Fact("CowList Basic Add And GetAt")
 	Assert(list.GetAt(2) == 30);
 }
 
-Fact("CowList InsertAt")
+Fact("CowListWops InsertAt")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
@@ -35,9 +35,9 @@ Fact("CowList InsertAt")
 	Assert(list.GetAt(3) == 3);
 }
 
-Fact("CowList RemoveAt")
+Fact("CowListWops RemoveAt")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
@@ -48,9 +48,9 @@ Fact("CowList RemoveAt")
 	Assert(list.GetAt(1) == 3);
 }
 
-Fact("CowList Remove By Value")
+Fact("CowListWops Remove By Value")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
@@ -65,9 +65,9 @@ Fact("CowList Remove By Value")
 	Assert(list.GetCount() == 2);
 }
 
-Fact("CowList Move")
+Fact("CowListWops Move")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(0);
 	list.Add(1);
 	list.Add(2);
@@ -80,9 +80,9 @@ Fact("CowList Move")
 	Assert(list.GetAt(3) == 2);
 }
 
-Fact("CowList Sort Default Comparer")
+Fact("CowListWops Sort Default Comparer")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(3);
 	list.Add(1);
 	list.Add(2);
@@ -94,9 +94,9 @@ Fact("CowList Sort Default Comparer")
 	Assert(list.GetAt(2) == 3);
 }
 
-Fact("CowList Sort With Callback")
+Fact("CowListWops Sort With Callback")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(3);
 	list.Add(2);
@@ -108,9 +108,9 @@ Fact("CowList Sort With Callback")
 	Assert(list.GetAt(2) == 1);
 }
 
-Fact("CowList Sort With Callback And User Data")
+Fact("CowListWops Sort With Callback And User Data")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(3);
 	list.Add(2);
@@ -126,9 +126,9 @@ Fact("CowList Sort With Callback And User Data")
 	Assert(list.GetAt(2) == 1);
 }
 
-Fact("CowList Sort Publishes A Single Batched Snapshot")
+Fact("CowListWops Sort Publishes A Single Batched Snapshot")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(3);
 	list.Add(1);
 	list.Add(2);
@@ -136,16 +136,20 @@ Fact("CowList Sort Publishes A Single Batched Snapshot")
 
 	list.Sort();
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetAt(0) == 1);
 	Assert(snap.GetAt(1) == 2);
 	Assert(snap.GetAt(2) == 3);
+
+	// Reordering only, not an insert/delete
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
 }
 
-Fact("CowList Sort Inside An Explicit Batch")
+Fact("CowListWops Sort Inside An Explicit Batch")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(2);
 	list.Add(1);
 
@@ -160,9 +164,9 @@ Fact("CowList Sort Inside An Explicit Batch")
 	Assert(list.GetAt(2) == 2);
 }
 
-Fact("CowList Find And IndexOf")
+Fact("CowListWops Find And IndexOf")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(10);
 	list.Add(20);
 	list.Add(30);
@@ -173,9 +177,9 @@ Fact("CowList Find And IndexOf")
 	Assert(list.IndexOf(999) == -1);
 }
 
-Fact("CowList Reset")
+Fact("CowListWops Reset")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 
@@ -187,23 +191,130 @@ Fact("CowList Reset")
 	Assert(list.GetAt(0) == 99);
 }
 
-Fact("CowList Snapshot Reflects Full Contents")
+Fact("CowListWops Snapshot Reflects Full Contents")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 	list.Add(3);
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetAt(0) == 1);
 	Assert(snap.GetAt(1) == 2);
 	Assert(snap.GetAt(2) == 3);
 }
 
-Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
+Fact("CowListWops First Snapshot Reports Everything As Inserted")
 {
-	CowList<int> list;
+	CowListWops<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetInsertedCount() == 3);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowListWops Snapshot With No Changes Reports Nothing")
+{
+	CowListWops<int> list;
+	list.Add(1);
+	list.GetSnapshot();
+
+	// No mutations since the last snapshot
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 1);
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowListWops Snapshot Reports Only Items Added Since Last Snapshot")
+{
+	CowListWops<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.GetSnapshot();	// baseline
+
+	list.Add(3);
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 3);
+	Assert(snap.GetInsertedCount() == 1);
+	Assert(snap.GetInsertedItem(0) == 3);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowListWops Snapshot Reports Only Items Removed Since Last Snapshot")
+{
+	CowListWops<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+	list.GetSnapshot();	// baseline
+
+	list.RemoveAt(1);	// removes 2
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 2);
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 1);
+	Assert(snap.GetDeletedItem(0) == 2);
+}
+
+Fact("CowListWops Insert Then Remove Before Snapshot Cancels Out")
+{
+	CowListWops<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.GetSnapshot();	// baseline
+
+	list.Add(3);
+	list.RemoveAt(list.Find(3));
+
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 2);
+	Assert(snap.GetAt(0) == 1);
+	Assert(snap.GetAt(1) == 2);
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+}
+
+Fact("CowListWops Move Does Not Appear In Inserted Or Deleted")
+{
+	CowListWops<int> list;
+	list.Add(1);
+	list.Add(2);
+	list.Add(3);
+	list.GetSnapshot();	// baseline
+
+	list.Move(0, 2);
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
+	Assert(snap.GetAt(0) == 2);
+	Assert(snap.GetAt(1) == 3);
+	Assert(snap.GetAt(2) == 1);
+}
+
+Fact("CowListWops Grows Beyond Initial Capacity")
+{
+	CowListWops<int> list(4, 4);
+	for (int i = 0; i < 100; i++)
+		list.Add(i);
+
+	Assert(list.GetCount() == 100);
+	for (int i = 0; i < 100; i++)
+		Assert(list.GetAt(i) == i);
+
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
+	Assert(snap.GetCount() == 100);
+	for (int i = 0; i < 100; i++)
+		Assert(snap.GetAt(i) == i);
+}
+
+Fact("CowListWops StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
+{
+	CowListWops<int> list;
 	list.Add(1);
 	list.Add(2);
 	list.GetSnapshot();	// baseline
@@ -214,16 +325,19 @@ Fact("CowList StartUpdate EndUpdate Batches Multiple Ops Into One Snapshot")
 	list.RemoveAt(0);	// removes 1
 	list.EndUpdate();
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 3);
 	Assert(snap.GetAt(0) == 2);
 	Assert(snap.GetAt(1) == 3);
 	Assert(snap.GetAt(2) == 4);
+	Assert(snap.GetInsertedCount() == 2);
+	Assert(snap.GetDeletedCount() == 1);
+	Assert(snap.GetDeletedItem(0) == 1);
 }
 
-Fact("CowList StartUpdate EndUpdate Nests")
+Fact("CowListWops StartUpdate EndUpdate Nests")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.GetSnapshot();	// baseline
 
 	list.StartUpdate();
@@ -235,67 +349,34 @@ Fact("CowList StartUpdate EndUpdate Nests")
 	list.EndUpdate();
 
 	// Nothing should be visible until the outermost EndUpdate()
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 2);
+	Assert(snap.GetInsertedCount() == 2);
 }
 
-Fact("CowList EndUpdate With No Changes Publishes Nothing New")
+Fact("CowListWops EndUpdate With No Changes Publishes Nothing New")
 {
-	CowList<int> list;
+	CowListWops<int> list;
 	list.Add(1);
 	list.GetSnapshot();	// baseline
 
 	list.StartUpdate();
 	list.EndUpdate();
 
-	CowListSnapshot<int>& snap = list.GetSnapshot();
+	CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 	Assert(snap.GetCount() == 1);
+	Assert(snap.GetInsertedCount() == 0);
+	Assert(snap.GetDeletedCount() == 0);
 }
 
-Fact("CowList Grows Beyond Initial Capacity")
-{
-	CowList<int> list(4, 4);
-	for (int i = 0; i < 100; i++)
-		list.Add(i);
-
-	Assert(list.GetCount() == 100);
-	for (int i = 0; i < 100; i++)
-		Assert(list.GetAt(i) == i);
-
-	CowListSnapshot<int>& snap = list.GetSnapshot();
-	Assert(snap.GetCount() == 100);
-	for (int i = 0; i < 100; i++)
-		Assert(snap.GetAt(i) == i);
-}
-
-// Deliberately has no operator== - only compiles against a CowList, which
-// doesn't require T to be comparable (unlike CowListWops).
-struct NonComparablePoint
-{
-	int x;
-	int y;
-};
-
-Fact("CowList Compiles For Non Comparable T")
-{
-	CowList<NonComparablePoint> list;
-	list.Add({ 1, 2 });
-	list.Add({ 3, 4 });
-	list.RemoveAt(0);
-
-	Assert(list.GetCount() == 1);
-	Assert(list.GetAt(0).x == 3);
-	Assert(list.GetAt(0).y == 4);
-}
-
-Fact("CowList Reader Never Sees A Torn Batch")
+Fact("CowListWops Reader Never Sees A Torn Batch")
 {
 	// Reader thread polls concurrently while the writer runs many
 	// StartUpdate()/Add()xN/EndUpdate() batches. Each batch's net item
 	// count is known ahead of time, so if the reader ever observes a
 	// count that isn't one of the expected "settled" totals, it caught a
 	// partially-applied batch.
-	CowList<int> list;
+	CowListWops<int> list;
 	const int kBatches = 5000;
 	const int kOpsPerBatch = 4;
 	std::atomic<bool> done{ false };
@@ -316,7 +397,7 @@ Fact("CowList Reader Never Sees A Torn Batch")
 	std::thread reader([&]() {
 		while (!done)
 		{
-			CowListSnapshot<int>& snap = list.GetSnapshot();
+			CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 			if (snap.GetCount() % kOpsPerBatch != 0)
 				tornBatchSeen = true;
 		}
@@ -329,11 +410,11 @@ Fact("CowList Reader Never Sees A Torn Batch")
 	Assert(list.GetCount() == kBatches * kOpsPerBatch);
 }
 
-Fact("CowList Writer Reader Threads Stay Consistent")
+Fact("CowListWops Writer Reader Threads Stay Consistent")
 {
 	// Simulates the intended usage pattern: one writer thread mutating,
 	// one reader thread repeatedly taking snapshots, running concurrently.
-	CowList<int> list;
+	CowListWops<int> list;
 	const int kOps = 20000;
 	std::atomic<bool> done{ false };
 	std::atomic<int> snapshotsTaken{ 0 };
@@ -359,7 +440,7 @@ Fact("CowList Writer Reader Threads Stay Consistent")
 		int touched[16];
 		while (!done)
 		{
-			CowListSnapshot<int>& snap = list.GetSnapshot();
+			CowListWopsSnapshot<int>& snap = list.GetSnapshot();
 
 			// Every item in a snapshot must be within range and unique -
 			// a torn read of the writer's buffer would likely violate this
