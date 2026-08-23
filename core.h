@@ -23,6 +23,7 @@
 // Misc
 #include "Core/Bit.h"
 #include "Core/Endian.h"
+#include "Core/FourCC.h"
 #include "Core/Crc32.h"
 #include "Core/Guid.h"
 

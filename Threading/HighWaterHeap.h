@@ -2,8 +2,7 @@
 
 #include <assert.h>
 #include "Atomic.h"
-//#include "../Core/Bit.h"
-#include "../Core/Endian.h"
+#include "../Core/FourCC.h"
 
 #include <malloc.h>
 
@@ -252,8 +251,8 @@ private:
 	HighWaterHeap(HighWaterHeap&& other) = delete;
 	HighWaterHeap& operator=(HighWaterHeap&& other) = delete;
 
-    static const uint32_t kSigAlloc = Endian::fourcc("hwal");
-    static const uint32_t kSigHeap = Endian::fourcc("hwhp");
+    static const uint32_t kSigAlloc = cc4("hwal");
+    static const uint32_t kSigHeap = cc4("hwhp");
 };
 
 }
