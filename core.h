@@ -21,6 +21,7 @@
 
 
 // Misc
+#include "Core/Nullable.h"
 #include "Core/Bit.h"
 #include "Core/Endian.h"
 #include "Core/FourCC.h"
