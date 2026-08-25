@@ -77,9 +77,9 @@ public:
     }
 
     #ifdef _WIN32
-    int OpenResource(HMODULE hModule, LPCTSTR pszName, LPCTSTR pszType)
+    int OpenResource(HMODULE hModule, const char* pszName, const char* pszType)
     {
-        HRSRC hRes = FindResource(hModule, pszName, pszType);
+        HRSRC hRes = FindResource(hModule, Encode<TCHAR>(pszName), Encode<TCHAR>(pszType));
         if (hRes==nullptr)
             return ENOENT;
 
