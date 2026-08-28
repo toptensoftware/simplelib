@@ -53,12 +53,13 @@ namespace SimpleLib
 //
 // Freeing note: GetSnapshot() runs on the audio thread and must not call
 // into the heap allocator. So rather than deleting the outgoing m_current
-// there, it's handed off to a single-slot "retired" pointer, which the
-// writer thread frees off at the start of its next mutating call. A single
-// slot (rather than a queue) is enough: a second retirement can only ever
-// happen after the writer has produced another pending snapshot, and every
-// mutating call reclaims the slot before doing anything else - so the slot
-// is always empty again well before it could be needed a second time.
+// there, it's pushed onto the m_retired stack, which the writer thread
+// frees off at the start of its next mutating call. m_retired is a
+// lock-free (Treiber) stack, not a single slot: GetSnapshot()'s retire step
+// (consume `pending`, then push the old m_current) isn't atomic as a whole,
+// so an arbitrary number of writer mutating calls can complete in that
+// window - m_retired has to be able to hold every retirement that lands
+// before the writer next reclaims, not just the most recent one.
 //
 // T must be trivially copyable (this is enforced by a static_assert) -
 // CowList is designed for small POD types / raw pointers, not owning

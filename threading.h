@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Threading/Atomic.h"
+#include "Threading/AtomicPtrTransfer.h"
 #include "Threading/AtomicSemaphore.h"
 #include "Threading/AtomicStruct.h"
 #include "Threading/SpscQueue.h"
