@@ -1,6 +1,7 @@
 #pragma once
 
 #include <malloc.h>
+#include <errno.h>
 #include "Stream.h"
 
 #include "../Platform/Platform.h"
@@ -172,11 +173,19 @@ public:
         // Update current position
         m_pos += cb;
 
-
-        // Return number of bytes actually read
         if (pcb)
         {
+            // Return number of bytes actually read
             *pcb = cb;
+        }
+        else
+        {
+            // Caller wants an exact read - report failure if we couldn't
+            // supply the full amount requested, matching Platform::Read's
+            // contract (see win.h) that FileStream relies on for the same
+            // "no pcb -> nonzero on a short read" EOF signal.
+            if (cb < cbRequested)
+                return EIO;
         }
 
         return 0;
