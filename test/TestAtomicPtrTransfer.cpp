@@ -7,8 +7,8 @@ using namespace SimpleLib;
 namespace
 {
 	// An object that tracks how many instances are live and carries a magic
-	// word, so a reader can spot a use-after-free / torn hand-off. Has the
-	// `next` link AtomicPtrTransfer's return stack requires.
+	// word, so a reader can spot a use-after-free / torn hand-off. Note it has
+	// no `next` link - AtomicPtrTransfer boxes the pointer internally.
 	struct Msg
 	{
 		static constexpr int kMagic = 0x5A5AA5A5;
@@ -19,7 +19,6 @@ namespace
 		Msg(const Msg&) = delete;
 		Msg& operator=(const Msg&) = delete;
 
-		Msg* next = nullptr;
 		int Magic = kMagic;
 		int Id;
 
@@ -54,7 +53,7 @@ Fact("AtomicPtrTransfer Receive Returns The Sent Object Once")
 		AtomicPtrTransfer<Msg> x;
 
 		Msg* a = new Msg(1);
-		Assert(x.Send(a) == nullptr);		// nothing to hand back on the first send
+		Assert(x.SendNoReclaim(a) == nullptr);	// nothing to hand back on the first send
 
 		Assert(x.Receive() == a);
 		Assert(x.Receive() == nullptr);		// already taken
@@ -70,28 +69,30 @@ Fact("AtomicPtrTransfer Receiver Holds Old And New Together Then Returns Old")
 	{
 		AtomicPtrTransfer<Msg> x;
 
-		Msg* current = new Msg(0);			// receiver's starting object
+		Msg* current = nullptr;
 
 		for (int i = 1; i <= 20; i++)
 		{
 			Msg* sent = new Msg(i);
-			Assert(x.Send(sent) == nullptr);
+			Assert(x.SendNoReclaim(sent) == nullptr);
 
 			Msg* incoming = x.Receive();
 			Assert(incoming == sent);
 
-			// Both objects are in the receiver's hands at the same time.
-			Assert(current->Magic == Msg::kMagic);
-			Assert(incoming->Magic == Msg::kMagic);
-			Assert(incoming->Id == current->Id + 1);
+			if (current != nullptr)
+			{
+				// Both objects are in the receiver's hands at the same time.
+				Assert(current->Magic == Msg::kMagic);
+				Assert(incoming->Magic == Msg::kMagic);
+				Assert(incoming->Id == current->Id + 1);
 
-			x.Return(current);
+				x.Return(current);
+
+				Msg* back = x.Reclaim();
+				Assert(back != nullptr && back->Id == i - 1);
+				delete back;
+			}
 			current = incoming;
-
-			Msg* back = x.Reclaim();
-			Assert(back != nullptr && back->Id == i - 1);
-			Assert(back->next == nullptr);	// link cleared on the way out
-			delete back;
 		}
 
 		delete current;
@@ -109,7 +110,10 @@ Fact("AtomicPtrTransfer Return Stacks Many Objects Without Losing Any")
 
 		const int kN = 50;
 		for (int i = 0; i < kN; i++)
-			x.Return(new Msg(i));
+		{
+			Assert(x.SendNoReclaim(new Msg(i)) == nullptr);
+			x.Return(x.Receive());			// take it, then hand it straight back
+		}
 
 		bool seen[kN] = {};
 		int count = 0;
@@ -133,14 +137,19 @@ Fact("AtomicPtrTransfer Reclaim Picks Up Objects Returned After An Earlier Drain
 	{
 		AtomicPtrTransfer<Msg> x;
 
-		x.Return(new Msg(1));
+		x.SendNoReclaim(new Msg(1));
+		x.Return(x.Receive());
 		Msg* a = x.Reclaim();
 		Assert(a && a->Id == 1);
 		delete a;
 		Assert(x.Reclaim() == nullptr);
 
-		x.Return(new Msg(2));
-		x.Return(new Msg(3));
+		x.SendNoReclaim(new Msg(2));
+		Msg* two = x.Receive();
+		x.SendNoReclaim(new Msg(3));
+		Msg* three = x.Receive();
+		x.Return(two);
+		x.Return(three);
 		Msg* b = x.Reclaim();
 		Msg* c = x.Reclaim();
 		Assert(b && c);
@@ -161,12 +170,42 @@ Fact("AtomicPtrTransfer Sender Outpacing Receiver Gets The Stale Object Back")
 		Msg* a = new Msg(1);
 		Msg* b = new Msg(2);
 
-		Assert(x.Send(a) == nullptr);
-		Assert(x.Send(b) == a);				// receiver never took 'a' - handed straight back
+		Assert(x.SendNoReclaim(a) == nullptr);
+		Assert(x.SendNoReclaim(b) == a);		// receiver never took 'a' - handed straight back
 		Assert(x.Receive() == b);			// receiver only ever sees the latest
 
 		delete a;
 		delete b;
+	}
+	Assert(Msg::s_live == 0);
+}
+
+Fact("AtomicPtrTransfer Send Auto-Reclaims Returned And Bounced Objects")
+{
+	Msg::s_live = 0;
+	CountingRelease::s_releases = 0;
+	{
+		AtomicPtrTransfer<Msg, CountingRelease> x;
+
+		// Receiver takes several objects and hands them back; the next Send()
+		// disposes them.
+		for (int id = 1; id <= 3; id++)
+		{
+			x.SendNoReclaim(new Msg(id));
+			x.Return(x.Receive());
+		}
+
+		x.Send(new Msg(10));
+		Assert(CountingRelease::s_releases == 3);	// the three returned objects
+		Assert(x.Reclaim() == nullptr);				// nothing left to collect
+
+		// Receiver never takes Msg(10); the next Send() disposes the bounced object.
+		x.Send(new Msg(11));
+		Assert(CountingRelease::s_releases == 4);
+
+		Msg* got = x.Receive();						// receiver still gets the latest
+		Assert(got->Id == 11);
+		delete got;
 	}
 	Assert(Msg::s_live == 0);
 }
@@ -178,15 +217,18 @@ Fact("AtomicPtrTransfer Destructor Releases Both Channels")
 	{
 		AtomicPtrTransfer<Msg, CountingRelease> x;
 
-		x.Send(new Msg(1));					// parked in the forward slot, never received
+		// Three objects received then handed back onto the return stack.
+		for (int id = 2; id <= 4; id++)
+		{
+			x.SendNoReclaim(new Msg(id));
+			x.Return(x.Receive());
+		}
 
-		x.Return(new Msg(2));				// on the return stack
-		x.Return(new Msg(3));
-
-		x.Return(new Msg(4));
 		Msg* r = x.Reclaim();				// pulls the stack into m_reclaimList, hands out one
 		Assert(r != nullptr);
 		delete r;							// caller disposes it itself, not via TRelease
+
+		x.SendNoReclaim(new Msg(1));			// parked in the forward slot, never received
 
 		Assert(Msg::s_live == 3);			// 1 in forward slot, 2 still in m_reclaimList
 	}
@@ -211,11 +253,7 @@ Fact("AtomicPtrTransfer Threaded Hand-Off Loses No Objects And Never Tears")
 		std::thread sender([&]()
 		{
 			for (int i = 1; i <= kCount; i++)
-			{
-				delete x.Send(new Msg(i));	// allocate + free only on this thread
-				while (Msg* r = x.Reclaim())
-					delete r;
-			}
+				x.Send(new Msg(i));			// allocate + free (via TDelete) only on this thread
 			stop = true;
 		});
 
