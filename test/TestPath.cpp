@@ -4,8 +4,8 @@
 using namespace SimpleLib;
 
 // Exercise both semantics regardless of the host platform
-typedef Path<SPathSemanticsWindows> WinPath;
-typedef Path<SPathSemanticsPosix> PosixPath;
+typedef PathCore<SPathSemanticsWindows> WinPath;
+typedef PathCore<SPathSemanticsPosix> PosixPath;
 
 Fact("Path::Join basic")
 {
@@ -117,16 +117,16 @@ Fact("Path::IsFullyQualified (semantics driven, host independent)")
 
 Fact("Path::GetCurrentDirectory / GetFullPath smoke")
 {
-    String cwd = Path<>::GetCurrentDirectory();
+    String cwd = Path::GetCurrentDirectory();
     Assert(!cwd.IsEmpty());
-    Assert(Path<>::IsFullyQualified(cwd));
+    Assert(Path::IsFullyQualified(cwd));
 
-    String full = Path<>::GetFullPath("sub/file.txt");
-    Assert(Path<>::IsFullyQualified(full));
+    String full = Path::GetFullPath("sub/file.txt");
+    Assert(Path::IsFullyQualified(full));
     Assert(full.EndsWith("file.txt"));
 
-    String abs = Path<>::GetFullPath(Path<>::Join(cwd, "a/./b/../c"));
-    Assert(abs.EndsWith(Path<>::Join("a", "c")));
+    String abs = Path::GetFullPath(Path::Join(cwd, "a/./b/../c"));
+    Assert(abs.EndsWith(Path::Join("a", "c")));
 }
 
 Fact("Path::DoesMatchPattern")

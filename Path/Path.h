@@ -70,7 +70,7 @@ typedef SPathSemanticsPosix SPathSemanticsAuto;
 
 
 template <typename SPathSemantics = SPathSemanticsAuto>
-class Path
+class PathCore
 {
 public:
     // Simple join of two paths ensuring one directory separator
@@ -465,5 +465,8 @@ private:
         return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
     }
 };
+
+// Path using the host platform's semantics
+typedef PathCore<> Path;
 
 } // namespace
