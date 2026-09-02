@@ -21,6 +21,7 @@
 
 
 // Misc
+#include "Core/AutoRestore.h"
 #include "Core/Nullable.h"
 #include "Core/Bit.h"
 #include "Core/Endian.h"
