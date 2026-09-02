@@ -23,7 +23,7 @@ public:
         dwCRC = (dwCRC >> 8) ^ g_dwCRCTable[(dwCRC & 0xFF) ^ byte];
     }
 
-    void Update(const void* pbDataIn, int cbData)
+    void Update(const void* pbDataIn, size_t cbData)
     {
         const unsigned char* pbData = (const unsigned char*)pbDataIn;
         while (cbData--)
@@ -38,7 +38,7 @@ public:
         return dwCRC ^ 0xffffffff;
     }
 
-    static uint32_t Calculate(const void* pbData, int cbData)
+    static uint32_t Calculate(const void* pbData, size_t cbData)
     {
         Crc32 crc;
         crc.Update(pbData, cbData);
