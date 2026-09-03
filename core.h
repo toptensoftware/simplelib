@@ -28,6 +28,7 @@
 #include "Core/FourCC.h"
 #include "Core/Crc32.h"
 #include "Core/Guid.h"
+#include "Core/Utils.h"
 
 // linked stack
 // fixed array
