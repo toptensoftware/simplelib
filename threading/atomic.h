@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <type_traits>
 
 #include "../Platform/Platform.h"
 
@@ -11,22 +12,83 @@ namespace SimpleLib
 template <typename T>
 class Atomic
 {
-    static_assert(sizeof(T) == 4 || sizeof(T) == sizeof(void*),
-        "Only 32-bit and pointer-sized types supported");
+    static_assert(std::is_trivially_copyable_v<T>,
+        "Atomic<T> requires a trivially copyable T");
+    static_assert(sizeof(T) >= 1 && sizeof(T) <= sizeof(void*),
+        "Atomic<T> supports types from 1 byte up to pointer size");
+
+    // The hardware only has atomic instructions for 32-bit and pointer-sized
+    // words, so a type narrower than 32 bits is stored zero-extended inside a
+    // uint32_t and every operation runs on that whole word. The stored word
+    // is always kept normalized - the value's bytes in the low end, the rest
+    // zero - so a CompareExchange against a freshly packed value can never
+    // spuriously mismatch on stale high bits. Storing in a real uint32_t
+    // (rather than casting a 1/2-byte member up to 4) also keeps the atomic
+    // access in bounds and gives Wait() a 32-bit address, the only width
+    // Linux futexes accept.
+    static constexpr bool kNarrow = sizeof(T) < 4;
+    static constexpr bool kPointerSized = sizeof(T) == sizeof(void*);
+
+    using Storage = std::conditional_t<kNarrow, uint32_t, T>;
+
+    static Storage Pack(T val)
+    {
+        if constexpr (kNarrow)
+        {
+            uint32_t word = 0;
+            memcpy(&word, &val, sizeof(val));
+            return word;
+        }
+        else
+            return val;
+    }
+
+    static T Unpack(Storage word)
+    {
+        if constexpr (kNarrow)
+        {
+            T val;
+            memcpy(&val, &word, sizeof(val));
+            return val;
+        }
+        else
+            return word;
+    }
+
+    // CAS loop used for arithmetic on the narrow path (no native sub-word
+    // atomic add exists). Returns the pre-op value.
+    T NarrowFetchAdd(T delta)
+    {
+        static_assert(!std::is_same_v<T, bool>,
+            "arithmetic on Atomic<bool> is not meaningful");
+        uint32_t oldWord = Platform::atomicLoad((uint32_t volatile*)&m_val);
+        for (;;)
+        {
+            T updated = (T)(Unpack(oldWord) + delta);
+            uint32_t prev = Platform::atomicCompareExchange(
+                (uint32_t volatile*)&m_val, Pack(updated), oldWord);
+            if (prev == oldWord)
+                return Unpack(oldWord);
+            oldWord = prev; // lost the race - retry with the value we were beaten by
+        }
+    }
 
 protected:
-    volatile T m_val;
+    volatile Storage m_val;
 
 public:
-    Atomic() : m_val((T)0) {}
-    explicit Atomic(T initial) : m_val(initial) {}
+    Atomic() : m_val(Storage{}) {}
+    explicit Atomic(T initial) : m_val(Pack(initial)) {}
 
     Atomic(const Atomic&) = delete;
     Atomic& operator=(const Atomic&) = delete;
 
     T CompareExchange(T val, T compare)
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return Unpack(Platform::atomicCompareExchange(
+                (uint32_t volatile*)&m_val, Pack(val), Pack(compare)));
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicCompareExchange(
                 (size_t volatile*)&m_val,
                 (size_t)val,
@@ -47,15 +109,20 @@ public:
 
     T Get() const
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return Unpack(Platform::atomicLoad((uint32_t volatile*)&m_val));
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicLoad((size_t volatile*)&m_val);
         else
             return (T)Platform::atomicLoad((uint32_t volatile*)&m_val);
     }
-    
+
     T Set(T val)
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return Unpack(Platform::atomicExchange(
+                (uint32_t volatile*)&m_val, Pack(val)));
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicExchange(
                 (size_t volatile*)&m_val,
                 (size_t)val
@@ -69,7 +136,9 @@ public:
 
     T Inc()
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return (T)(NarrowFetchAdd((T)1) + 1);
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicIncrement((size_t volatile *)&m_val);
         else
             return (T)Platform::atomicIncrement((uint32_t volatile*)&m_val);
@@ -77,7 +146,9 @@ public:
 
     T Dec()
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return (T)(NarrowFetchAdd((T)-1) - 1);
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicDecrement((size_t volatile *)&m_val);
         else
             return (T)Platform::atomicDecrement((uint32_t volatile*)&m_val);
@@ -85,7 +156,9 @@ public:
 
     T Add(T delta)
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return (T)(NarrowFetchAdd(delta) + delta);
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicAdd((size_t volatile*)&m_val, (size_t)delta);
         else
             return (T)Platform::atomicAdd((uint32_t volatile*)&m_val, (uint32_t)delta);
@@ -93,7 +166,9 @@ public:
 
     T FetchAdd(T delta)
     {
-        if constexpr (sizeof(T) == sizeof(void*))
+        if constexpr (kNarrow)
+            return NarrowFetchAdd(delta);
+        else if constexpr (kPointerSized)
             return (T)Platform::atomicFetchAdd((size_t volatile*)&m_val, (size_t)delta);
         else
             return (T)Platform::atomicFetchAdd((uint32_t volatile*)&m_val, (uint32_t)delta);
@@ -103,16 +178,31 @@ public:
     // Block while current value == expected. Returns false on timeout.
     bool Wait(T expected, uint32_t timeout = kWaitForever)
     {
-        T current = Get();
-        while (current == expected)
+        if constexpr (kNarrow)
         {
-            if (!Platform::futexWait(const_cast<T*>(&m_val), &current, sizeof(T), timeout))
+            uint32_t want = Pack(expected);
+            uint32_t current = Platform::atomicLoad((uint32_t volatile*)&m_val);
+            while (current == want)
             {
-                return false; // timed out (or, rarely, a real failure — see GetLastError)
+                if (!Platform::futexWait((void*)&m_val, &current, sizeof(current), timeout))
+                    return false; // timed out (or, rarely, a real failure — see GetLastError)
+                current = Platform::atomicLoad((uint32_t volatile*)&m_val); // re-check — WaitOnAddress can wake spuriously
             }
-            current = Get(); // re-check — WaitOnAddress can wake spuriously
+            return true;
         }
-        return true;
+        else
+        {
+            T current = Get();
+            while (current == expected)
+            {
+                if (!Platform::futexWait(const_cast<T*>(&m_val), &current, sizeof(T), timeout))
+                {
+                    return false; // timed out (or, rarely, a real failure — see GetLastError)
+                }
+                current = Get(); // re-check — WaitOnAddress can wake spuriously
+            }
+            return true;
+        }
     }
 
     void WakeOne()

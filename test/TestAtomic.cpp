@@ -241,6 +241,110 @@ Fact("Atomic Wait WakeAll Wakes Multiple Waiters")
 	Assert(woken == 4);
 }
 
+Fact("Atomic Bool Get Set")
+{
+	Atomic<bool> a;
+	Assert(a.Get() == false);
+
+	Atomic<bool> b(true);
+	Assert(b.Get() == true);
+
+	bool old = b.Set(false);
+	Assert(old == true);
+	Assert(b.Get() == false);
+}
+
+Fact("Atomic Bool CompareExchange TrySet")
+{
+	Atomic<bool> a(false);
+
+	Assert(a.CompareExchange(true, false) == false);
+	Assert(a.Get() == true);
+
+	Assert(a.CompareExchange(false, false) == true);	// compare no longer matches
+	Assert(a.Get() == true);
+
+	Assert(a.TrySet(false, true) == true);
+	Assert(a.Get() == false);
+	Assert(a.TrySet(true, true) == false);
+	Assert(a.Get() == false);
+}
+
+Fact("Atomic Bool Wait WakeOne")
+{
+	Atomic<bool> a(false);
+
+	std::thread waiter([&]() {
+		a.Wait(false, 5000);
+	});
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+	a.Set(true);
+	a.WakeOne();
+
+	waiter.join();
+	Assert(a.Get() == true);
+}
+
+Fact("Atomic Bool Wait Times Out When Value Unchanged")
+{
+	Atomic<bool> a(false);
+	Assert(!a.Wait(false, 50));
+}
+
+Fact("Atomic Int16 Get Set CompareExchange")
+{
+	Atomic<int16_t> a((int16_t)5);
+	Assert(a.Get() == 5);
+
+	int16_t old = a.Set((int16_t)-3);
+	Assert(old == 5);
+	Assert(a.Get() == -3);							// sign preserved through the packed word
+
+	Assert(a.CompareExchange((int16_t)100, (int16_t)-3) == -3);
+	Assert(a.Get() == 100);
+}
+
+Fact("Atomic Int16 Inc Dec Add Wraps Like The Narrow Type")
+{
+	Atomic<int16_t> a((int16_t)5);
+	Assert(a.Inc() == 6);
+	Assert(a.Get() == 6);
+	Assert(a.Dec() == 5);
+	Assert(a.Add((int16_t)10) == 15);
+	Assert(a.FetchAdd((int16_t)2) == 15);
+	Assert(a.Get() == 17);
+
+	Atomic<uint8_t> b((uint8_t)254);
+	Assert(b.Inc() == 255);
+	Assert(b.Inc() == 0);							// wraps at the type width, storage stays normalized
+	Assert(b.Get() == 0);
+	Assert(b.CompareExchange((uint8_t)1, (uint8_t)0) == 0);	// no stale high bits left behind
+	Assert(b.Get() == 1);
+}
+
+Fact("Atomic Int16 Concurrent FetchAdd Never Loses An Update")
+{
+	Atomic<int16_t> a((int16_t)0);
+
+	const int kThreads = 4;
+	const int kPerThread = 2000;			// 8000 total fits in int16_t
+
+	std::thread threads[kThreads];
+	for (auto& t : threads)
+	{
+		t = std::thread([&]() {
+			for (int i = 0; i < kPerThread; i++)
+				a.FetchAdd((int16_t)1);
+		});
+	}
+	for (auto& t : threads)
+		t.join();
+
+	Assert(a.Get() == kThreads * kPerThread);
+}
+
 Fact("AtomicTaggedPtr Get Reflects Initial State")
 {
 	AtomicTaggedPtr<int> p;
