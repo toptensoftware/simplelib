@@ -5,6 +5,7 @@
 #include "Threading/AtomicSemaphore.h"
 #include "Threading/AtomicStruct.h"
 #include "Threading/SpscQueue.h"
+#include "Threading/MpmcLinkedQueue.h"
 #include "Threading/MpmcQueue.h"
 #include "Threading/MpmcStack.h"
 #include "Threading/Thread.h"
