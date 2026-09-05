@@ -52,6 +52,20 @@ public:
 	virtual int GetNodePrecedentCount(TNode* node) = 0;
 	virtual TNode* GetNodePrecedent(TNode* node, int index) = 0;
 
+	// Optional: nodes that don't have a strict ordering requirement
+	// relative to the rest of the graph (eg: a feedback/send-return node,
+	// where exact ordering across one processing cycle's boundary doesn't
+	// matter) can be marked weakly ordered. If a weakly-ordered node turns
+	// out to be part of a cycle, it's moved to run after its (former)
+	// successors instead of the whole graph being rejected as circular -
+	// see BreakWeakCycles. Default: no node is weakly ordered.
+	virtual bool IsNodeWeaklyOrdered(TNode* node) { return false; }
+
+	// Called when a weakly-ordered node has actually been reordered to
+	// break a cycle, so the client can find out if/when that happened.
+	// Default: no-op.
+	virtual void SetReordered(TNode* node) { }
+
 	// Output of clustering algorithm describing a single cluster
 	class Cluster
 	{
@@ -102,10 +116,15 @@ public:
 	Plan* Clusterize(TNode* sinkNode)
 	{
 		assert(sinkNode != nullptr);
-		
-		// Build node info for the entire DAG
-		auto sinkNodeInfo = GetNodeInfo(sinkNode);
-		if (!sinkNodeInfo)
+
+		// Build node info for the entire DAG. Cycles are tolerated at this
+		// stage - a client graph containing weakly-ordered nodes (eg:
+		// feedback/send-return paths) can genuinely be cyclic here.
+		auto sinkNodeInfo = BuildNodeGraph(sinkNode);
+
+		// Resolve any cycles that pass through a weakly-ordered node.
+		// Anything still cyclic afterwards is a genuine circular reference.
+		if (!BreakWeakCycles(sinkNodeInfo))
 			return nullptr;	// Circular reference found
 
 		// Build initial clusters
@@ -212,6 +231,7 @@ protected:
 		TNode* node = nullptr;
 		ClusterInfo* cluster = nullptr;
 		int inDegree = 0;
+		bool expanded = false;	// used only by BuildNodeGraph
 		List<NodeInfo*> preds;
 		List<NodeInfo*> succs;
 	};
@@ -281,46 +301,159 @@ protected:
 	Set<ClusterInfo*> m_mergeCyclicVisited;
 	List<ClusterInfo*> m_mergeCyclicStack;
 
-	NodeInfo* GetNodeInfo(TNode* node)
+	// Same, for IsNodeOnCycle (called from the weak-ordering prepass,
+	// before clustering begins)
+	Set<NodeInfo*> m_nodeCycleVisited;
+	List<NodeInfo*> m_nodeCycleStack;
+
+	NodeInfo* GetOrCreateNodeInfo(TNode* node)
 	{
-		// Already created?
 		NodeInfo* ni = m_nodeInfos.Get(node, nullptr);
 		if (ni != nullptr)
+			return ni;
+
+		ni = new NodeInfo();
+		ni->node = node;
+		m_nodeInfos.Add(node, ni);
+		return ni;
+	}
+
+	// Builds NodeInfo (preds/succs) for every node reachable from sinkNode
+	// via precedents. Unlike a plain recursive walk, this tolerates cycles
+	// - resolving them is BreakWeakCycles' job, run immediately after this.
+	NodeInfo* BuildNodeGraph(TNode* sinkNode)
+	{
+		NodeInfo* sinkInfo = GetOrCreateNodeInfo(sinkNode);
+
+		List<NodeInfo*> worklist;
+		worklist.Add(sinkInfo);
+
+		while (!worklist.IsEmpty())
 		{
-			// ni->node is only set once this node's precedents have all
-			// finished being processed (see below). If it's still null here,
-			// we've recursed back into a node that's still being built
-			// further up the call stack - a genuine circular reference.
-			// Otherwise, this is just a diamond/shared-precedent (fan-in)
-			// node that's already been fully built - not a cycle.
-			if (ni->node == nullptr)
+			NodeInfo* ni = worklist.Dequeue();
+
+			// A node can be pushed more than once (reached via more than
+			// one fan-in edge before it's dequeued the first time)
+			if (ni->expanded)
+				continue;
+			ni->expanded = true;
+
+			int predCount = GetNodePrecedentCount(ni->node);
+			for (int i = 0; i < predCount; i++)
 			{
-				// Circular?
-				assert(ni->node == nullptr);
-				return nullptr;
+				NodeInfo* pred = GetOrCreateNodeInfo(GetNodePrecedent(ni->node, i));
+
+				if (!ni->preds.Contains(pred))
+				{
+					ni->preds.Add(pred);
+					pred->succs.Add(ni);
+				}
+
+				if (!pred->expanded)
+					worklist.Add(pred);
+			}
+		}
+
+		return sinkInfo;
+	}
+
+	// Is `node` reachable from itself by following successor edges? (ie:
+	// does it lie on a cycle)
+	bool IsNodeOnCycle(NodeInfo* node)
+	{
+		m_nodeCycleVisited.Clear();
+		m_nodeCycleStack.Clear();
+		m_nodeCycleStack.AddMany(node->succs);
+
+		while (!m_nodeCycleStack.IsEmpty())
+		{
+			NodeInfo* c = m_nodeCycleStack.Pop();
+			if (c == node)
+				return true;
+
+			if (m_nodeCycleVisited.Contains(c))
+				continue;
+			m_nodeCycleVisited.Add(c);
+
+			m_nodeCycleStack.AddMany(c->succs);
+		}
+		return false;
+	}
+
+	// Moves a weakly-ordered node to run after all of its current
+	// successors, breaking any cycle running through it: each former
+	// successor edge is reversed (the successor becomes a precedent of the
+	// node instead), and the node is additionally wired up as a precedent
+	// of the root node so it stays connected to the graph even though
+	// nothing else depends on it any more.
+	void ReorderNode(NodeInfo* node, NodeInfo* root)
+	{
+		// Copy - we're about to mutate node->succs while iterating it
+		List<NodeInfo*> formerSuccs;
+		formerSuccs.AddMany(node->succs);
+
+		for (int i = 0; i < formerSuccs.GetCount(); i++)
+		{
+			NodeInfo* succ = formerSuccs[i];
+
+			succ->preds.Remove(node);
+			node->succs.Remove(succ);
+
+			if (!node->preds.Contains(succ))
+			{
+				node->preds.Add(succ);
+				succ->succs.Add(node);
+			}
+		}
+
+		if (node != root && !root->preds.Contains(node))
+		{
+			root->preds.Add(node);
+			node->succs.Add(root);
+		}
+
+		SetReordered(node->node);
+	}
+
+	// Prepass run before clustering: repeatedly finds weakly-ordered nodes
+	// that are part of a cycle and reorders them, until a full pass makes
+	// no more changes. Returns false if a cycle survives that doesn't go
+	// through a weakly-ordered node - a genuine circular reference in the
+	// client's graph.
+	bool BreakWeakCycles(NodeInfo* root)
+	{
+		// Bounded rather than an unconditional while(changed) loop, so a
+		// pathological client graph can't hang this prepass - it just
+		// fails (below) instead of relying purely on convergence.
+		int maxPasses = m_nodeInfos.GetCount() + 1;
+		for (int pass = 0; pass < maxPasses; pass++)
+		{
+			bool changed = false;
+			for (auto iter = m_nodeInfos.Iterate(); iter.Next(); )
+			{
+				NodeInfo* ni = iter.GetValue();
+				if (!IsNodeWeaklyOrdered(ni->node))
+					continue;
+
+				if (IsNodeOnCycle(ni))
+				{
+					ReorderNode(ni, root);
+					changed = true;
+				}
 			}
 
-			return ni;
+			if (!changed)
+				break;
 		}
 
-		// Create new Node Info
-		ni = new NodeInfo();
-		m_nodeInfos.Add(node, ni);
-
-		// Get all precedents
-		int predCount = GetNodePrecedentCount(node);
-		for (int i = 0; i < predCount; i++)
+		// Anything still cyclic at this point isn't weakly-ordered
+		for (auto iter = m_nodeInfos.Iterate(); iter.Next(); )
 		{
-			NodeInfo* pred = GetNodeInfo(GetNodePrecedent(node, i));
-			if (pred == nullptr)
-				return nullptr;
-			ni->preds.Add(pred);
-			pred->succs.Add(ni);
+			if (IsNodeOnCycle(iter.GetValue()))
+				return false;
 		}
 
-		// Finalize this node
-		ni->node = node;
-		return ni;
+		return true;
 	}
 
 

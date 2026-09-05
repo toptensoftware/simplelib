@@ -10,8 +10,8 @@ namespace
 	class TestNode
 	{
 	public:
-		TestNode(int weight, bool keepWithPrecedents = false, bool shouldExecute = true)
-			: m_weight(weight), m_keepWithPrecedents(keepWithPrecedents), m_shouldExecute(shouldExecute)
+		TestNode(int weight, bool keepWithPrecedents = false, bool shouldExecute = true, bool weaklyOrdered = false)
+			: m_weight(weight), m_keepWithPrecedents(keepWithPrecedents), m_shouldExecute(shouldExecute), m_weaklyOrdered(weaklyOrdered)
 		{
 		}
 
@@ -23,6 +23,8 @@ namespace
 		int m_weight;
 		bool m_keepWithPrecedents;
 		bool m_shouldExecute;
+		bool m_weaklyOrdered;
+		bool m_wasReordered = false;
 		List<TestNode*> m_precedents;
 	};
 
@@ -37,6 +39,8 @@ namespace
 		int GetNodeWeight(TestNode* node) override { return node->m_weight; }
 		int GetNodePrecedentCount(TestNode* node) override { return node->m_precedents.GetCount(); }
 		TestNode* GetNodePrecedent(TestNode* node, int index) override { return node->m_precedents[index]; }
+		bool IsNodeWeaklyOrdered(TestNode* node) override { return node->m_weaklyOrdered; }
+		void SetReordered(TestNode* node) override { node->m_wasReordered = true; }
 	};
 
 	// Returns the total number of nodes across every cluster in a plan
@@ -508,4 +512,83 @@ Fact("NodeClustering KeepWithPrecedents Does Not Force-Merge A Shared Precedent"
 	Assert(sinkCluster->nodes.GetCount() == 4);
 
 	delete plan;
+}
+
+Fact("NodeClustering Weakly Ordered Node Breaks Feedback Cycle")
+{
+	// Main feeds Sink; Feedback depends on Main's output, but Main also
+	// (per the client's raw graph) depends on Feedback - a genuine cycle
+	// that only exists because Feedback's ordering relative to Main is
+	// weak (eg: a send/return path where cross-block ordering doesn't
+	// matter). Marking Feedback weakly ordered should let this resolve
+	// instead of being rejected as circular.
+	TestNode sink(5);
+	TestNode main(100);
+	TestNode feedback(10, false, true, true); // weakly ordered
+	sink.AddPrecedent(&main);
+	main.AddPrecedent(&feedback);
+	feedback.AddPrecedent(&main);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&sink);
+	Assert(plan != nullptr);
+	Assert(feedback.m_wasReordered);
+	Assert(!main.m_wasReordered);
+	Assert(!sink.m_wasReordered);
+	Assert(CountPlanNodes(plan) == 3);
+	Assert(IsPlanAcyclic(plan));
+	delete plan;
+}
+
+Fact("NodeClustering Non Weakly Ordered Cycle Still Rejected")
+{
+	// Same shape as above, but Feedback is NOT marked weakly ordered - must
+	// still be rejected as a genuine circular reference
+	TestNode sink(5);
+	TestNode main(100);
+	TestNode feedback(10);
+	sink.AddPrecedent(&main);
+	main.AddPrecedent(&feedback);
+	feedback.AddPrecedent(&main);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&sink);
+	Assert(plan == nullptr);
+}
+
+Fact("NodeClustering Weakly Ordered Node Not On A Cycle Is Left Alone")
+{
+	// b is marked weakly ordered but isn't actually part of any cycle -
+	// must be left untouched
+	TestNode a(10);
+	TestNode b(10, false, true, true); // weakly ordered
+	TestNode c(10);
+	b.AddPrecedent(&a);
+	c.AddPrecedent(&b);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&c);
+	Assert(plan != nullptr);
+	Assert(!b.m_wasReordered);
+	Assert(CountPlanNodes(plan) == 3);
+	delete plan;
+}
+
+Fact("NodeClustering Weakly Ordered Node Directly Cyclic With Root Still Rejected")
+{
+	// A degenerate two-node graph where the sink and the weakly-ordered
+	// node each independently declare the other as a precedent. There's no
+	// third node for the weakly-ordered one to be reattached to other than
+	// the sink itself, and the sink already independently depends on it
+	// the other way round - reordering can't produce an acyclic result no
+	// matter which edge is kept, so this must still fail rather than loop
+	// forever or silently emit a cyclic plan.
+	TestNode a(10);
+	TestNode b(10, false, true, true); // weakly ordered
+	a.AddPrecedent(&b);
+	b.AddPrecedent(&a);
+
+	TestClustering nc;
+	auto plan = nc.Clusterize(&a);
+	Assert(plan == nullptr);
 }
