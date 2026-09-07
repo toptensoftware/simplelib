@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-#include "../core/Compare.h"
+#include "../Core/Compare.h"
 
 namespace SimpleLib
 {

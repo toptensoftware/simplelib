@@ -4,7 +4,7 @@
 #include "../Threading/Types.h"
 
 #if defined(_WIN32)
-    #include "win.h"
+    #include "Win.h"
 #else
-    #include "lin.h"
+    #include "Lin.h"
 #endif

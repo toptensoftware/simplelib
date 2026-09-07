@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../core/string.h"
-#include "../core/encoding.h"
+#include "../Core/String.h"
+#include "../Core/Encoding.h"
 
 #ifdef _MSC_VER
 #include <direct.h>

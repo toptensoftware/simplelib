@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Core/String.h"
-#include "../Core/Sharedptr.h"
+#include "../Core/SharedPtr.h"
 #include "../Core/List.h"
 #include "../Core/Map.h"
 

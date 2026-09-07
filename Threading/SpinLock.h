@@ -1,6 +1,6 @@
 #pragma once
 
-#include "atomic.h"
+#include "Atomic.h"
 
 namespace SimpleLib
 {
