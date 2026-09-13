@@ -48,7 +48,7 @@ namespace
 	{
 		int total = 0;
 		for (int i = 0; i < plan->clusters.GetCount(); i++)
-			total += plan->clusters[i]->nodes.GetCount();
+			total += plan->clusters[i]->execNodes.GetCount();
 		return total;
 	}
 
@@ -58,8 +58,8 @@ namespace
 		for (int i = 0; i < plan->clusters.GetCount(); i++)
 		{
 			auto* c = plan->clusters[i];
-			for (int j = 0; j < c->nodes.GetCount(); j++)
-				if (c->nodes[j] == n)
+			for (int j = 0; j < c->execNodes.GetCount(); j++)
+				if (c->execNodes[j] == n)
 					return c;
 		}
 		return nullptr;
@@ -107,7 +107,7 @@ Fact("NodeClustering Single Node")
 	auto plan = nc.Clusterize(&a);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
-	Assert(plan->clusters[0]->nodes.GetCount() == 1);
+	Assert(plan->clusters[0]->execNodes.GetCount() == 1);
 	Assert(plan->clusters[0]->predCount == 0);
 	delete plan;
 }
@@ -126,7 +126,7 @@ Fact("NodeClustering Simple Chain Always Merges")
 	auto plan = nc.Clusterize(&c);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
-	Assert(plan->clusters[0]->nodes.GetCount() == 3);
+	Assert(plan->clusters[0]->execNodes.GetCount() == 3);
 	delete plan;
 }
 
@@ -247,9 +247,9 @@ Fact("NodeClustering Keeps Independent Heavy Branches Separate At A Shared Sink"
 	for (int i = 0; i < plan->clusters.GetCount(); i++)
 	{
 		auto* c = plan->clusters[i];
-		if (c->nodes.GetCount() == 3 && c->predCount == 0)
+		if (c->execNodes.GetCount() == 3 && c->predCount == 0)
 			branchClusters++;
-		else if (c->nodes.GetCount() == 1 && c->predCount == 2)
+		else if (c->execNodes.GetCount() == 1 && c->predCount == 2)
 			sinkClusters++;
 	}
 	Assert(branchClusters == 2);
@@ -298,7 +298,7 @@ Fact("NodeClustering Nodes Within A Cluster Are Topologically Ordered")
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
 
-	auto& nodes = plan->clusters[0]->nodes;
+	auto& nodes = plan->clusters[0]->execNodes;
 	Assert(nodes.GetCount() == 3);
 	Assert(nodes[0] == &a);
 	Assert(nodes[1] == &b);
@@ -320,7 +320,7 @@ Fact("NodeClustering KeepWithPrecedents Merges Single-Dependent Precedents")
 	auto plan = nc.Clusterize(&m);
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
-	Assert(plan->clusters[0]->nodes.GetCount() == 3);
+	Assert(plan->clusters[0]->execNodes.GetCount() == 3);
 	delete plan;
 }
 
@@ -341,7 +341,7 @@ Fact("NodeClustering ShouldExecuteNode Excludes Node From Plan But Keeps Topolog
 	Assert(plan != nullptr);
 	Assert(plan->clusters.GetCount() == 1);
 
-	auto& nodes = plan->clusters[0]->nodes;
+	auto& nodes = plan->clusters[0]->execNodes;
 	Assert(nodes.GetCount() == 2);
 	Assert(nodes[0] == &a);
 	Assert(nodes[1] == &c);
@@ -509,7 +509,7 @@ Fact("NodeClustering KeepWithPrecedents Does Not Force-Merge A Shared Precedent"
 	// not have - sink's cluster must be exactly {sink, p2's 3 nodes} = 4
 	// nodes, not the full 10-node blob a buggy force-merge would produce
 	auto* sinkCluster = FindClusterContaining(plan, sink);
-	Assert(sinkCluster->nodes.GetCount() == 4);
+	Assert(sinkCluster->execNodes.GetCount() == 4);
 
 	delete plan;
 }

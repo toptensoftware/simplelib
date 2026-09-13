@@ -71,7 +71,8 @@ public:
 	{
 	public:
 		// List of client nodes in topological order
-		List<TNode*> nodes;
+		List<TNode*> execNodes;
+		List<TNode*> allNodes;
 
 		// List of successor clusters
 		List<Cluster*> succs;
@@ -884,8 +885,7 @@ protected:
 			NodeInfo* n = ready.Dequeue();
 			processedCount++;
 
-			if (ShouldExecuteNode(n->node))
-				sorted.Add(n->node);
+			sorted.Add(n->node);
 
 			for (int i = 0; i < n->succs.GetCount(); i++)
 			{
@@ -916,7 +916,10 @@ protected:
 		cluster->planCluster = new Cluster();
 
 		// Store nodes topologically
-		cluster->planCluster->nodes = TopologicalSortCluster(cluster);
+		cluster->planCluster->allNodes = TopologicalSortCluster(cluster);
+		cluster->planCluster->execNodes = cluster->planCluster->allNodes.Filter([this](TNode* n) {
+			return this->ShouldExecuteNode(n);
+		});
 
 		// Store precedent count
 		cluster->planCluster->predCount = cluster->preds.GetCount();
