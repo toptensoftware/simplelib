@@ -10,8 +10,8 @@ namespace
 	class TestNode
 	{
 	public:
-		TestNode(int weight, bool keepWithPrecedents = false, bool shouldExecute = true, bool weaklyOrdered = false)
-			: m_weight(weight), m_keepWithPrecedents(keepWithPrecedents), m_shouldExecute(shouldExecute), m_weaklyOrdered(weaklyOrdered)
+		TestNode(int weight, bool shouldExecute = true, bool weaklyOrdered = false)
+			: m_weight(weight), m_shouldExecute(shouldExecute), m_weaklyOrdered(weaklyOrdered)
 		{
 		}
 
@@ -21,7 +21,6 @@ namespace
 		}
 
 		int m_weight;
-		bool m_keepWithPrecedents;
 		bool m_shouldExecute;
 		bool m_weaklyOrdered;
 		bool m_wasReordered = false;
@@ -34,7 +33,6 @@ namespace
 	{
 	public:
 		TestClustering() : NodeClustering(50, 4) {}
-		bool ShouldKeepNodeWithPrecedents(TestNode* node) override { return node->m_keepWithPrecedents; }
 		bool ShouldExecuteNode(TestNode* node) override { return node->m_shouldExecute; }
 		int GetNodeWeight(TestNode* node) override { return node->m_weight; }
 		int GetNodePrecedentCount(TestNode* node) override { return node->m_precedents.GetCount(); }
@@ -50,19 +48,6 @@ namespace
 		for (int i = 0; i < plan->clusters.GetCount(); i++)
 			total += plan->clusters[i]->execNodes.GetCount();
 		return total;
-	}
-
-	// Finds which cluster in a plan a given node ended up in
-	TestClustering::Cluster* FindClusterContaining(TestClustering::Plan* plan, TestNode* n)
-	{
-		for (int i = 0; i < plan->clusters.GetCount(); i++)
-		{
-			auto* c = plan->clusters[i];
-			for (int j = 0; j < c->execNodes.GetCount(); j++)
-				if (c->execNodes[j] == n)
-					return c;
-		}
-		return nullptr;
 	}
 
 	// Verifies the plan's cluster-level dependency graph is genuinely
@@ -306,24 +291,6 @@ Fact("NodeClustering Nodes Within A Cluster Are Topologically Ordered")
 	delete plan;
 }
 
-Fact("NodeClustering KeepWithPrecedents Merges Single-Dependent Precedents")
-{
-	// m wants to stay grouped with its precedents; both p1 and p2 only
-	// ever feed m, so this should reduce to one cluster
-	TestNode p1(10);
-	TestNode p2(10);
-	TestNode m(50, true);
-	m.AddPrecedent(&p1);
-	m.AddPrecedent(&p2);
-
-	TestClustering nc;
-	auto plan = nc.Clusterize(&m);
-	Assert(plan != nullptr);
-	Assert(plan->clusters.GetCount() == 1);
-	Assert(plan->clusters[0]->execNodes.GetCount() == 3);
-	delete plan;
-}
-
 Fact("NodeClustering ShouldExecuteNode Excludes Node From Plan But Keeps Topology")
 {
 	// b doesn't need to execute (eg: a no-op pass-through), but it still
@@ -331,7 +298,7 @@ Fact("NodeClustering ShouldExecuteNode Excludes Node From Plan But Keeps Topolog
 	// left out of the emitted cluster's node list, with a and c still
 	// correctly topologically ordered around the gap it leaves behind
 	TestNode a(1000);
-	TestNode b(1000, false, false);
+	TestNode b(1000, false);
 	TestNode c(1000);
 	b.AddPrecedent(&a);
 	c.AddPrecedent(&b);
@@ -353,7 +320,7 @@ Fact("NodeClustering ShouldExecuteNode Excluded Shared Precedent Still Feeds Bot
 	// c is a shared precedent that doesn't need to execute, but a and b
 	// still both transitively depend on it - excluding it from the plan's
 	// node list must not affect the cluster/edge structure built around it
-	TestNode c(10, false, false);
+	TestNode c(10, false);
 	TestNode a(20);
 	TestNode b(20);
 	TestNode r(5);
@@ -445,75 +412,6 @@ Fact("NodeClustering Never Produces A Cyclic Plan At A Diamond Shortcut")
 	delete plan;
 }
 
-Fact("NodeClustering KeepWithPrecedents Does Not Force-Merge A Shared Precedent")
-{
-	// Sink wants to stay grouped with its precedents, but only p2 is
-	// structurally eligible (its only successor is Sink). p1 and p3 also
-	// each feed a second node (y1/y3), so per the documented safety
-	// precondition they must NOT be force-merged just because the flag is
-	// set - they have to go through the normal weighted decision like any
-	// other fan-in. p1/p3 are heavy chains and p2/sink are cheap, so the
-	// weighted decision should keep the heavy branches split (mirroring
-	// "NodeClustering Keeps Independent Heavy Branches Separate At A
-	// Shared Sink") - but the one thing that must hold regardless of the
-	// weighted outcome is that sink's cluster is NOT the full 10-node blob
-	// a buggy force-merge (ignoring the single-successor precondition)
-	// would produce.
-	List<OwnedPtr<TestNode>> allNodes;
-	auto makeChainNodes = [&](int len) -> TestNode*
-	{
-		TestNode* prev = nullptr;
-		for (int i = 0; i < len; i++)
-		{
-			TestNode* n = new TestNode(500);
-			allNodes.Add(n);
-			if (prev)
-				n->AddPrecedent(prev);
-			prev = n;
-		}
-		return prev;
-	};
-
-	TestNode* p1 = makeChainNodes(3);
-	TestNode* p2 = makeChainNodes(3);
-	TestNode* p3 = makeChainNodes(3);
-
-	TestNode* sink = new TestNode(5, true); // KeepWithPrecedents
-	allNodes.Add(sink);
-	sink->AddPrecedent(p1);
-	sink->AddPrecedent(p2);
-	sink->AddPrecedent(p3);
-
-	TestNode* y1 = new TestNode(1);
-	allNodes.Add(y1);
-	y1->AddPrecedent(p1);
-
-	TestNode* y3 = new TestNode(1);
-	allNodes.Add(y3);
-	y3->AddPrecedent(p3);
-
-	TestNode* superSink = new TestNode(1);
-	allNodes.Add(superSink);
-	superSink->AddPrecedent(sink);
-	superSink->AddPrecedent(y1);
-	superSink->AddPrecedent(y3);
-
-	TestClustering nc;
-	auto plan = nc.Clusterize(superSink);
-	Assert(plan != nullptr);
-	Assert(CountPlanNodes(plan) == allNodes.GetCount());
-	Assert(IsPlanAcyclic(plan));
-
-	// p2 (single-successor precondition holds) must have force-merged with
-	// sink; p1/p3 (each also feed y1/y3, breaking the precondition) must
-	// not have - sink's cluster must be exactly {sink, p2's 3 nodes} = 4
-	// nodes, not the full 10-node blob a buggy force-merge would produce
-	auto* sinkCluster = FindClusterContaining(plan, sink);
-	Assert(sinkCluster->execNodes.GetCount() == 4);
-
-	delete plan;
-}
-
 Fact("NodeClustering Weakly Ordered Node Breaks Feedback Cycle")
 {
 	// Main feeds Sink; Feedback depends on Main's output, but Main also
@@ -524,7 +422,7 @@ Fact("NodeClustering Weakly Ordered Node Breaks Feedback Cycle")
 	// instead of being rejected as circular.
 	TestNode sink(5);
 	TestNode main(100);
-	TestNode feedback(10, false, true, true); // weakly ordered
+	TestNode feedback(10, true, true); // weakly ordered
 	sink.AddPrecedent(&main);
 	main.AddPrecedent(&feedback);
 	feedback.AddPrecedent(&main);
@@ -561,7 +459,7 @@ Fact("NodeClustering Weakly Ordered Node Not On A Cycle Is Left Alone")
 	// b is marked weakly ordered but isn't actually part of any cycle -
 	// must be left untouched
 	TestNode a(10);
-	TestNode b(10, false, true, true); // weakly ordered
+	TestNode b(10, true, true); // weakly ordered
 	TestNode c(10);
 	b.AddPrecedent(&a);
 	c.AddPrecedent(&b);
@@ -584,7 +482,7 @@ Fact("NodeClustering Weakly Ordered Node Directly Cyclic With Root Still Rejecte
 	// matter which edge is kept, so this must still fail rather than loop
 	// forever or silently emit a cyclic plan.
 	TestNode a(10);
-	TestNode b(10, false, true, true); // weakly ordered
+	TestNode b(10, true, true); // weakly ordered
 	a.AddPrecedent(&b);
 	b.AddPrecedent(&a);
 

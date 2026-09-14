@@ -46,7 +46,6 @@ public:
 	}
 
 	// Client supplied nodes that need to be clustered
-	virtual bool ShouldKeepNodeWithPrecedents(TNode* node) = 0;
 	virtual bool ShouldExecuteNode(TNode* node) = 0;
 	virtual int GetNodeWeight(TNode* node) = 0;
 	virtual int GetNodePrecedentCount(TNode* node) = 0;
@@ -491,12 +490,10 @@ protected:
 		{
 			NodeInfo* pred = node->preds[i];
 
-			// Combine precedents into this cluster when they have only 
-			// one successor (ie: this node) and either:
-			//  - this node has only one precedent (ie: 1-to-1 chain)
-			//  - this node wants to be kept its precedents
-			if (pred->succs.GetCount() == 1 &&
-				(node->preds.GetCount() == 1 || ShouldKeepNodeWithPrecedents(node->node)))
+			// Combine a precedent into this cluster when it has only one
+			// successor (ie: this node) and this node has only one
+			// precedent (ie: a 1-to-1 chain)
+			if (pred->succs.GetCount() == 1 && node->preds.GetCount() == 1)
 			{
 				// Add to this cluster
 				BuildInitialClusters(pred, pCluster);
@@ -654,15 +651,25 @@ protected:
 	}
 
 
-	// current path length through edge u->v
-	// assuming they stay in different clusters (i.e. just reads the
-	// current cached levels — no simulation needed, this IS the
-	// current state)
+	// current path length through v, if u and v stay in different clusters
+	// (i.e. just reads the current cached levels — no simulation needed,
+	// this IS the current state).
+	//
+	// B->topLevel is already the max, over ALL of B's current precedents,
+	// of (pred->topLevel + pred->weight + dispatchOverhead) - and A is one
+	// of those precedents. Using B->topLevel directly (rather than
+	// recomputing A's own contribution alone, as an earlier version of this
+	// function did) matters whenever A ISN'T the dominant precedent: if some
+	// other, slower sibling already gates B's real start time, that's true
+	// regardless of whether A merges into B, so it belongs in this "stays
+	// separate" baseline too - not just in CriticalPathIfMerged's newTopLevel.
+	// Omitting it there made splitting look artificially cheap and could
+	// miss merges that cost nothing (the dominant sibling's wait absorbs A
+	// either way) but would still save a dispatch.
 	int CriticalPathIfSeparate(NodeInfo* u, NodeInfo* v)
 	{
-		ClusterInfo* A = (ClusterInfo*)u->cluster;
 		ClusterInfo* B = (ClusterInfo*)v->cluster;
-		return A->topLevel + A->weight + m_dispatchOverhead + B->bottomLevel;
+		return B->topLevel + B->bottomLevel;
 	}
 
 	// criticalPathIfMerged — simulate the merge locally without
