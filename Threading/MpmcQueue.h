@@ -46,6 +46,22 @@ public:
 			// is freed below - free() won't run their destructors.
 			RemoveAll();
 			free(m_pCells);
+			m_pCells = nullptr;
+		}
+
+		m_iEnqueuePos.Set(0);
+		m_iDequeuePos.Set(0);
+
+		// iCapacity == 0 releases the storage and leaves the queue with no
+		// cells at all - TryWrite() and Read() both check for this and fail.
+		// (Can't just malloc(0): the mask would be 0xFFFFFFFF and cell 0
+		// would be read out of bounds, with whatever garbage is there taken
+		// as its sequence number)
+		if (iCapacity == 0)
+		{
+			m_iCapacity = 0;
+			m_iMask = 0;
+			return;
 		}
 
 		m_iCapacity = iCapacity;
@@ -53,12 +69,6 @@ public:
 		m_pCells = (Cell*)malloc(sizeof(Cell) * iCapacity);
 		for (int i = 0; i < iCapacity; i++)
 			m_pCells[i].m_iSequence.Set(i);
-
-		// Cell sequence numbers above assume enqueue/dequeue start at position
-		// 0 - must reset these too, or a Reset() on an already-used queue
-		// leaves them stale and inconsistent with the fresh cells
-		m_iEnqueuePos.Set(0);
-		m_iDequeuePos.Set(0);
 	}
 
 	bool IsLikelyEmpty()
@@ -95,6 +105,10 @@ public:
 	// Write to end
 	bool TryWrite(const T& t)
 	{
+		// Zero capacity queue is always full
+		if (!m_pCells)
+			return false;
+
 		Cell* pCell;
 		uint32_t iPos = m_iEnqueuePos.Get();
 		for (;;)
@@ -139,6 +153,10 @@ public:
 	// Read and remove the oldest written value
 	bool Read(T& Value)
 	{
+		// Zero capacity queue is always empty
+		if (!m_pCells)
+			return false;
+
 		Cell* pCell;
 		uint32_t iPos = m_iDequeuePos.Get();
 		for (;;)

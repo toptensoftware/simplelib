@@ -90,6 +90,25 @@ Fact("MpmcQueue Reset")
 	Assert(q.GetLikelyCount() == 1);
 }
 
+Fact("MpmcQueue Reset To Zero Capacity")
+{
+	MpmcQueue<int> q(4);
+	q.TryWrite(1);
+
+	q.Reset(0);
+	Assert(q.GetCapacity() == 0);
+	Assert(q.IsLikelyEmpty());
+
+	int val = 0;
+	Assert(!q.Read(val));
+	Assert(!q.TryWrite(5));
+
+	// Can be brought back to life
+	q.Reset(4);
+	Assert(q.TryWrite(6));
+	Assert(q.Read(val) && val == 6);
+}
+
 Fact("MpmcQueue Reset Destroys Pending Elements")
 {
 	TrackedValue::s_iInstances = 0;
