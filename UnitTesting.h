@@ -17,7 +17,8 @@ enum class TestEntryKind
 class TestRunner
 {
 public:
-	static void Run();
+	// Runs all tests and returns the number that failed
+	static int Run();
 
 	static void Register(TestEntry* p)
 	{
@@ -85,7 +86,7 @@ inline void TestRunner::RunKind(TestEntryKind kind)
 
 }
 
-inline void TestRunner::Run()
+inline int TestRunner::Run()
 {
 	RunKind(TestEntryKind::Initialize);
 
@@ -118,6 +119,8 @@ inline void TestRunner::Run()
 		printf("\nAll (%i) tests passed.\n", count);
 	else
 		printf("\n%i of %i tests failed.\n", failed, count);
+
+	return failed;
 }
 
 

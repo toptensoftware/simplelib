@@ -4,6 +4,6 @@
 
 int main(int argc, const char** argv)
 {
-	SimpleLib::TestRunner::Run();
-	return 0;	
+	// Exit code is non-zero if any test failed
+	return SimpleLib::TestRunner::Run() == 0 ? 0 : 1;
 }

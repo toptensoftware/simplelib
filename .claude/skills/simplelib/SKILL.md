@@ -145,25 +145,128 @@ Write-only: build `JSONValue` trees (`JSONObject`/`JSONArray` are ref-counted `M
 
 ## Unit tests (`UnitTesting.h`)
 
-```cpp
-#include "../SimpleLib/UnitTesting.h"
-#include "../SimpleLib/Core.h"
-using namespace SimpleLib;            // required - the macros use unqualified names
+SimpleLib has a tiny xUnit-style framework, also used for SimpleLib's own tests (`SimpleLib/test/` is the reference example). A test project is a console exe: a `main.cpp` that runs the registered tests, plus any number of `TestXxx.cpp` files, built with `mk`.
 
-Fact("List Add increases count")
+### API
+
+| Macro / function | Purpose |
+|---|---|
+| `Fact("name") { ... }` | Defines and registers a test. The name is free text, conventionally `"<Class> <behaviour>"`, eg `"Map Set Replaces Existing Value"`. |
+| `Assert(expr)` | Fails the current fact if `expr` is false. It throws `AssertionFailed`, so the rest of that fact is skipped and the next fact runs. Reports the expression text, file and line. |
+| `Initialize() { ... }` | Runs once before any fact (eg create temp dirs, global setup). Any number allowed. |
+| `Deinitialize() { ... }` | Runs once after all facts. |
+| `int SimpleLib::TestRunner::Run()` | Runs every Initialize, then every Fact, then every Deinitialize, prints the results and returns the number of failed facts. |
+
+Rules and behaviour:
+- Every test file needs `using namespace SimpleLib;` after the includes - the macros use unqualified names (`TestEntryKind`).
+- Facts register themselves during static initialization, so there's no list to maintain - adding a .cpp file to the project is enough. The order between files is unspecified, so facts must not depend on each other.
+- Generated names use `__LINE__`: one `Fact`/`Initialize`/`Deinitialize` per line. Put helpers in an anonymous namespace or mark them `static` so files don't clash.
+- Only `AssertionFailed` is caught. Any other exception, a crash or a failed C `assert()` stops the whole run, so test bad input through return values rather than by triggering library asserts. Debug builds keep `assert()` enabled, which is useful because the library's internal checks fire under test.
+- There are no fixtures, filtering or parameterized tests. Use plain helper functions and loops, and share helper classes (eg an instance-counting class to check construction/destruction balance) via file-local types.
+- Output looks like `Map Basics: ok` on each line. A failure prints `assertion failed: <expr>\n  at <file>(<line>)` to stderr, followed by `All (N) tests passed.` or `F of N tests failed.` With the `main.cpp` below, the process exit code is 0 when everything passes and 1 if any fact fails (or non-zero on a crash), so scripts can rely on it.
+- For threading tests, start real `Thread` subclasses (or `std::thread`), loop for many iterations to shake out races, and always `Join()` before asserting.
+
+### Scaffold for a new test project
+
+Typical layout in a project that has SimpleLib as a submodule:
+```
+MyProject/
+  SimpleLib/              <- submodule
+  MyLib/                  <- code under test (Foo.h, Foo.cpp, ...)
+  MyLib/test/
+    test.mk.js
+    main.cpp
+    TestFoo.cpp
+```
+
+`MyLib/test/test.mk.js` (mk finds the `*.mk.js` file in the current directory; the exe is named after the folder, eg `test.exe`):
+```js
+export default async function ()
 {
-    List<int> l;
-    l.Add(1);
-    Assert(l.GetCount() == 1);
+    await this.use("c-cpp");          // msvc on Windows, gcc elsewhere; C++17 by default
+
+    this.set({
+        // By default every *.c/*.cpp in this folder is compiled. Add the
+        // non-header code under test as well:
+        sourceFiles: (base) => [...base, ...this.otherSourceFiles],
+        otherSourceFiles: [
+            "../Foo.cpp",
+        ],
+        includePath: [
+            "../../SimpleLib",        // lets tests write #include "Core.h"
+            "..",
+        ],
+        define: [
+            "_CRT_SECURE_NO_WARNINGS",
+        ],
+        gcc_cpp_args: [
+            "-Wno-unused-variable",
+        ],
+        msvc_cl_args: [
+            "/EHsc",                  // required: Assert() throws
+        ],
+    });
+};
+```
+Leave out `sourceFiles`/`otherSourceFiles` when everything under test is header-only (as in SimpleLib's own tests).
+
+`MyLib/test/main.cpp`:
+```cpp
+#include "UnitTesting.h"
+#include "Core.h"
+
+int main(int argc, const char** argv)
+{
+    // Exit code is non-zero if any test failed
+    return SimpleLib::TestRunner::Run() == 0 ? 0 : 1;
+}
+```
+
+`MyLib/test/TestFoo.cpp`:
+```cpp
+#include "UnitTesting.h"
+#include "Core.h"
+#include "../Foo.h"
+
+using namespace SimpleLib;
+
+namespace
+{
+    // File-local helpers go here
+    String MakeName(int i) { return String::Format("item%i", i); }
 }
 
-Initialize()   { /* runs once before all facts */ }
-Deinitialize() { /* runs once after */ }
+Fact("Foo Starts Empty")
+{
+    Foo foo;
+    Assert(foo.GetCount() == 0);
+}
 
-// main.cpp
-int main() { SimpleLib::TestRunner::Run(); return 0; }
+Fact("Foo Add Stores Items In Order")
+{
+    Foo foo;
+    for (int i = 0; i < 10; i++)
+        foo.Add(MakeName(i));
+
+    Assert(foo.GetCount() == 10);
+    Assert(foo.GetAt(3).IsEqualTo("item3"));
+}
 ```
-Facts self-register at static init, one per line (the name is built from `__LINE__`, so don't put two on one line). `Assert` throws `AssertionFailed`, so build with exceptions on (`/EHsc`).
+
+### Building and running
+
+Run these from the test folder (needs the `mk` tool: `npm install -g toptensoftware/mk.js`; on Windows it finds MSVC itself):
+```sh
+mk                      # build (debug, x64) -> build/x64/debug/bin/test.exe
+mk run                  # build, then run the tests
+mk config=release run   # release build (asserts compiled out)
+mk --rebuild            # force a full rebuild
+mk clean                # delete build/<platform>/<config>
+./build/x64/debug/bin/test.exe   # run an existing build directly
+```
+To check a run from a script or agent, use the exit code (`mk run` fails if the test exe returns non-zero), and to see just the failures and summary: `mk run 2>&1 | grep -E "assertion failed|at .*\(|tests (passed|failed)"`. Older test projects whose `main` does `Run(); return 0;` always exit 0 - update them to the `main.cpp` above. Add `build` to the project's `.gitignore`.
+
+For debugging in VS Code, point a `cppvsdbg` launch config's `program` at `build/x64/debug/bin/test.exe`, with a `preLaunchTask` that runs `mk` in the test folder (see `SimpleLib/.vscode/` for an example).
 
 ## Other utilities
 
