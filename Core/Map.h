@@ -58,7 +58,8 @@ public:
         return core.GetCount() == 0;
     }
 
-    // Add a new key to map, asserts if already exists
+    // Add a new key to map, does nothing if the key already exists
+    // (use Set() to replace an existing value)
     void Add(TKeyArg Key, TValueArg Value)
     {
         AddInternal(Key, Value, false);

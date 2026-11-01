@@ -105,8 +105,14 @@ namespace SimpleLib
 
 		SharedPtr<T>& operator=(SharedPtr<T>&& Other)
 		{
-			_pControl = Other._pControl;
-			Other._pControl = nullptr;
+			if (this != &Other)
+			{
+				if (_pControl)
+					_pControl->Release();
+				_pControl = Other._pControl;
+				Other._pControl = nullptr;
+			}
+			return *this;
 		}
 		
 	private:

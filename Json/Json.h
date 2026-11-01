@@ -160,7 +160,7 @@ namespace SimpleLib
     {
     };
 
-    void JSONValue::Assign(const JSONValue& other)
+    inline void JSONValue::Assign(const JSONValue& other)
     {
         kind = other.kind;
         switch (kind)

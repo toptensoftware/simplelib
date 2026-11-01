@@ -30,7 +30,7 @@ namespace SimpleLib
 // cycles.
 //
 // Each snapshot exposes three views:
-//   - GetCount()/GetItem(i)         - the full current contents, in order.
+//   - GetCount()/GetAt(i)           - the full current contents, in order.
 //   - GetInsertedCount()/GetInsertedItem(i) - items added since the reader's
 //                                     previous snapshot.
 //   - GetDeletedCount()/GetDeletedItem(i)   - items removed since the
@@ -54,7 +54,7 @@ namespace SimpleLib
 //     cancel out - see the reconciliation step in GetSnapshot()).
 //   - Move() never appears in the inserted/deleted lists at all - a
 //     reordering only shows up as a different item order in the full
-//     GetItem() view.
+//     GetAt() view.
 // This is sufficient for identity-based bookkeeping (e.g. registering/
 // revoking precedents for objects that came and went), but this class
 // cannot be used to replay a positional edit history.

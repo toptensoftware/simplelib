@@ -34,16 +34,24 @@ namespace SimpleLib
 		}
 		OwnedPtr& operator=(OwnedPtr&& other)
 		{
-			_ptr = other._ptr;
-			other._ptr = nullptr;
+			if (this != &other)
+			{
+				T* old = _ptr;
+				_ptr = other._ptr;
+				other._ptr = nullptr;
+				if (old && old != _ptr)
+					delete old;
+			}
+			return *this;
 		}
 
-		// Assign to	
+		// Assign to (takes ownership, deletes the previous object)
 		T* operator=(T* pNew)
 		{
-			if (_ptr)
-				delete _ptr;	
+			if (_ptr && _ptr != pNew)
+				delete _ptr;
 			_ptr = pNew;
+			return _ptr;
 		}
 
 		// Detach
