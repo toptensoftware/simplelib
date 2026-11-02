@@ -367,14 +367,18 @@ protected:
 
 
     // Hash map entry
+    #ifdef _MSC_VER
     #pragma warning(disable: 4200)
+    #endif
     struct entry
     {
         int next;
         int hashcode;
         char data[];		// key first, value second
     };
+    #ifdef _MSC_VER
     #pragma warning(default: 4200)
+    #endif
 
     // Get pointer to Nth entry
     entry* get_entry(int index) const

@@ -262,7 +262,7 @@ private:
     {
     public:
         Core() :
-            HashCore(sizeof(TKeyStorage), sizeof(TValueStorage))
+            HashCore<TAllocator>(sizeof(TKeyStorage), sizeof(TValueStorage))
         {
         };
         virtual ~Core()
@@ -273,12 +273,12 @@ private:
         // generated move constructor/assignment, so provide them explicitly
         // (forwarding to HashCore's) rather than falling back to the
         // deleted copy constructor/assignment.
-        Core(Core&& other) : HashCore(SimpleLib::move(other))
+        Core(Core&& other) : HashCore<TAllocator>(SimpleLib::move(other))
         {
         }
         Core& operator=(Core&& other)
         {
-            HashCore::operator=(SimpleLib::move(other));
+            HashCore<TAllocator>::operator=(SimpleLib::move(other));
             return *this;
         }
         virtual uint32_t HashKey(const void* a) const override
