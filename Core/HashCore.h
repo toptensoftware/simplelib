@@ -270,7 +270,6 @@ public:
 
         // Look for existing entry
         int index = m_hashtable[bucket];
-        int prev = -1;
         while (index >= 0)
         {
             // Get the entry at this slot
@@ -279,7 +278,7 @@ public:
             // Same key?
             if (e->hashcode == hashcode && KeyEq(e->data, key))
             {
-                return e->data + m_keySize;	
+                return e->data + m_keySize;
             }
 
             // Move to next
