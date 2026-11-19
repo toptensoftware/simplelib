@@ -937,6 +937,44 @@ Fact("List Move Assignment")
 	Assert(a.GetCount() == 0);
 }
 
+Fact("List Move Constructor Does Not Leak Elements")
+{
+	InstanceCounter::s_iInstances = 0;
+	{
+		List<OwnedPtr<InstanceCounter>> a;
+		a.Add(new InstanceCounter(1));
+		a.Add(new InstanceCounter(2));
+
+		List<OwnedPtr<InstanceCounter>> b(move(a));
+		Assert(InstanceCounter::s_iInstances == 2);
+	}
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
+Fact("List Move Assignment Releases Existing Elements")
+{
+	InstanceCounter::s_iInstances = 0;
+	{
+		List<OwnedPtr<InstanceCounter>> a;
+		a.Add(new InstanceCounter(1));
+		a.Add(new InstanceCounter(2));
+
+		List<OwnedPtr<InstanceCounter>> b;
+		b.Add(new InstanceCounter(99));
+		b.Add(new InstanceCounter(98));
+		b.Add(new InstanceCounter(97));
+		Assert(InstanceCounter::s_iInstances == 5);
+
+		// b's previous elements must be destroyed, a's are taken over
+		b = move(a);
+		Assert(InstanceCounter::s_iInstances == 2);
+		Assert(b.GetCount() == 2);
+		Assert(b[0]->Value == 1);
+		Assert(b[1]->Value == 2);
+	}
+	Assert(InstanceCounter::s_iInstances == 0);
+}
+
 Fact("List Construction And Destruction Of Elements")
 {
 	InstanceCounter::s_iInstances = 0;

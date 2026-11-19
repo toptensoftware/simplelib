@@ -59,6 +59,8 @@ class List
 		if (this == &other)
 			return *this;
 
+		// Destroy existing elements before releasing the buffer
+		Clear();
 		if (m_data)
 			TAllocator::Free(m_data);
 
